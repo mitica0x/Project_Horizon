@@ -1,0 +1,6 @@
+ruvector.db
+ruvector.db-*
+vite-dev.log
+dist
+node_modules
+.vercel
