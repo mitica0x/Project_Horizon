@@ -8,6 +8,7 @@ import CompetitorChart from './components/CompetitorChart'
 import SiteTable from './components/SiteTable'
 import OutreachPanel from './components/OutreachPanel'
 import AskTheBrief from './components/AskTheBrief'
+import ScopePanel from './components/ScopePanel'
 import { GAPS_T1, GAPS_T2, WINS, SCORE, PAGES_PRESENT, PAGES_TRACKED, TABLE_DATA as SITE_TABLE_DATA, COMPETITORS } from './data/staticData'
 import { sortItems, CRITERIA } from './utils/sortEngine'
 import SortBar from './components/SortBar'
@@ -33,6 +34,7 @@ export default function App() {
     gaps_t1: null, gaps_t2: null, wins: null
   })
   const [competitorPanel, setCompetitorPanel] = useState(null)
+  const [scopeOpen, setScopeOpen] = useState(false)
 
   async function runScan() {
     if (scanState !== 'idle') return
@@ -127,19 +129,72 @@ export default function App() {
 
   return (
     <>
-      <HeroCanvas />
-      <main ref={mainRef} style={{ background: 'var(--bg-primary)' }}>
-
-        {/* North Star Strip */}
-        <div style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: 'linear-gradient(135deg, rgba(0,212,232,0.03) 0%, transparent 60%)' }}>
-          <div className="container">
-            <p style={{ padding: '18px 0', textAlign: 'center', fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 400, color: 'var(--text-body)', lineHeight: 1.65 }}>
-              Bybit owns <span style={{ color: 'var(--cyan)', fontWeight: 600 }}>nothing</span> in EU comparison media.
-            </p>
+      {/* Fixed top header bar */}
+      <header style={{
+        position:             'fixed',
+        top:                  0,
+        left:                 0,
+        width:                '100%',
+        height:               48,
+        zIndex:               200,
+        background:           'rgba(10,14,26,0.85)',
+        backdropFilter:       'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderBottom:         '1px solid rgba(0,212,232,0.15)',
+        display:              'flex',
+        alignItems:           'center',
+        justifyContent:       'space-between',
+        padding:              '0 32px',
+        boxSizing:            'border-box',
+      }}>
+        <div style={{
+          fontFamily:    "'Syne', sans-serif",
+          fontSize:      12,
+          fontWeight:    700,
+          letterSpacing: '0.2em',
+          color:         '#B8FF00',
+        }}>
+          PROJECT HORIZON
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              display:      'inline-block',
+              width:        6,
+              height:       6,
+              borderRadius: '50%',
+              background:   '#00e5a0',
+              animation:    'livePulse 2s ease-in-out infinite',
+            }} />
+            <span style={{
+              fontFamily:    "'IBM Plex Mono', monospace",
+              fontSize:      10,
+              color:         '#00e5a0',
+              letterSpacing: '0.15em',
+            }}>
+              LIVE
+            </span>
+          </div>
+          <div style={{
+            fontFamily: "'IBM Plex Sans', sans-serif",
+            fontSize:   11,
+            color:      '#8892a4',
+          }}>
+            Coinsiglieri × Ionut Vilceanu
           </div>
         </div>
+        <style>{`
+          @keyframes livePulse {
+            0%, 100% { transform: scale(1);   opacity: 1;   }
+            50%      { transform: scale(1.4); opacity: 0.4; }
+          }
+        `}</style>
+      </header>
 
-        {/* Priority Gaps T1 — 2-column grid */}
+      <HeroCanvas />
+      <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 48 }}>
+
+{/* Priority Gaps T1 — 2-column grid */}
         <section className="scroll-reveal" style={{ padding: '48px 0' }}>
           <div className="container">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -178,9 +233,9 @@ export default function App() {
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '1px 8px', borderRadius: 99, background: 'var(--amber-dim)', color: 'var(--amber)', border: '1px solid rgba(245,158,11,.3)' }}>{GAPS_T2.length}</span>
             </div>
             <SortBar sectionId="gaps_t2" activeCriteria={sortState.gaps_t2} onToggle={(key) => handleToggle('gaps_t2', key)} onReset={() => handleReset('gaps_t2')} strategyBanner={strategyBanners.gaps_t2} onApplyStrategy={(c) => handleApplyStrategy('gaps_t2', c)} />
-            <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 20 }}>
+            <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 20, alignItems: 'stretch' }}>
               {sortedGapsT2.map(g => (
-                <div key={g.url} style={{ flex: 1, minWidth: 0 }}>
+                <div key={g.url} style={{ flex: 1, minWidth: 0, display: 'grid' }}>
                   <GapCard gap={{ ...g, tier: 'T2' }} onDraftOutreach={setActiveSite} />
                 </div>
               ))}
@@ -250,6 +305,29 @@ export default function App() {
       >
         {SCAN_LABELS[scanState]}
       </button>
+
+      {/* Scope — floating button, above Intel */}
+      {!scopeOpen && (
+        <button
+          onClick={() => setScopeOpen(true)}
+          style={{
+            position: 'fixed', bottom: 136, right: 24, zIndex: 50,
+            fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 600,
+            letterSpacing: '0.04em',
+            color: '#B8FF00',
+            background: '#131929',
+            border: '1px solid rgba(184,255,0,0.3)',
+            borderRadius: 8, padding: '12px 20px',
+            cursor: 'pointer',
+            transition: 'box-shadow 0.2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 16px rgba(184,255,0,0.25)' }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
+        >
+          ⊞ Scope
+        </button>
+      )}
+
       <AskTheBrief ref={askBriefRef} onSortStrategy={handleSortStrategy} />
       {competitorPanel && (
         <CompetitorPanel
@@ -258,6 +336,7 @@ export default function App() {
           onAskIntel={handleAskIntel}
         />
       )}
+      <ScopePanel open={scopeOpen} onClose={() => setScopeOpen(false)} />
     </>
   )
 }

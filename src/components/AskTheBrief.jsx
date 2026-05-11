@@ -24,7 +24,7 @@ function SendIcon() {
   )
 }
 
-function SuggestionPill({ label, onClick }) {
+function SuggestionPill({ label, onClick, compact = false }) {
   const [hover, setHover] = useState(false)
   return (
     <button
@@ -35,9 +35,9 @@ function SuggestionPill({ label, onClick }) {
         background:   hover ? 'rgba(0,212,232,0.08)' : 'rgba(255,255,255,0.04)',
         border:       `1px solid ${hover ? 'rgba(0,212,232,0.2)' : 'rgba(255,255,255,0.1)'}`,
         borderRadius: 20,
-        padding:      '8px 16px',
+        padding:      compact ? '5px 10px' : '8px 16px',
         fontFamily:   "'IBM Plex Sans', sans-serif",
-        fontSize:     13,
+        fontSize:     compact ? 11 : 13,
         color:        hover ? '#ffffff' : '#8892a4',
         cursor:       'pointer',
         whiteSpace:   'nowrap',
@@ -120,7 +120,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
           'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify({
-          model:      'claude-sonnet-4-20250514',
+          model:      'claude-sonnet-4-6',
           max_tokens: 1024,
           system:     SYSTEM,
           messages:   newMessages.map(m => ({ role: m.role, content: m.content })),
@@ -286,28 +286,13 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
               }}>
                 {messages.length === 0 && !loading && (
                   <div style={{
-                    flex:           1,
-                    display:        'flex',
-                    flexDirection:  'column',
-                    alignItems:     'center',
-                    justifyContent: 'center',
-                    gap:            12,
+                    alignSelf:  'flex-start',
+                    paddingTop: 4,
+                    fontFamily: "'IBM Plex Mono', monospace",
+                    fontSize:   12,
+                    color:      '#4a5568',
                   }}>
-                    <div style={{
-                      fontFamily: "'IBM Plex Sans', sans-serif",
-                      fontSize:   12,
-                      color:      '#8892a4',
-                      marginBottom: 4,
-                    }}>
-                      Ask anything about this competitor
-                    </div>
-                    {pills.map((p, i) => (
-                      <SuggestionPill
-                        key={i}
-                        label={p}
-                        onClick={() => handleSend(p)}
-                      />
-                    ))}
+                    Intel is standing by.
                   </div>
                 )}
 
@@ -351,60 +336,85 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
 
               {/* INPUT BAR */}
               <div style={{
-                flexShrink:  0,
-                borderTop:   '1px solid rgba(255,255,255,0.06)',
-                padding:     '12px 16px',
-                display:     'flex',
-                gap:         10,
-                alignItems:  'flex-end',
-                background:  '#0f1623',
+                flexShrink:    0,
+                borderTop:     '1px solid rgba(255,255,255,0.06)',
+                padding:       '12px 16px',
+                display:       'flex',
+                flexDirection: 'column',
+                background:    '#0f1623',
               }}>
-                <textarea
-                  ref={textareaRef}
-                  className="intel-input"
-                  rows={1}
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask Intel anything..."
-                  style={{
-                    flex:        1,
-                    background:  'rgba(255,255,255,0.04)',
-                    border:      '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 8,
-                    padding:     '10px 14px',
-                    fontFamily:  "'IBM Plex Sans', sans-serif",
-                    fontSize:    14,
-                    color:       '#ffffff',
-                    resize:      'none',
-                    outline:     'none',
-                    maxHeight:   120,
-                    lineHeight:  1.5,
-                    transition:  'border-color 0.15s',
-                  }}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'rgba(0,212,232,0.3)' }}
-                  onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
-                />
-                <button
-                  onClick={() => handleSend()}
-                  disabled={!input.trim() || loading}
-                  style={{
-                    width:           36,
-                    height:          36,
-                    borderRadius:    8,
-                    background:      '#00d4e8',
-                    border:          'none',
-                    cursor:          !input.trim() || loading ? 'not-allowed' : 'pointer',
-                    opacity:         !input.trim() || loading ? 0.3 : 1,
-                    display:         'flex',
-                    alignItems:      'center',
-                    justifyContent:  'center',
-                    flexShrink:      0,
-                    transition:      'opacity 0.15s',
-                  }}
-                >
-                  <SendIcon />
-                </button>
+                {/* Suggestion chips — only when no messages yet */}
+                {messages.length === 0 && (
+                  <div style={{
+                    display:       'flex',
+                    flexWrap:      'wrap',
+                    gap:           8,
+                    paddingBottom: 8,
+                  }}>
+                    {pills.map((p, i) => (
+                      <SuggestionPill
+                        key={i}
+                        label={p}
+                        onClick={() => handleSend(p)}
+                        compact
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* textarea + send */}
+                <div style={{
+                  display:    'flex',
+                  gap:        10,
+                  alignItems: 'flex-end',
+                }}>
+                  <textarea
+                    ref={textareaRef}
+                    className="intel-input"
+                    rows={1}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Ask Intel anything..."
+                    style={{
+                      flex:        1,
+                      background:  'rgba(255,255,255,0.04)',
+                      border:      '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: 8,
+                      padding:     '10px 14px',
+                      fontFamily:  "'IBM Plex Sans', sans-serif",
+                      fontSize:    14,
+                      color:       '#ffffff',
+                      resize:      'none',
+                      outline:     'none',
+                      maxHeight:   120,
+                      lineHeight:  1.5,
+                      transition:  'border-color 0.15s',
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderColor = 'rgba(0,212,232,0.3)' }}
+                    onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
+                  />
+                  <button
+                    onClick={() => handleSend()}
+                    disabled={!input.trim() || loading}
+                    style={{
+                      width:           36,
+                      height:          36,
+                      borderRadius:    8,
+                      background:      '#00d4e8',
+                      border:          'none',
+                      cursor:          !input.trim() || loading ? 'not-allowed' : 'pointer',
+                      opacity:         !input.trim() || loading ? 0.3 : 1,
+                      display:         'flex',
+                      alignItems:      'center',
+                      justifyContent:  'center',
+                      flexShrink:      0,
+                      transition:      'opacity 0.15s',
+                    }}
+                  >
+                    <SendIcon />
+                  </button>
+                </div>
               </div>
 
               <style>{`

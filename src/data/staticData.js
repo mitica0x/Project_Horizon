@@ -1,6 +1,6 @@
 export const SCORE = 31
 export const PAGES_PRESENT = 13
-export const PAGES_TRACKED = 53
+export const PAGES_TRACKED = 25
 
 export const COMPETITOR_COLORS = {
   // Tier 1 — instant alert
@@ -78,3 +78,10 @@ export const TABLE_DATA = [
   ...GAPS_T1.map(g => ({ ...g, status: 'absent',  tier: 'Tier 1', card: false, context: null })),
   ...GAPS_T2.map(g => ({ ...g, status: 'absent',  tier: 'Tier 2', card: false, context: null })),
 ]
+
+// Unified deduplicated list of all tracked sites.
+// TABLE_DATA spread first so dedup retains entries with status/tier metadata
+// rather than the raw GAPS_T1 / GAPS_T2 / WINS variants which lack those fields.
+export const ALL_SITES = [...TABLE_DATA, ...GAPS_T1, ...GAPS_T2, ...WINS].filter(
+  (site, index, self) => index === self.findIndex(s => s.domain === site.domain)
+)

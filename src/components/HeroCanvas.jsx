@@ -1,52 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
+import { TABLE_DATA as SITE_TABLE_DATA } from '../data/staticData';
 
 const SCORE = 31;
 const SWEEP_DURATION = 9000;
 const R = 390;
 
-const PRESENT_BLIPS = [
-  { angle: 15,  r: 0.45, domain: 'coincierge.de' },
-  { angle: 42,  r: 0.72, domain: 'coingecko.com' },
-  { angle: 78,  r: 0.38, domain: 'cryptonews.com' },
-  { angle: 110, r: 0.65, domain: 'blockworks.co' },
-  { angle: 145, r: 0.52, domain: 'tradersunion.com' },
-  { angle: 190, r: 0.41, domain: 'captainaltcoin.com' },
-  { angle: 225, r: 0.78, domain: 'datawallet.com' },
-  { angle: 260, r: 0.33, domain: 'cryptogeek.info' },
-  { angle: 300, r: 0.61, domain: 'cryptotips.eu' },
-  { angle: 330, r: 0.48, domain: '99bitcoins.com' },
-  { angle: 55,  r: 0.85, domain: 'coinmarketcap.com' },
-  { angle: 170, r: 0.29, domain: 'cointelegraph.com' },
-  { angle: 315, r: 0.77, domain: 'coincodex.com' },
-];
-
-const GAP_BLIPS = [
-  { angle: 28,  r: 0.58, domain: 'investopedia.com' },
-  { angle: 95,  r: 0.44, domain: 'nerdwallet.com' },
-  { angle: 130, r: 0.81, domain: 'finder.com' },
-  { angle: 175, r: 0.67, domain: 'money.co.uk' },
-  { angle: 210, r: 0.55, domain: 'moneysavingexpert.com' },
-  { angle: 248, r: 0.72, domain: 'comparethemarket.com' },
-  { angle: 285, r: 0.39, domain: 'thisismoney.co.uk' },
-  { angle: 345, r: 0.63, domain: 'uswitch.com' },
-  { angle: 20,  r: 0.82, domain: 'coinbase.com' },
-];
-
-const YG_BLIPS = [
-  { angle: 35,  r: 0.62, domain: 'coincub.com' },
-  { angle: 88,  r: 0.45, domain: 'thebanks.eu' },
-  { angle: 155, r: 0.75, domain: 'euinvestinghub.com' },
-  { angle: 235, r: 0.38, domain: 'dutchreview.com' },
-  { angle: 310, r: 0.58, domain: 'koinly.io' },
-];
-
-const SB_BLIPS = [
-  { angle: 62,  r: 0.52, domain: 'finanzcheck.de' },
-  { angle: 118, r: 0.82, domain: 'creditcard.nl' },
-  { angle: 198, r: 0.35, domain: 'jeangalea.com' },
-  { angle: 268, r: 0.65, domain: 'cryptowisser.com' },
-  { angle: 342, r: 0.48, domain: 'coinranking.com' },
-];
+const BLIPS = SITE_TABLE_DATA.map((site, i) => {
+  // seeded pseudo-random — deterministic, different per slot
+  const s1 = (i * 127 + 31) % 97;
+  const s2 = (i * 61 + 17) % 83;
+  const s3 = (i * 43 + 7)  % 71;
+  const bybit = site.status === 'present';
+  const tierMatch = String(site.tier || '').match(/\d+/);
+  const tier = tierMatch ? parseInt(tierMatch[0], 10) : 2;
+  // chaotic angle — full 360, no even distribution
+  const angle = (s1 / 97) * 360 + (s2 / 83) * 40 - 20;
+  // radius band by tier with jitter
+  const rBase = 0.25 + (s3 / 71) * 0.72;
+  const r = Math.min(Math.max(rBase + (s1 / 97) * 0.18 - 0.09, 0.18), 0.97);
+  // drift speed — tiny, different per dot
+  const driftSpeed = 0.00008 + (s2 / 83) * 0.00014;
+  const driftDir   = s1 % 2 === 0 ? 1 : -1;
+  return {
+    angle, r,
+    domain: site.domain || site.url || '',
+    bybit, tier,
+    driftSpeed, driftDir,
+    currentAngle: angle,
+  };
+});
 
 function blipXY(angle, r) {
   const rad = (angle - 90) * (Math.PI / 180);
@@ -63,6 +45,7 @@ export default function HeroCanvas() {
   const sweepRef       = useRef(null);
   const sweepAngleRef  = useRef(0);
   const sweepTargetRef = useRef(0);
+  const blipsRef       = useRef(BLIPS.map(b => ({ ...b })));
 
   // count-up score
   useEffect(() => {
@@ -89,6 +72,17 @@ export default function HeroCanvas() {
       sweepTargetRef.current = Math.atan2(dy, dx) * (180 / Math.PI);
     }
     function loop() {
+      // Drift blips and update their DOM positions directly
+      blipsRef.current.forEach((b, i) => {
+        b.currentAngle = (b.currentAngle + b.driftSpeed * b.driftDir * (180 / Math.PI)) % 360;
+        if (b.currentAngle < 0) b.currentAngle += 360;
+        const el = document.getElementById(`blip-${i}`);
+        if (el) {
+          const { x, y } = blipXY(b.currentAngle, b.r);
+          el.style.left = (x - 4) + 'px';
+          el.style.top  = (y - 4) + 'px';
+        }
+      });
       const cur = currentRef.current;
       const tgt = mouseRef.current;
       cur.x += (tgt.x - cur.x) * 0.08;
@@ -114,13 +108,17 @@ export default function HeroCanvas() {
     };
   }, []);
 
-  const TOOLTIP_COLOR = { present: '#00d4e8', gap: '#f59e0b', yg: '#B8FF00', sb: '#60a5fa' };
-  const TOOLTIP_LABEL = { present: '● BYBIT PRESENT', gap: '● GAP OPPORTUNITY', yg: '● T1 COMPETITOR', sb: '● REVOLUT PRESENT' };
-
   const tooltip = hovered ? (() => {
-    const { x, y } = blipXY(hovered.angle, hovered.r);
-    const color = TOOLTIP_COLOR[hovered.type] || '#00d4e8';
-    const label = TOOLTIP_LABEL[hovered.type] || '';
+    const live = blipsRef.current[hovered.index];
+    const ang  = live ? live.currentAngle : hovered.angle;
+    const rad  = live ? live.r            : hovered.r;
+    const { x, y } = blipXY(ang, rad);
+    const color = hovered.bybit
+      ? '#00d4e8'
+      : hovered.tier === 1 ? '#f59e0b'
+      : hovered.tier === 2 ? '#60a5fa'
+      : '#7B5EA7';
+    const label = hovered.bybit ? '● BYBIT PRESENT' : `● GAP — TIER ${hovered.tier}`;
     return (
       <div style={{
         position: 'absolute',
@@ -150,17 +148,7 @@ export default function HeroCanvas() {
       background: '#0a0e1a', overflow: 'hidden', display: 'flex',
       alignItems: 'center', justifyContent: 'center' }}>
 
-      {/* corner brackets */}
-      {[{t:20,l:20},{t:20,r:20},{b:20,l:20},{b:20,r:20}].map((s,i) => (
-        <div key={i} style={{ position:'absolute', width:24, height:24,
-          borderTop:    i<2  ? '1px solid rgba(0,212,232,0.15)' : undefined,
-          borderBottom: i>=2 ? '1px solid rgba(0,212,232,0.15)' : undefined,
-          borderLeft:   (i===0||i===2) ? '1px solid rgba(0,212,232,0.15)' : undefined,
-          borderRight:  (i===1||i===3) ? '1px solid rgba(0,212,232,0.15)' : undefined,
-          top:s.t, bottom:s.b, left:s.l, right:s.r }} />
-      ))}
-
-      {/* radar */}
+{/* radar */}
       <div ref={radarRef} style={{ position:'absolute', top:'50%', left:'50%',
         transform:'translate(-50%,-50%)', width: R*2, height: R*2 }}>
         {/* sweep */}
@@ -186,67 +174,28 @@ export default function HeroCanvas() {
             stroke="#00d4e8" strokeOpacity={0.06} strokeWidth={1}/>
         </svg>
 
-        {/* present blips */}
-        {PRESENT_BLIPS.map((b,i) => {
-          const {x,y} = blipXY(b.angle, b.r);
-          const delay = `${((b.angle/360)*SWEEP_DURATION/1000 - SWEEP_DURATION/1000).toFixed(2)}s`;
+        {BLIPS.map((b, i) => {
+          const { x, y } = blipXY(b.angle, b.r);
+          const PALETTE = ['#00d4e8','#B8FF00','#f59e0b','#7B5EA7','#60a5fa','#00e5a0','#c8d0dc'];
+          const colorIdx = b.bybit
+            ? (i % 3 === 0 ? 0 : i % 3 === 1 ? 1 : 4)
+            : (i % 7);
+          const color = PALETTE[colorIdx];
+          const delay = `${((b.angle / 360) * SWEEP_DURATION / 1000 - SWEEP_DURATION / 1000).toFixed(2)}s`;
           return (
             <div key={i}
-              onMouseEnter={() => setHovered({...b, type:'present'})}
+              id={`blip-${i}`}
+              onMouseEnter={() => setHovered({ ...b, index: i })}
               onMouseLeave={() => setHovered(null)}
-              style={{ position:'absolute', left:x-4, top:y-4,
-                width:8, height:8, borderRadius:'50%', cursor:'pointer',
-                background:'#00d4e8', boxShadow:'0 0 8px #00d4e8',
-                animation:`blipPresent 2s ease-in-out ${delay} infinite`,
-              }} />
-          );
-        })}
-
-        {/* gap blips */}
-        {GAP_BLIPS.map((b,i) => {
-          const {x,y} = blipXY(b.angle, b.r);
-          const delay = `${((b.angle/360)*SWEEP_DURATION/1000 - SWEEP_DURATION/1000).toFixed(2)}s`;
-          return (
-            <div key={i}
-              onMouseEnter={() => setHovered({...b, type:'gap'})}
-              onMouseLeave={() => setHovered(null)}
-              style={{ position:'absolute', left:x-4, top:y-4,
-                width:8, height:8, borderRadius:'50%', cursor:'pointer',
-                background:'#f59e0b', boxShadow:'0 0 8px #f59e0b',
-                animation:`blipGap 1.4s ease-in-out ${delay} infinite`,
-              }} />
-          );
-        })}
-
-        {YG_BLIPS.map((b,i) => {
-          const {x,y} = blipXY(b.angle, b.r);
-          const delay = `${((b.angle/360)*SWEEP_DURATION/1000 - SWEEP_DURATION/1000).toFixed(2)}s`;
-          return (
-            <div key={i}
-              onMouseEnter={() => setHovered({...b, type:'yg'})}
-              onMouseLeave={() => setHovered(null)}
-              style={{ position:'absolute', left:x-4, top:y-4,
-                width:8, height:8, borderRadius:'50%', cursor:'pointer',
-                background:'#B8FF00', boxShadow:'0 0 4px rgba(184,255,0,0.35)',
-                opacity:0.55,
-                animation:`blipYG 2.2s ease-in-out ${delay} infinite`,
-              }} />
-          );
-        })}
-
-        {SB_BLIPS.map((b,i) => {
-          const {x,y} = blipXY(b.angle, b.r);
-          const delay = `${((b.angle/360)*SWEEP_DURATION/1000 - SWEEP_DURATION/1000).toFixed(2)}s`;
-          return (
-            <div key={i}
-              onMouseEnter={() => setHovered({...b, type:'sb'})}
-              onMouseLeave={() => setHovered(null)}
-              style={{ position:'absolute', left:x-4, top:y-4,
-                width:8, height:8, borderRadius:'50%', cursor:'pointer',
-                background:'#60a5fa', boxShadow:'0 0 4px rgba(96,165,250,0.35)',
-                opacity:0.55,
-                animation:`blipSB 2.5s ease-in-out ${delay} infinite`,
-              }} />
+              style={{
+                position: 'absolute', left: x - 4, top: y - 4,
+                width: 8, height: 8, borderRadius: '50%', cursor: 'pointer',
+                background: color,
+                boxShadow: `0 0 8px ${color}`,
+                animation: `blipPresent 2s ease-in-out ${delay} infinite`,
+                zIndex: 10,
+              }}
+            />
           );
         })}
 
@@ -256,21 +205,14 @@ export default function HeroCanvas() {
       {/* overlay */}
       <div style={{ position:'relative', zIndex:50, textAlign:'center',
         fontFamily:"'Syne', sans-serif", pointerEvents:'none' }}>
-        <div style={{ fontSize:11, letterSpacing:'0.2em', color:'#8892a4',
-          marginBottom:12, display:'flex', alignItems:'center',
-          justifyContent:'center', gap:8 }}>
-          <span style={{ width:6, height:6, borderRadius:'50%',
-            background:'#00d4e8', display:'inline-block' }} />
-          PROJECT HORIZON
-        </div>
-        <div style={{ fontSize:96, fontWeight:700, lineHeight:1,
+<div style={{ fontSize:96, fontWeight:700, lineHeight:1,
           color:'#00d4e8', fontFamily:"'IBM Plex Mono', monospace" }}>
           {score}<span style={{ fontSize:32, color:'rgba(255,255,255,0.6)' }}>%</span>
         </div>
         <div style={{ fontSize:11, letterSpacing:'0.15em', color:'#8892a4', marginTop:8 }}>
           EU PRESENCE SCORE
         </div>
-        <div style={{ display:'flex', gap:12, marginTop:32, pointerEvents:'auto' }}>
+        <div style={{ display:'flex', gap:12, marginTop:32 }}>
           {[
             { label:'Sites Monitored', value:53, color:'#fff' },
             { label:'Bybit Present',   value:13, color:'#00d4e8' },
