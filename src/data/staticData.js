@@ -1,4 +1,4 @@
-export const SCORE = 31
+export const SCORE = 52
 export const PAGES_PRESENT = 13
 export const PAGES_TRACKED = 25
 

@@ -202,8 +202,8 @@ export default function CompetitorChart({ onOpenPanel }) {
       <div style={{ display: 'flex', gap: '40px' }}>
         {[
           { label: 'Pages Present', value: 13,    accent: '#00d4e8' },
-          { label: 'Pages Tracked', value: 53,    accent: '#ffffff' },
-          { label: 'Coverage',      value: '31%', accent: '#B8FF00' },
+          { label: 'Pages Tracked', value: 25,    accent: '#ffffff' },
+          { label: 'Coverage',      value: '52%', accent: '#B8FF00' },
         ].map(({ label, value, accent }) => (
           <div key={label}>
             <div style={{
