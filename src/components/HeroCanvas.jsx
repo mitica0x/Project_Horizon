@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { TABLE_DATA as SITE_TABLE_DATA } from '../data/staticData';
 
-const SCORE = 31;
+const SCORE = 52;
 const SWEEP_DURATION = 9000;
 const R = 390;
 
@@ -214,7 +214,7 @@ export default function HeroCanvas() {
         </div>
         <div style={{ display:'flex', gap:12, marginTop:32 }}>
           {[
-            { label:'Sites Monitored', value:53, color:'#fff' },
+            { label:'Sites Monitored', value:25, color:'#fff' },
             { label:'Bybit Present',   value:13, color:'#00d4e8' },
             { label:'Tier 1 Gaps',     value:9,  color:'#ff4d6d' },
             { label:'Brand Alerts',    value:1,  color:'#f59e0b' },

@@ -362,7 +362,7 @@ export default function ScopePanel({ open, onClose }) {
   if (!open) return null
 
   const tabs = [
-    { id: 'tracked',    label: `TRACKED (${ALL_SITES.length === 53 ? PAGES_TRACKED : ALL_SITES.length})` },
+    { id: 'tracked',    label: `TRACKED (${PAGES_TRACKED})` },
     { id: 'candidates', label: `CANDIDATES (${FILTERED_CANDIDATES.length})` },
     { id: 'addnew',     label: 'ADD NEW' },
   ]
