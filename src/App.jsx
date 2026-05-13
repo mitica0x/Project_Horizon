@@ -39,9 +39,10 @@ export default function App() {
   async function runScan() {
     if (scanState !== 'idle') return
     try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
       for (const agent of ['sentry', 'mirror', 'herald']) {
         setScanState(agent)
-        const res = await fetch(`http://localhost:3000/run/${agent}`, { method: 'POST' })
+        const res = await fetch(`${backendUrl}/run/${agent}`, { method: 'POST' })
         if (!res.ok) throw new Error(`${agent} failed`)
       }
       setScanState('complete')
