@@ -112,8 +112,8 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
     }
     function loop() {
       const scanning = isActivelyScanning(scanStateRef.current);
-      // scan stays at 3× (intentional); idle drifts at 0.3× — alive, not hectic.
-      const speedMult = scanning ? 3 : 0.3;
+      // scan stays at 3× (intentional); idle drifts at 0.6× — alive, not sluggish.
+      const speedMult = scanning ? 3 : 0.6;
 
       // Drift blips and update their DOM positions directly.
       // During scan: 3x speed + small per-frame angular jitter for "erratic" feel.
@@ -140,13 +140,16 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
 
       // Sweep: autonomous fast rotation during scan; mouse-follow lerp otherwise.
       if (scanning) {
-        sweepAngleRef.current = (sweepAngleRef.current + 4) % 360;  // ~1.5s/full sweep at 60fps
+        sweepAngleRef.current = (sweepAngleRef.current + 1) % 360;  // ~6s/full sweep at 60fps
       } else {
         let delta = sweepTargetRef.current - sweepAngleRef.current;
         if (delta > 180) delta -= 360;
         if (delta < -180) delta += 360;
-        // idle: very slow autonomous clockwise drift, ~200s per full rotation (0.03°/frame × 60fps = 1.8°/s)
-        sweepAngleRef.current = (sweepAngleRef.current + 0.03) % 360;
+        // idle: sweep follows the mouse pointer via lerp (no autonomous rotation at idle).
+        let delta = sweepTargetRef.current - sweepAngleRef.current;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        sweepAngleRef.current += delta * 0.03;
       }
       if (sweepRef.current) {
         sweepRef.current.style.transform = `rotate(${sweepAngleRef.current}deg)`;
