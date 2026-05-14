@@ -112,8 +112,8 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
     }
     function loop() {
       const scanning = isActivelyScanning(scanStateRef.current);
-      // scan stays at 3× (intentional); idle now slow-drifts at 0.15× for calm autonomous motion.
-      const speedMult = scanning ? 3 : 0.15;
+      // scan stays at 3× (intentional); idle drifts at 0.3× — alive, not hectic.
+      const speedMult = scanning ? 3 : 0.3;
 
       // Drift blips and update their DOM positions directly.
       // During scan: 3x speed + small per-frame angular jitter for "erratic" feel.
@@ -145,8 +145,8 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
         let delta = sweepTargetRef.current - sweepAngleRef.current;
         if (delta > 180) delta -= 360;
         if (delta < -180) delta += 360;
-        // idle: slow autonomous clockwise drift, ~40s per full rotation (0.15°/frame × 60fps = 9°/s)
-        sweepAngleRef.current = (sweepAngleRef.current + 0.15) % 360;
+        // idle: very slow autonomous clockwise drift, ~200s per full rotation (0.03°/frame × 60fps = 1.8°/s)
+        sweepAngleRef.current = (sweepAngleRef.current + 0.03) % 360;
       }
       if (sweepRef.current) {
         sweepRef.current.style.transform = `rotate(${sweepAngleRef.current}deg)`;
