@@ -192,7 +192,7 @@ export default function App() {
         `}</style>
       </header>
 
-      <HeroCanvas />
+      <HeroCanvas scanState={scanState} />
       <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 48 }}>
 
 {/* Priority Gaps T1 — 2-column grid */}

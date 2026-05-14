@@ -35,9 +35,17 @@ function blipXY(angle, r) {
   return { x: R + Math.cos(rad) * r * R, y: R + Math.sin(rad) * r * R };
 }
 
-export default function HeroCanvas() {
+// "active scan" = backend agent currently running. complete/error/idle don't get the in-flight visual treatment.
+const isActivelyScanning = (s) => s === 'sentry' || s === 'mirror' || s === 'herald';
+
+const SWEEP_BG_IDLE = 'conic-gradient(from 0deg, transparent 0deg, rgba(0,212,232,0.18) 0deg, transparent 70deg)';
+const SWEEP_BG_SCAN = 'conic-gradient(from 0deg, transparent 0deg, rgba(0,212,232,0.45) 0deg, transparent 70deg)';
+
+export default function HeroCanvas({ scanState = 'idle' } = {}) {
   const [score, setScore] = useState(0);
   const [hovered, setHovered] = useState(null);
+  const [runId, setRunId] = useState(0);
+  const [showBlueFlash, setShowBlueFlash] = useState(false);
   const radarRef   = useRef(null);
   const mouseRef   = useRef({ x: 0, y: 0 });
   const currentRef = useRef({ x: 0, y: 0 });
@@ -46,21 +54,46 @@ export default function HeroCanvas() {
   const sweepAngleRef  = useRef(0);
   const sweepTargetRef = useRef(0);
   const blipsRef       = useRef(BLIPS.map(b => ({ ...b })));
+  const scanStateRef   = useRef(scanState);
 
-  // count-up score
+  // mirror scanState into a ref so the rAF loop can read latest without re-binding
+  useEffect(() => { scanStateRef.current = scanState; }, [scanState]);
+
+  // brighten / restore the sweep gradient when scan toggles (state change, not per-frame)
+  useEffect(() => {
+    if (sweepRef.current) {
+      sweepRef.current.style.background = isActivelyScanning(scanState)
+        ? SWEEP_BG_SCAN
+        : SWEEP_BG_IDLE;
+    }
+  }, [scanState]);
+
+  // on scan complete: flash blue ring (1s) + restart score count-up
+  useEffect(() => {
+    if (scanState !== 'complete') return;
+    setShowBlueFlash(true);
+    const t = setTimeout(() => setShowBlueFlash(false), 1000);
+    setScore(0);
+    setRunId(id => id + 1);
+    return () => clearTimeout(t);
+  }, [scanState]);
+
+  // count-up score (runs on mount and on every runId bump)
   useEffect(() => {
     let start = null;
+    let raf;
     const duration = 1800;
     function step(ts) {
       if (!start) start = ts;
       const p = Math.min((ts - start) / duration, 1);
       setScore(Math.round(p * SCORE));
-      if (p < 1) requestAnimationFrame(step);
+      if (p < 1) raf = requestAnimationFrame(step);
     }
-    requestAnimationFrame(step);
-  }, []);
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [runId]);
 
-  // mouse parallax
+  // mouse parallax + sweep + blip drift loop
   useEffect(() => {
     function onMove(e) {
       mouseRef.current = {
@@ -72,9 +105,14 @@ export default function HeroCanvas() {
       sweepTargetRef.current = Math.atan2(dy, dx) * (180 / Math.PI);
     }
     function loop() {
-      // Drift blips and update their DOM positions directly
+      const scanning = isActivelyScanning(scanStateRef.current);
+      const speedMult = scanning ? 3 : 1;
+
+      // Drift blips and update their DOM positions directly.
+      // During scan: 3x speed + small per-frame angular jitter for "erratic" feel.
       blipsRef.current.forEach((b, i) => {
-        b.currentAngle = (b.currentAngle + b.driftSpeed * b.driftDir * (180 / Math.PI)) % 360;
+        const jitter = scanning ? (Math.random() - 0.5) * 0.3 : 0;
+        b.currentAngle = (b.currentAngle + b.driftSpeed * b.driftDir * (180 / Math.PI) * speedMult + jitter) % 360;
         if (b.currentAngle < 0) b.currentAngle += 360;
         const el = document.getElementById(`blip-${i}`);
         if (el) {
@@ -83,6 +121,7 @@ export default function HeroCanvas() {
           el.style.top  = (y - 4) + 'px';
         }
       });
+
       const cur = currentRef.current;
       const tgt = mouseRef.current;
       cur.x += (tgt.x - cur.x) * 0.08;
@@ -91,10 +130,16 @@ export default function HeroCanvas() {
         radarRef.current.style.transform =
           `translate(calc(-50% + ${cur.x}px), calc(-50% + ${cur.y}px))`;
       }
-      let delta = sweepTargetRef.current - sweepAngleRef.current;
-      if (delta > 180) delta -= 360;
-      if (delta < -180) delta += 360;
-      sweepAngleRef.current += delta * 0.06;
+
+      // Sweep: autonomous fast rotation during scan; mouse-follow lerp otherwise.
+      if (scanning) {
+        sweepAngleRef.current = (sweepAngleRef.current + 4) % 360;  // ~1.5s/full sweep at 60fps
+      } else {
+        let delta = sweepTargetRef.current - sweepAngleRef.current;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        sweepAngleRef.current += delta * 0.06;
+      }
       if (sweepRef.current) {
         sweepRef.current.style.transform = `rotate(${sweepAngleRef.current}deg)`;
       }
@@ -143,21 +188,32 @@ export default function HeroCanvas() {
     );
   })() : null;
 
+  const scanning = isActivelyScanning(scanState);
+
   return (
     <section style={{ position: 'relative', width: '100%', height: '100vh',
       background: '#0a0e1a', overflow: 'hidden', display: 'flex',
       alignItems: 'center', justifyContent: 'center' }}>
 
-{/* radar */}
+      {/* radar */}
       <div ref={radarRef} style={{ position:'absolute', top:'50%', left:'50%',
         transform:'translate(-50%,-50%)', width: R*2, height: R*2 }}>
-        {/* sweep */}
-        <div ref={sweepRef} style={{ position:'absolute', inset:0, borderRadius:'50%',
-          transformOrigin:'center center',
-          background:`conic-gradient(from 0deg, transparent 0deg, rgba(0,212,232,0.18) 0deg, transparent 70deg)`,
+
+        {/* amber haze bloom — behind everything in the radar; visible only during active scan */}
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(circle at center, rgba(212,168,83,0.18) 0%, transparent 50%)',
+          opacity: scanning ? 1 : 0,
+          transition: 'opacity 300ms ease-out',
         }} />
 
-        {/* SVG rings + crosshairs */}
+        {/* sweep — background mutated via useEffect when scanState toggles */}
+        <div ref={sweepRef} style={{ position:'absolute', inset:0, borderRadius:'50%',
+          transformOrigin:'center center',
+          background: SWEEP_BG_IDLE,
+        }} />
+
+        {/* SVG rings + crosshairs + scan-state outer-ring overlays */}
         <svg width={R*2} height={R*2} style={{ position:'absolute', inset:0 }}>
           {[1, 0.75, 0.5, 0.25].map((f,i) => (
             <circle key={i} cx={R} cy={R} r={R*f}
@@ -172,6 +228,24 @@ export default function HeroCanvas() {
             stroke="#00d4e8" strokeOpacity={0.06} strokeWidth={1}/>
           <line x1={R+R*0.707} y1={R-R*0.707} x2={R-R*0.707} y2={R+R*0.707}
             stroke="#00d4e8" strokeOpacity={0.06} strokeWidth={1}/>
+
+          {/* amber outer-ring breathing pulse — animation only while actively scanning */}
+          <circle cx={R} cy={R} r={R}
+            fill="none" stroke="#D4A853" strokeWidth={2}
+            style={{
+              strokeOpacity: 0,
+              transition: 'stroke-opacity 300ms ease-out',
+              animation: scanning ? 'amberPulse 2.4s ease-in-out infinite' : 'none',
+            }}
+          />
+
+          {/* electric-blue verified-state flash on scan complete (instant in, 300ms fade out at the end of 1s) */}
+          {showBlueFlash && (
+            <circle cx={R} cy={R} r={R}
+              fill="none" stroke="#4D7EFF" strokeWidth={2}
+              style={{ strokeOpacity: 0, animation: 'blueFlash 1s ease-out' }}
+            />
+          )}
         </svg>
 
         {BLIPS.map((b, i) => {
@@ -205,8 +279,11 @@ export default function HeroCanvas() {
       {/* overlay */}
       <div style={{ position:'relative', zIndex:50, textAlign:'center',
         fontFamily:"'Syne', sans-serif", pointerEvents:'none' }}>
-<div style={{ fontSize:96, fontWeight:700, lineHeight:1,
-          color:'#00d4e8', fontFamily:"'IBM Plex Mono', monospace" }}>
+        <div style={{ fontSize:96, fontWeight:700, lineHeight:1,
+          color:'#00d4e8', fontFamily:"'IBM Plex Mono', monospace",
+          opacity: scanning ? 0.3 : 1,
+          transition: 'opacity 300ms ease-out',
+        }}>
           {score}<span style={{ fontSize:32, color:'rgba(255,255,255,0.6)' }}>%</span>
         </div>
         <div style={{ fontSize:11, letterSpacing:'0.15em', color:'#8892a4', marginTop:8 }}>
@@ -256,6 +333,15 @@ export default function HeroCanvas() {
         @keyframes bounce {
           0%,100% { transform: translateX(-50%) translateY(0); }
           50%      { transform: translateX(-50%) translateY(6px); }
+        }
+        @keyframes amberPulse {
+          0%, 100% { stroke-opacity: 0.25; }
+          50%      { stroke-opacity: 0.65; }
+        }
+        @keyframes blueFlash {
+          0%   { stroke-opacity: 1; }
+          70%  { stroke-opacity: 1; }
+          100% { stroke-opacity: 0; }
         }
       `}</style>
     </section>
