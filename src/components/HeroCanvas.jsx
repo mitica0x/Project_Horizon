@@ -109,8 +109,8 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
     }
     function loop() {
       const scanning = isActivelyScanning(scanStateRef.current);
-      // scan stays at 3× (intentional); idle slowed to 0.4× to calm the dot drift.
-      const speedMult = scanning ? 3 : 0.4;
+      // scan stays at 3× (intentional); idle freezes (0× = no autonomous dot drift).
+      const speedMult = scanning ? 3 : 0;
 
       // Drift blips and update their DOM positions directly.
       // During scan: 3x speed + small per-frame angular jitter for "erratic" feel.
@@ -128,8 +128,8 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
 
       const cur = currentRef.current;
       const tgt = mouseRef.current;
-      cur.x += (tgt.x - cur.x) * 0.08;
-      cur.y += (tgt.y - cur.y) * 0.08;
+      cur.x += (tgt.x - cur.x) * 0.02;  // mellow parallax (was 0.08)
+      cur.y += (tgt.y - cur.y) * 0.02;
       if (radarRef.current) {
         radarRef.current.style.transform =
           `translate(calc(-50% + ${cur.x}px), calc(-50% + ${cur.y}px))`;
@@ -142,7 +142,7 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
         let delta = sweepTargetRef.current - sweepAngleRef.current;
         if (delta > 180) delta -= 360;
         if (delta < -180) delta += 360;
-        sweepAngleRef.current += delta * 0.03;  // idle mouse-follow lerp halved (was 0.06)
+        sweepAngleRef.current += delta * 0;  // idle: sweep parked, no mouse-follow (was 0.03)
       }
       if (sweepRef.current) {
         sweepRef.current.style.transform = `rotate(${sweepAngleRef.current}deg)`;
@@ -270,7 +270,7 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
                 width: 8, height: 8, borderRadius: '50%', cursor: 'pointer',
                 background: color,
                 boxShadow: `0 0 8px ${color}`,
-                animation: `blipPresent 2s ease-in-out ${delay} infinite`,
+                animation: `blipPresent 8s ease-in-out ${delay} infinite`,
                 zIndex: 10,
               }}
             />
