@@ -109,7 +109,8 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
     }
     function loop() {
       const scanning = isActivelyScanning(scanStateRef.current);
-      const speedMult = scanning ? 3 : 1;
+      // scan stays at 3× (intentional); idle slowed to 0.4× to calm the dot drift.
+      const speedMult = scanning ? 3 : 0.4;
 
       // Drift blips and update their DOM positions directly.
       // During scan: 3x speed + small per-frame angular jitter for "erratic" feel.
@@ -141,7 +142,7 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
         let delta = sweepTargetRef.current - sweepAngleRef.current;
         if (delta > 180) delta -= 360;
         if (delta < -180) delta += 360;
-        sweepAngleRef.current += delta * 0.06;
+        sweepAngleRef.current += delta * 0.03;  // idle mouse-follow lerp halved (was 0.06)
       }
       if (sweepRef.current) {
         sweepRef.current.style.transform = `rotate(${sweepAngleRef.current}deg)`;
