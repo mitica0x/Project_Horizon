@@ -54,6 +54,7 @@ export default function App() {
   const [scanState, setScanState] = useState('idle')
   const [scanData, setScanData] = useState(null)
   const [scanResultsVisible, setScanResultsVisible] = useState(false)
+  const scanResultsPanelRef = useRef(null)
   const mainRef = useRef()
   const askBriefRef = useRef(null)
   const [sortState, setSortState] = useState(() => {
@@ -98,6 +99,11 @@ export default function App() {
         setScanData(null)
       }
       setScanResultsVisible(true)
+      // Auto-scroll to the panel — 500ms lets the slide-up start so the user
+      // sees the panel emerging rather than jumping to blank space.
+      setTimeout(() => {
+        scanResultsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 500)
       setTimeout(() => { console.log("[runScan] setScanState('idle')"); setScanState('idle') }, 3000)
     } catch (err) {
       console.log('[runScan] error:', err?.message ?? err)
@@ -123,6 +129,9 @@ export default function App() {
         setScanData({ ...MOCK_SCAN_DATA, scannedAt: new Date().toISOString() })
         setScanResultsVisible(true)
         setScanState('complete')
+        setTimeout(() => {
+          scanResultsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 500)
       }, 3000)
       setTimeout(() => setScanState('idle'), 5000)
     }
@@ -271,6 +280,7 @@ export default function App() {
 
       <HeroCanvas scanState={scanState} />
       <ScanResultsPanel
+        ref={scanResultsPanelRef}
         visible={scanResultsVisible}
         scanData={scanData}
         onClose={() => setScanResultsVisible(false)}

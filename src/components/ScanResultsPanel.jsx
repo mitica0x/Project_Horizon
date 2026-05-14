@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useRef, useState } from 'react'
 
 // ─── Design tokens (Horizon War Room) ─────────────────────────────────────────
 const HZ = {
@@ -379,7 +379,7 @@ const closeBtnStyle = {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ScanResultsPanel({ visible, scanData, onClose }) {
+const ScanResultsPanel = forwardRef(function ScanResultsPanel({ visible, scanData, onClose }, ref) {
   const [expanded, setExpanded] = useState(false)
   // Bumped each time the panel transitions visible:false → true. Used as a key
   // on row containers so CSS row-fade animations re-run on every reopen.
@@ -410,7 +410,7 @@ export default function ScanResultsPanel({ visible, scanData, onClose }) {
 
   if (errorState) {
     return (
-      <div id="scan-results" style={wrapperStyle} aria-hidden={!visible}>
+      <div ref={ref} id="scan-results" style={wrapperStyle} aria-hidden={!visible}>
         <div
           style={{
             padding: '20px 24px',
@@ -435,7 +435,7 @@ export default function ScanResultsPanel({ visible, scanData, onClose }) {
   if (!scanData) {
     // Not visible and no data — render the collapsed shell (no content) so
     // the slide-up animation has a stable element to transition against.
-    return <div id="scan-results" style={wrapperStyle} aria-hidden="true" />
+    return <div ref={ref} id="scan-results" style={wrapperStyle} aria-hidden="true" />
   }
 
   const sortedGaps = [...scanData.gaps].sort(
@@ -453,7 +453,7 @@ export default function ScanResultsPanel({ visible, scanData, onClose }) {
   const maxThreatScore = sortedCompetitors[0]?.threatScore || 100
 
   return (
-    <div id="scan-results" style={wrapperStyle} aria-hidden={!visible}>
+    <div ref={ref} id="scan-results" style={wrapperStyle} aria-hidden={!visible}>
       {/* ─── Section 1 — scan meta bar ─────────────────────────────────── */}
       <div
         style={{
@@ -746,4 +746,6 @@ export default function ScanResultsPanel({ visible, scanData, onClose }) {
       `}</style>
     </div>
   )
-}
+})
+
+export default ScanResultsPanel
