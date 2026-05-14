@@ -27,6 +27,9 @@ const BLIPS = SITE_TABLE_DATA.map((site, i) => {
     bybit, tier,
     driftSpeed, driftDir,
     currentAngle: angle,
+    // Random per-blip pulse delay so dots breathe out of phase (no visible wave).
+    // Computed once at module init — stable across re-renders.
+    pulseDelay: Math.random() * 12,
   };
 });
 
@@ -109,8 +112,8 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
     }
     function loop() {
       const scanning = isActivelyScanning(scanStateRef.current);
-      // scan stays at 3× (intentional); idle freezes (0× = no autonomous dot drift).
-      const speedMult = scanning ? 3 : 0;
+      // scan stays at 3× (intentional); idle now slow-drifts at 0.15× for calm autonomous motion.
+      const speedMult = scanning ? 3 : 0.15;
 
       // Drift blips and update their DOM positions directly.
       // During scan: 3x speed + small per-frame angular jitter for "erratic" feel.
@@ -142,7 +145,8 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
         let delta = sweepTargetRef.current - sweepAngleRef.current;
         if (delta > 180) delta -= 360;
         if (delta < -180) delta += 360;
-        sweepAngleRef.current += delta * 0;  // idle: sweep parked, no mouse-follow (was 0.03)
+        // idle: slow autonomous clockwise drift, ~40s per full rotation (0.15°/frame × 60fps = 9°/s)
+        sweepAngleRef.current = (sweepAngleRef.current + 0.15) % 360;
       }
       if (sweepRef.current) {
         sweepRef.current.style.transform = `rotate(${sweepAngleRef.current}deg)`;
@@ -259,7 +263,7 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
             ? (i % 3 === 0 ? 0 : i % 3 === 1 ? 1 : 4)
             : (i % 7);
           const color = PALETTE[colorIdx];
-          const delay = `${((b.angle / 360) * SWEEP_DURATION / 1000 - SWEEP_DURATION / 1000).toFixed(2)}s`;
+          const delay = `${b.pulseDelay.toFixed(2)}s`;
           return (
             <div key={i}
               id={`blip-${i}`}
@@ -270,7 +274,7 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
                 width: 8, height: 8, borderRadius: '50%', cursor: 'pointer',
                 background: color,
                 boxShadow: `0 0 8px ${color}`,
-                animation: `blipPresent 8s ease-in-out ${delay} infinite`,
+                animation: `blipPresent 12s ease-in-out ${delay} infinite`,
                 zIndex: 10,
               }}
             />
@@ -327,8 +331,8 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
           50%      { transform: scale(1.2); opacity: 0.7;  }
         }
         @keyframes blipPresent {
-          0%,100% { transform: scale(1);   opacity: 1; }
-          50%      { transform: scale(1.8); opacity: 1; }
+          0%,100% { transform: scale(1);    opacity: 1; }
+          50%      { transform: scale(1.15); opacity: 1; }
         }
         @keyframes blipGap {
           0%,100% { transform: scale(1);   opacity: 1; }
