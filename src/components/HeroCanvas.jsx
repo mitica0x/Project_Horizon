@@ -57,7 +57,10 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
   const scanStateRef   = useRef(scanState);
 
   // mirror scanState into a ref so the rAF loop can read latest without re-binding
-  useEffect(() => { scanStateRef.current = scanState; }, [scanState]);
+  useEffect(() => {
+    scanStateRef.current = scanState;
+    console.log('[HeroCanvas] scanState ->', scanState);
+  }, [scanState]);
 
   // brighten / restore the sweep gradient when scan toggles (state change, not per-frame)
   useEffect(() => {

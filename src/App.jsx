@@ -38,20 +38,46 @@ export default function App() {
 
   async function runScan() {
     if (scanState !== 'idle') return
+    console.log('[runScan] start')
+    // Make sure the radar hero is in view so the scan-state visuals are visible
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
       for (const agent of ['sentry', 'mirror', 'herald']) {
+        console.log(`[runScan] setScanState('${agent}')`)
         setScanState(agent)
         const res = await fetch(`${backendUrl}/run/${agent}`, { method: 'POST' })
         if (!res.ok) throw new Error(`${agent} failed`)
       }
+      console.log("[runScan] setScanState('complete')")
       setScanState('complete')
-      setTimeout(() => setScanState('idle'), 3000)
-    } catch {
+      setTimeout(() => { console.log("[runScan] setScanState('idle')"); setScanState('idle') }, 3000)
+    } catch (err) {
+      console.log('[runScan] error:', err?.message ?? err)
       setScanState('error')
-      setTimeout(() => setScanState('idle'), 4000)
+      setTimeout(() => { console.log("[runScan] setScanState('idle') after error"); setScanState('idle') }, 4000)
     }
   }
+
+  // DEV ONLY — press 'T' anywhere (not in an input) to trigger a fake scan cycle.
+  // 0s → 'sentry' (active scan visuals), +3s → 'complete' (blue flash + count-up),
+  // +5s → 'idle'. Lets us preview the radar effects without hitting backend/Airtable.
+  // Remove this block before production.
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key !== 't' && e.key !== 'T') return
+      const t = e.target
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (scanState !== 'idle') return
+      console.log('[DEV] T pressed — fake scan cycle')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setScanState('sentry')
+      setTimeout(() => setScanState('complete'), 3000)
+      setTimeout(() => setScanState('idle'), 5000)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [scanState])
 
   const SCAN_LABELS = {
     idle:     '⟳ Scan Now',
