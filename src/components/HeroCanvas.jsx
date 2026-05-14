@@ -142,9 +142,6 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
       if (scanning) {
         sweepAngleRef.current = (sweepAngleRef.current + 1) % 360;  // ~6s/full sweep at 60fps
       } else {
-        let delta = sweepTargetRef.current - sweepAngleRef.current;
-        if (delta > 180) delta -= 360;
-        if (delta < -180) delta += 360;
         // idle: sweep follows the mouse pointer via lerp (no autonomous rotation at idle).
         let delta = sweepTargetRef.current - sweepAngleRef.current;
         if (delta > 180) delta -= 360;
