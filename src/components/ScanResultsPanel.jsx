@@ -1,4 +1,13 @@
 import { forwardRef, useEffect, useRef, useState } from 'react'
+import { CONTACT_EMAIL } from '../config'
+
+function buildOutreachMailto(gap) {
+  const domain = gap.domain || ''
+  const path = gap.path || ''
+  const body = `Hi ${domain} team,\n\nI'm reaching out from Bybit EU regarding a potential listing and partnership opportunity on ${domain}${path}.\n\nWe'd love to explore how Bybit could be featured alongside the exchanges you currently recommend.\n\nBest regards,\n${CONTACT_EMAIL}`
+  const subject = 'Bybit EU — Partnership & Listing Opportunity'
+  return `mailto:${gap.contactEmail || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
 
 // ─── Design tokens (Horizon War Room) ─────────────────────────────────────────
 const HZ = {
@@ -310,13 +319,14 @@ function CompetitorRow({ comp, maxScore, isVisible, index }) {
 
 function GapRow({ gap, index }) {
   const [hover, setHover] = useState(false)
+  const mailtoHref = buildOutreachMailto(gap)
   return (
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(0,1fr) auto auto auto',
+        gridTemplateColumns: 'minmax(0,1fr) auto auto auto auto',
         alignItems: 'center',
         gap: 12,
         padding: '10px 12px',
@@ -362,6 +372,25 @@ function GapRow({ gap, index }) {
         {gap.country}
       </span>
       <TierBadge tier={gap.tier} />
+      <a
+        href={mailtoHref}
+        title="Draft outreach"
+        aria-label={`Draft outreach to ${gap.domain}`}
+        style={{
+          fontFamily: FONT_MONO,
+          fontSize: 13,
+          color: HZ.muted,
+          textDecoration: 'none',
+          padding: '0 4px',
+          opacity: 0.5,
+          transition: 'opacity 0.15s, color 0.15s',
+          lineHeight: 1,
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = HZ.teal }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = HZ.muted }}
+      >
+        ✉
+      </a>
     </div>
   )
 }

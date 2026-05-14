@@ -102,7 +102,7 @@ export default function App() {
       // Auto-scroll to the panel — 500ms lets the slide-up start so the user
       // sees the panel emerging rather than jumping to blank space.
       setTimeout(() => {
-        scanResultsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        window.scrollBy({ top: 300, behavior: 'smooth' })
       }, 500)
       setTimeout(() => { console.log("[runScan] setScanState('idle')"); setScanState('idle') }, 3000)
     } catch (err) {
@@ -130,7 +130,7 @@ export default function App() {
         setScanResultsVisible(true)
         setScanState('complete')
         setTimeout(() => {
-          scanResultsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          window.scrollBy({ top: 300, behavior: 'smooth' })
         }, 500)
       }, 3000)
       setTimeout(() => setScanState('idle'), 5000)
@@ -267,7 +267,7 @@ export default function App() {
             fontSize:   11,
             color:      '#8892a4',
           }}>
-            Coinsiglieri × Ionut Vilceanu
+            C<span style={{ color: '#06b6d4' }}>0</span>insiglieri
           </div>
         </div>
         <style>{`
@@ -367,9 +367,9 @@ export default function App() {
         <footer style={{ borderTop: '1px solid var(--border)', padding: '28px 0', minHeight: 76 }}>
           <div className="container">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 16 }}>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 300, color: 'var(--text-muted)' }}>Coinsiglieri x Ionut Vilceanu</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 300, color: 'var(--text-muted)' }}>C<span style={{ color: '#06b6d4' }}>0</span>insiglieri</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--cyan)' }}>{SCORE}% EU Presence</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 300, color: 'var(--text-muted)', textAlign: 'right' }}>Project Horizon v4 · Sentry · Mirror · Herald</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 300, color: 'var(--text-muted)', textAlign: 'right' }}>Project Horiz<span style={{ color: '#E8FF3C' }}>0</span>n v4 · Sentry · Mirror · Herald</span>
             </div>
           </div>
         </footer>
