@@ -1,13 +1,6 @@
 import { motion } from 'framer-motion'
 import ContactStatus from './ContactStatus'
 import { COMPETITOR_COLORS } from '../data/staticData'
-import { CONTACT_EMAIL } from '../config'
-
-function buildOutreachMailto(gap, domain, path) {
-  const body = `Hi ${domain} team,\n\nI'm reaching out from Bybit EU regarding a potential listing and partnership opportunity on ${domain}${path}.\n\nWe'd love to explore how Bybit could be featured alongside the exchanges you currently recommend.\n\nBest regards,\n${CONTACT_EMAIL}`
-  const subject = 'Bybit EU — Partnership & Listing Opportunity'
-  return `mailto:${gap.contactEmail || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-}
 
 function urlPath(url) {
   const d = url.split('/')[0]
@@ -27,10 +20,6 @@ export default function GapCard({ gap, onDraftOutreach }) {
   const { url, domain, competitors, country, tier, review } = gap
   const path = urlPath(url)
   const isT1 = tier !== 'T2'
-  const mailtoHref = buildOutreachMailto(gap, domain, path)
-  // onDraftOutreach kept in the prop signature for backward compat; the button
-  // is now a direct mailto: link, so the OutreachPanel no longer opens from here.
-  void onDraftOutreach
 
   return (
     <motion.div
@@ -76,20 +65,19 @@ export default function GapCard({ gap, onDraftOutreach }) {
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <a
-            href={mailtoHref}
+          <button
+            onClick={() => onDraftOutreach(gap)}
             style={{
               fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--cyan)',
               background: 'none', border: '1px solid transparent', padding: '4px 9px',
               borderRadius: 4, cursor: 'pointer', letterSpacing: '.04em',
-              textDecoration: 'none', display: 'inline-block',
               transition: 'background .15s, border-color .15s',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--cyan-dim)'; e.currentTarget.style.borderColor = 'rgba(0,212,232,.3)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'transparent' }}
           >
             ✦ Draft Outreach
-          </a>
+          </button>
           <ContactStatus url={url} />
         </div>
       </div>

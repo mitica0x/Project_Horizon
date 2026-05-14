@@ -99,11 +99,11 @@ export default function App() {
         setScanData(null)
       }
       setScanResultsVisible(true)
-      // Auto-scroll to the panel — 500ms lets the slide-up start so the user
+      // Auto-scroll to the panel — 600ms lets the slide-up start so the user
       // sees the panel emerging rather than jumping to blank space.
       setTimeout(() => {
-        window.scrollBy({ top: 300, behavior: 'smooth' })
-      }, 500)
+        window.scrollBy({ top: 400, behavior: 'smooth' })
+      }, 600)
       setTimeout(() => { console.log("[runScan] setScanState('idle')"); setScanState('idle') }, 3000)
     } catch (err) {
       console.log('[runScan] error:', err?.message ?? err)
@@ -130,8 +130,8 @@ export default function App() {
         setScanResultsVisible(true)
         setScanState('complete')
         setTimeout(() => {
-          window.scrollBy({ top: 300, behavior: 'smooth' })
-        }, 500)
+          window.scrollBy({ top: 400, behavior: 'smooth' })
+        }, 600)
       }, 3000)
       setTimeout(() => setScanState('idle'), 5000)
     }
@@ -369,7 +369,7 @@ export default function App() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 16 }}>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 300, color: 'var(--text-muted)' }}>C<span style={{ color: '#06b6d4' }}>0</span>insiglieri</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--cyan)' }}>{SCORE}% EU Presence</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 300, color: 'var(--text-muted)', textAlign: 'right' }}>Project Horiz<span style={{ color: '#E8FF3C' }}>0</span>n v4 · Sentry · Mirror · Herald</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 300, color: 'var(--text-muted)', textAlign: 'right' }}>Project Horiz<span style={{ color: '#b8ff00' }}>0</span>n v4 · Sentry · Mirror · Herald</span>
             </div>
           </div>
         </footer>

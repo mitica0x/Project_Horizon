@@ -1,8 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ANTHROPIC_KEY } from '../config'
+import { ANTHROPIC_KEY, CONTACT_EMAIL } from '../config'
 
 const SYSTEM_PROMPT = 'You are an outreach strategist for Bybit, Europe\'s leading crypto exchange. Draft professional, concise outreach for fintech comparison sites. Always lead with value for the site, not Bybit\'s needs. Keep responses under 250 words.'
+
+// Mirrors GapCard's mailto pattern so the "Open in Mail" button delivers the
+// same pre-filled subject + body that the gap row used to dispatch directly.
+function urlPath(url) {
+  if (!url) return ''
+  const d = url.split('/')[0]
+  const rest = url.slice(d.length)
+  return (rest && rest !== '/') ? rest : ''
+}
+function buildOutreachMailto(site) {
+  const domain = site.domain
+  const path = urlPath(site.url)
+  const body = `Hi ${domain} team,\n\nI'm reaching out from Bybit EU regarding a potential listing and partnership opportunity on ${domain}${path}.\n\nWe'd love to explore how Bybit could be featured alongside the exchanges you currently recommend.\n\nBest regards,\n${CONTACT_EMAIL}`
+  const subject = 'Bybit EU — Partnership & Listing Opportunity'
+  return `mailto:${site.contactEmail || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
 
 function buildPrompt(type, site, custom) {
   const ctx = `Site: ${site.domain}\nCountry: ${site.country}\nCompetitors present: ${(site.competitors || []).join(', ')}\nGap tier: ${site.tier}`
@@ -86,7 +102,23 @@ export default function OutreachPanel({ site, onClose }) {
             <div style={{ fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 13, color: 'var(--white)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Draft Outreach</div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--cyan)', marginTop: 3 }}>{site.domain}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <a
+              href={buildOutreachMailto(site)}
+              style={{
+                fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--cyan)',
+                background: 'var(--cyan-dim)', border: '1px solid rgba(0,212,232,.3)',
+                padding: '5px 10px', borderRadius: 4, cursor: 'pointer',
+                letterSpacing: '.04em', textDecoration: 'none', whiteSpace: 'nowrap',
+                transition: 'background .15s, border-color .15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,212,232,.18)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--cyan-dim)' }}
+            >
+              ✉ Open in Mail
+            </a>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}>×</button>
+          </div>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: 20, scrollbarWidth: 'thin' }}>
