@@ -10,7 +10,7 @@ function countryLabel(country) {
   return { flag: EU_FLAGS[country] || '🌐', code: country, color: '#00d4e8', tooltip: null }
 }
 
-const DOT = { present: '#00e5a0', absent: '#f59e0b', partial: '#f59e0b' }
+const DOT = { present: '#94c864', absent: '#D4A853', partial: '#D4A853' }
 const PULSE = { present: '2.5s', absent: '1.8s', partial: '1.8s' }
 
 function hexToRgba(hex, alpha) {
@@ -146,7 +146,7 @@ export default function SiteTable({ openWithQuestion }) {
                           transform: 'translateY(-50%)',
                           fontFamily: 'var(--font-mono)',
                           fontSize: 11,
-                          color: '#B8FF00',
+                          color: '#94c864',
                           background: 'transparent',
                           border: 'none',
                           cursor: 'pointer',

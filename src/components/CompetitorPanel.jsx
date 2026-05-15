@@ -55,9 +55,9 @@ function IntelPill({ label, onClick }) {
       onMouseLeave={() => setHover(false)}
       style={{
         display: 'block', width: '100%', textAlign: 'left',
-        border: `1px solid ${hover ? '#B8FF00' : 'rgba(184,255,0,0.3)'}`,
+        border: `1px solid ${hover ? '#94c864' : 'rgba(148,200,100,0.3)'}`,
         background: 'transparent',
-        color: hover ? '#B8FF00' : '#8892a4',
+        color: hover ? '#94c864' : '#8892a4',
         borderRadius: 20,
         padding: '8px 16px',
         fontSize: 12,
@@ -141,7 +141,7 @@ export default function CompetitorPanel({ competitor, onClose, onAskIntel }) {
           {[
             { value: pagesPresent,  label: 'Pages Present',    color: '#ffffff'  },
             { value: t1GapPages,    label: 'T1 Gap Pages',     color: '#ff4d6d'  },
-            { value: cardPages,     label: 'Card Pages',       color: '#B8FF00'  },
+            { value: cardPages,     label: 'Card Pages',       color: '#94c864'  },
             { value: priorityPages, label: 'Priority Markets', color: '#60a5fa'  },
           ].map(({ value, label, color }) => (
             <div key={label} style={{ background: '#0a0e1a', borderRadius: 8, padding: '12px 16px' }}>
@@ -164,7 +164,7 @@ export default function CompetitorPanel({ competitor, onClose, onAskIntel }) {
         <div style={{ marginBottom: 24, padding: '12px 16px', background: '#0a0e1a', borderRadius: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#8892a4', letterSpacing: '0.08em' }}>TREND</span>
-            <span style={{ color: '#00e5a0', fontSize: 12 }}>↑</span>
+            <span style={{ color: '#94c864', fontSize: 12 }}>↑</span>
           </div>
           <div style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 12, color: '#8892a4', fontStyle: 'italic' }}>
             — Data available after 2+ scan cycles
@@ -175,7 +175,7 @@ export default function CompetitorPanel({ competitor, onClose, onAskIntel }) {
         <div>
           <div style={{
             fontFamily: "'IBM Plex Mono', monospace", fontSize: 11,
-            color: '#B8FF00', letterSpacing: '0.1em',
+            color: '#94c864', letterSpacing: '0.1em',
             textTransform: 'uppercase', marginBottom: 12,
           }}>
             Ask Intel about {name}

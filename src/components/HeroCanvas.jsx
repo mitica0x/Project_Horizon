@@ -168,7 +168,7 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
     const { x, y } = blipXY(ang, rad);
     const color = hovered.bybit
       ? '#00d4e8'
-      : hovered.tier === 1 ? '#f59e0b'
+      : hovered.tier === 1 ? '#D4A853'
       : hovered.tier === 2 ? '#60a5fa'
       : '#7B5EA7';
     const label = hovered.bybit ? '● BYBIT PRESENT' : `● GAP — TIER ${hovered.tier}`;
@@ -258,7 +258,7 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
 
         {BLIPS.map((b, i) => {
           const { x, y } = blipXY(b.angle, b.r);
-          const PALETTE = ['#00d4e8','#B8FF00','#f59e0b','#7B5EA7','#60a5fa','#00e5a0','#c8d0dc'];
+          const PALETTE = ['#00d4e8','#94c864','#D4A853','#7B5EA7','#60a5fa','#94c864','#c8d0dc'];
           const colorIdx = b.bybit
             ? (i % 3 === 0 ? 0 : i % 3 === 1 ? 1 : 4)
             : (i % 7);
@@ -302,7 +302,7 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
             { label:'Sites Monitored', value:25, color:'#fff' },
             { label:'Bybit Present',   value:13, color:'#00d4e8' },
             { label:'Tier 1 Gaps',     value:9,  color:'#ff4d6d' },
-            { label:'Brand Alerts',    value:1,  color:'#f59e0b' },
+            { label:'Brand Alerts',    value:1,  color:'#D4A853' },
           ].map((k,i) => (
             <div key={i} style={{ background:'rgba(19,25,41,0.85)',
               border:'1px solid rgba(255,255,255,0.06)', borderRadius:8,

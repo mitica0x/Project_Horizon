@@ -3,21 +3,21 @@ import * as Select from '@radix-ui/react-select'
 import { patchContactStatus } from '../services/airtable'
 
 const OPTIONS = [
-  { value: 'Not Contacted', label: '- Not Contacted', color: '#4a5568' },
-  { value: 'Contacted',     label: '● Contacted',     color: '#f59e0b' },
+  { value: 'Not Contacted', label: '- Not Contacted', color: '#8892a4' },
+  { value: 'Contacted',     label: '● Contacted',     color: '#D4A853' },
   { value: 'In Progress',   label: '◐ In Progress',   color: '#00d4e8' },
-  { value: 'Done',          label: '✓ Done',           color: '#00e5a0' },
+  { value: 'Done',          label: '✓ Done',           color: '#94c864' },
 ]
 
 const BG = {
   'Not Contacted': 'transparent',
-  'Contacted':     'rgba(245,158,11,0.12)',
+  'Contacted':     'rgba(212,168,83,0.12)',
   'In Progress':   'rgba(0,212,232,0.12)',
   'Done':          'rgba(0,229,160,0.10)',
 }
 const BORDER = {
   'Not Contacted': 'rgba(255,255,255,0.06)',
-  'Contacted':     'rgba(245,158,11,0.35)',
+  'Contacted':     'rgba(212,168,83,0.35)',
   'In Progress':   'rgba(0,212,232,0.35)',
   'Done':          'rgba(0,229,160,0.35)',
 }
@@ -73,7 +73,7 @@ export default function ContactStatus({ url, defaultValue = 'Not Contacted' }) {
         </Select.Portal>
       </Select.Root>
       {state === 'saving' && <span className="spinner" />}
-      {state === 'ok'    && <span style={{ color: '#00e5a0', fontSize: 12 }}>✓</span>}
+      {state === 'ok'    && <span style={{ color: '#94c864', fontSize: 12 }}>✓</span>}
       {state === 'err'   && <span style={{ color: '#ff4d6d', fontSize: 12 }}>✗</span>}
     </div>
   )

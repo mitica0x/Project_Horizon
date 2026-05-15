@@ -57,7 +57,7 @@ export function getThreatColor(score, maxScore) {
   if (score === 0)  return null
   if (r < 0.15)     return '#7B5EA7'
   if (r < 0.35)     return '#9B6FC7'
-  if (r < 0.55)     return '#f59e0b'
+  if (r < 0.55)     return '#D4A853'
   if (r < 0.75)     return '#00d4e8'
   return '#60a5fa'
 }

@@ -167,15 +167,15 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
             zIndex:      50,
             fontFamily:  "'IBM Plex Mono', monospace",
             fontSize:    13,
-            color:       '#B8FF00',
+            color:       '#94c864',
             background:  '#131929',
-            border:      '1px solid rgba(184,255,0,0.3)',
+            border:      '1px solid rgba(148,200,100,0.3)',
             borderRadius: 8,
             padding:     '12px 20px',
             cursor:      'pointer',
             transition:  'box-shadow 0.2s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 16px rgba(184,255,0,0.25)' }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 16px rgba(148,200,100,0.25)' }}
           onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
         >
           ⬡ Intel
@@ -211,7 +211,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                 width:         500,
                 height:        '100vh',
                 background:    '#131929',
-                borderLeft:    '1px solid rgba(184,255,0,0.15)',
+                borderLeft:    '1px solid rgba(148,200,100,0.15)',
                 zIndex:        100,
                 display:       'flex',
                 flexDirection: 'column',
@@ -221,7 +221,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
               <div style={{
                 flexShrink:     0,
                 padding:        '18px 20px',
-                borderBottom:   '1px solid rgba(184,255,0,0.1)',
+                borderBottom:   '1px solid rgba(148,200,100,0.1)',
                 display:        'flex',
                 alignItems:     'center',
                 justifyContent: 'space-between',
@@ -231,7 +231,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                   fontWeight:     700,
                   fontSize:       14,
                   letterSpacing:  '0.1em',
-                  color:          '#B8FF00',
+                  color:          '#94c864',
                   textTransform:  'uppercase',
                 }}>
                   ⬡ Intel
@@ -290,7 +290,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                     paddingTop: 4,
                     fontFamily: "'IBM Plex Mono', monospace",
                     fontSize:   12,
-                    color:      '#4a5568',
+                    color:      '#8892a4',
                   }}>
                     Intel is standing by.
                   </div>
@@ -422,7 +422,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                   0%, 80%, 100% { opacity: 0.3; }
                   40%           { opacity: 1;   }
                 }
-                .intel-input::placeholder { color: #4a5568; }
+                .intel-input::placeholder { color: #8892a4; }
               `}</style>
             </motion.aside>
           </>

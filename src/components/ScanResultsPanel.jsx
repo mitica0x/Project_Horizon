@@ -12,7 +12,7 @@ function buildOutreachMailto(gap) {
 // ─── Design tokens (Horizon War Room) ─────────────────────────────────────────
 const HZ = {
   bg:        '#060a10',
-  surface:   '#0d1117',
+  surface:   '#0a0e1a',
   elevated:  '#161b22',
   border:    'rgba(255,255,255,0.06)',
   teal:      '#00d4e8',

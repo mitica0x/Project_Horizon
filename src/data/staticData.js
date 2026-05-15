@@ -10,7 +10,7 @@ export const COMPETITOR_COLORS = {
   Coinbase:      '#1652F0',
   // Tier 2 — weekly digest
   Binance:       '#7B5EA7',
-  Kraken:        '#f59e0b',
+  Kraken:        '#D4A853',
   OKX:           '#8892a4',
   'Trading 212': '#00d26a',
   KuCoin:        '#2ecc71',
@@ -19,12 +19,12 @@ export const COMPETITOR_COLORS = {
   // Tier 3 — monthly context
   MEXC:          '#2354e6',
   WhiteBit:      '#6b7280',
-  BingX:         '#a78bfa',
+  BingX:         '#7B5EA7',
 }
 
 export const COMPETITORS = [
   { name: 'Revolut',      count: 10, color: '#60a5fa', tier: 1 },
-  { name: 'Kraken',       count: 9,  color: '#f59e0b', tier: 2 },
+  { name: 'Kraken',       count: 9,  color: '#D4A853', tier: 2 },
   { name: 'Binance',      count: 8,  color: '#7B5EA7', tier: 2 },
   { name: 'Crypto.com',   count: 5,  color: '#00d4e8', tier: 1 },
   { name: 'OKX',          count: 3,  color: '#8892a4', tier: 2 },
@@ -36,7 +36,7 @@ export const COMPETITORS = [
   { name: 'KuCoin EU',    count: 0,  color: '#27ae60', tier: 2 },
   { name: 'MEXC',         count: 0,  color: '#2354e6', tier: 3 },
   { name: 'WhiteBit',     count: 0,  color: '#6b7280', tier: 3 },
-  { name: 'BingX',        count: 0,  color: '#a78bfa', tier: 3 },
+  { name: 'BingX',        count: 0,  color: '#7B5EA7', tier: 3 },
 ]
 
 export const GAPS_T1 = [

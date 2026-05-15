@@ -158,7 +158,7 @@ export default function OutreachPanel({ site, onClose }) {
           )}
 
           {response === '__NO_KEY__' && (
-            <div style={{ background: 'var(--amber-dim)', border: '1px solid rgba(245,158,11,.2)', borderRadius: 6, padding: '14px 16px', fontSize: 13, color: 'var(--amber)', lineHeight: 1.6 }}>
+            <div style={{ background: 'var(--amber-dim)', border: '1px solid rgba(212,168,83,.2)', borderRadius: 6, padding: '14px 16px', fontSize: 13, color: 'var(--amber)', lineHeight: 1.6 }}>
               Add your Anthropic API key in <code style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>src/config.js</code> to enable AI drafting.
             </div>
           )}

@@ -29,8 +29,8 @@ const TRACKED_DOMAINS = new Set(SITE_TABLE_DATA.map(s => (s.domain || '').toLowe
 const FILTERED_CANDIDATES = CANDIDATES.filter(c => !TRACKED_DOMAINS.has(c.domain.toLowerCase()))
 
 const TIER_STYLES = {
-  'Tier 1': { color: '#B8FF00', bg: 'rgba(184,255,0,0.15)',  border: 'rgba(184,255,0,0.4)',  label: 'T1' },
-  'Tier 2': { color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.4)', label: 'T2' },
+  'Tier 1': { color: '#94c864', bg: 'rgba(148,200,100,0.15)',  border: 'rgba(148,200,100,0.4)',  label: 'T1' },
+  'Tier 2': { color: '#D4A853', bg: 'rgba(212,168,83,0.15)', border: 'rgba(212,168,83,0.4)', label: 'T2' },
   'Tier 3': { color: '#7B5EA7', bg: 'rgba(123,94,167,0.15)', border: 'rgba(123,94,167,0.4)', label: 'T3' },
 }
 
@@ -55,7 +55,7 @@ function TierBadge({ tier }) {
 
 function StatusDot({ status }) {
   const present = status === 'present'
-  const color = present ? '#00e5a0' : '#f59e0b'
+  const color = present ? '#94c864' : '#D4A853'
   return (
     <span
       title={present ? 'Bybit present' : 'Gap'}
@@ -105,7 +105,7 @@ function TrackedTab() {
             style={{
               background: 'none',
               border:     'none',
-              color:      '#4a5568',
+              color:      '#8892a4',
               fontSize:   18,
               cursor:     'pointer',
               padding:    '0 4px',
@@ -114,7 +114,7 @@ function TrackedTab() {
               flexShrink: 0,
             }}
             onMouseEnter={e => { e.currentTarget.style.color = '#ff4d6d' }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#4a5568' }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#8892a4' }}
           >×</button>
         </div>
       ))}
@@ -164,8 +164,8 @@ function CandidatesTab() {
             onClick={() => console.log('add', c.domain)}
             style={{
               background:   'transparent',
-              border:       '1px solid rgba(184,255,0,0.3)',
-              color:        '#B8FF00',
+              border:       '1px solid rgba(148,200,100,0.3)',
+              color:        '#94c864',
               fontFamily:   "'IBM Plex Mono', monospace",
               fontSize:     11,
               padding:      '6px 10px',
@@ -175,12 +175,12 @@ function CandidatesTab() {
               transition:   'background 0.15s, border-color 0.15s',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background   = 'rgba(184,255,0,0.08)'
-              e.currentTarget.style.borderColor  = '#B8FF00'
+              e.currentTarget.style.background   = 'rgba(148,200,100,0.08)'
+              e.currentTarget.style.borderColor  = '#94c864'
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background   = 'transparent'
-              e.currentTarget.style.borderColor  = 'rgba(184,255,0,0.3)'
+              e.currentTarget.style.borderColor  = 'rgba(148,200,100,0.3)'
             }}
           >＋ Add</button>
         </div>
@@ -314,14 +314,14 @@ function AddNewTab() {
         style={{
           padding:        '12px 16px',
           borderRadius:   6,
-          background:     '#B8FF00',
-          color:          '#0a0e1a',
+          background:     'transparent',
+          color:          '#94c864',
           fontFamily:     "'Syne', sans-serif",
           fontWeight:     700,
           fontSize:       13,
           letterSpacing:  '0.06em',
           textTransform:  'uppercase',
-          border:         'none',
+          border:         '1.5px solid #94c864',
           cursor:         'pointer',
           transition:     'opacity 0.15s',
         }}
@@ -337,7 +337,7 @@ function AddNewTab() {
           border:       `1px solid ${msg.includes('required') ? 'rgba(255,77,109,0.3)' : 'rgba(0,229,160,0.3)'}`,
           fontFamily:   "'IBM Plex Mono', monospace",
           fontSize:     11,
-          color:        msg.includes('required') ? '#ff4d6d' : '#00e5a0',
+          color:        msg.includes('required') ? '#ff4d6d' : '#94c864',
         }}>
           {msg}
         </div>
@@ -389,7 +389,7 @@ export default function ScopePanel({ open, onClose }) {
           width:          480,
           height:         '100vh',
           background:     '#131929',
-          borderLeft:     '1px solid rgba(184,255,0,0.15)',
+          borderLeft:     '1px solid rgba(148,200,100,0.15)',
           zIndex:         100,
           display:        'flex',
           flexDirection:  'column',
@@ -448,7 +448,7 @@ export default function ScopePanel({ open, onClose }) {
                   padding:        '12px 8px',
                   background:     'none',
                   border:         'none',
-                  borderBottom:   `2px solid ${active ? '#B8FF00' : 'transparent'}`,
+                  borderBottom:   `2px solid ${active ? '#94c864' : 'transparent'}`,
                   color:          active ? '#ffffff' : '#8892a4',
                   fontFamily:     "'Syne', sans-serif",
                   fontWeight:     700,

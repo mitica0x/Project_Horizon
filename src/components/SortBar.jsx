@@ -57,15 +57,15 @@ export default function SortBar({ activeCriteria, onToggle, onReset, sectionId, 
     <div style={{ width: '100%', marginBottom: 16 }}>
       {showBanner && (
         <div style={{
-          background: 'rgba(184,255,0,0.06)',
-          border: '1px solid rgba(184,255,0,0.2)',
+          background: 'rgba(148,200,100,0.06)',
+          border: '1px solid rgba(148,200,100,0.2)',
           borderRadius: 6,
           padding: '8px 12px',
           marginBottom: 8,
           display: 'flex',
           alignItems: 'center',
         }}>
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#B8FF00' }}>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#94c864' }}>
             ⬡ Intel suggests: {strategyBanner.label}
           </span>
           <button
@@ -73,7 +73,7 @@ export default function SortBar({ activeCriteria, onToggle, onReset, sectionId, 
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#B8FF00',
+              color: '#94c864',
               fontFamily: "'IBM Plex Mono', monospace",
               fontSize: 11,
               cursor: 'pointer',

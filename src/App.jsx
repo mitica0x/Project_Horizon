@@ -239,7 +239,7 @@ export default function App() {
           fontSize:      12,
           fontWeight:    700,
           letterSpacing: '0.2em',
-          color:         '#B8FF00',
+          color:         '#94c864',
         }}>
           PROJECT HORIZON
         </div>
@@ -250,13 +250,13 @@ export default function App() {
               width:        6,
               height:       6,
               borderRadius: '50%',
-              background:   '#00e5a0',
+              background:   '#94c864',
               animation:    'livePulse 2s ease-in-out infinite',
             }} />
             <span style={{
               fontFamily:    "'IBM Plex Mono', monospace",
               fontSize:      10,
-              color:         '#00e5a0',
+              color:         '#94c864',
               letterSpacing: '0.15em',
             }}>
               LIVE
@@ -267,7 +267,7 @@ export default function App() {
             fontSize:   11,
             color:      '#8892a4',
           }}>
-            C<span style={{ color: '#06b6d4' }}>0</span>insiglieri
+            C<span style={{ color: '#5BA8B5' }}>0</span>insiglieri
           </div>
         </div>
         <style>{`
@@ -292,7 +292,7 @@ export default function App() {
           <div className="container">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               <span style={{ fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 16, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--t1)' }}>Priority Gaps — Tier 1</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '1px 8px', borderRadius: 99, background: 'var(--t1-dim)', color: 'var(--t1)', border: '1px solid rgba(184,255,0,.3)' }}>{GAPS_T1.length}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '1px 8px', borderRadius: 99, background: 'var(--t1-dim)', color: 'var(--t1)', border: '1px solid rgba(148,200,100,.3)' }}>{GAPS_T1.length}</span>
             </div>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-muted)', marginBottom: 20 }}>Sites where Tier 1 competitors are listed and Bybit is absent</p>
             <SortBar sectionId="gaps_t1" activeCriteria={sortState.gaps_t1} onToggle={(key) => handleToggle('gaps_t1', key)} onReset={() => handleReset('gaps_t1')} strategyBanner={strategyBanners.gaps_t1} onApplyStrategy={(c) => handleApplyStrategy('gaps_t1', c)} />
@@ -323,7 +323,7 @@ export default function App() {
           <div className="container">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <span style={{ fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 16, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--amber)' }}>Tier 2 Opportunities</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '1px 8px', borderRadius: 99, background: 'var(--amber-dim)', color: 'var(--amber)', border: '1px solid rgba(245,158,11,.3)' }}>{GAPS_T2.length}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '1px 8px', borderRadius: 99, background: 'var(--amber-dim)', color: 'var(--amber)', border: '1px solid rgba(212,168,83,.3)' }}>{GAPS_T2.length}</span>
             </div>
             <SortBar sectionId="gaps_t2" activeCriteria={sortState.gaps_t2} onToggle={(key) => handleToggle('gaps_t2', key)} onReset={() => handleReset('gaps_t2')} strategyBanner={strategyBanners.gaps_t2} onApplyStrategy={(c) => handleApplyStrategy('gaps_t2', c)} />
             <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 20, alignItems: 'stretch' }}>
@@ -367,9 +367,9 @@ export default function App() {
         <footer style={{ borderTop: '1px solid var(--border)', padding: '28px 0', minHeight: 76 }}>
           <div className="container">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 16 }}>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 300, color: 'var(--text-muted)' }}>C<span style={{ color: '#06b6d4' }}>0</span>insiglieri</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 300, color: 'var(--text-muted)' }}>C<span style={{ color: '#5BA8B5' }}>0</span>insiglieri</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--cyan)' }}>{SCORE}% EU Presence</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 300, color: 'var(--text-muted)', textAlign: 'right' }}>Project Horiz<span style={{ color: '#b8ff00' }}>0</span>n v4 · Sentry · Mirror · Herald</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 300, color: 'var(--text-muted)', textAlign: 'right' }}>Project Horiz<span style={{ color: '#94c864' }}>0</span>n v4 · Sentry · Mirror · Herald</span>
             </div>
           </div>
         </footer>
@@ -384,7 +384,7 @@ export default function App() {
         style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 50,
           fontFamily: "'IBM Plex Mono', monospace", fontSize: 13,
-          color: scanState === 'error' ? '#ff4d6d' : scanState === 'complete' ? '#00e5a0' : '#00d4e8',
+          color: scanState === 'error' ? '#ff4d6d' : scanState === 'complete' ? '#94c864' : '#00d4e8',
           background: '#131929',
           border: '1px solid rgba(0,212,232,0.3)',
           borderRadius: 8, padding: '12px 20px',
@@ -406,14 +406,14 @@ export default function App() {
             position: 'fixed', bottom: 136, right: 24, zIndex: 50,
             fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 600,
             letterSpacing: '0.04em',
-            color: '#B8FF00',
+            color: '#94c864',
             background: '#131929',
-            border: '1px solid rgba(184,255,0,0.3)',
+            border: '1px solid rgba(148,200,100,0.3)',
             borderRadius: 8, padding: '12px 20px',
             cursor: 'pointer',
             transition: 'box-shadow 0.2s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 16px rgba(184,255,0,0.25)' }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 16px rgba(148,200,100,0.25)' }}
           onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
         >
           ⊞ Scope

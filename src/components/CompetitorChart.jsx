@@ -90,7 +90,7 @@ export default function CompetitorChart({ onOpenPanel }) {
                   width: '5px',
                   height: '5px',
                   borderRadius: '50%',
-                  background: comp.tier === 1 ? '#B8FF00' : comp.tier === 2 ? '#00d4e8' : '#8892a4',
+                  background: comp.tier === 1 ? '#94c864' : comp.tier === 2 ? '#00d4e8' : '#8892a4',
                 }} />
                 <span style={{
                   fontFamily: "'Syne', sans-serif",
@@ -168,7 +168,7 @@ export default function CompetitorChart({ onOpenPanel }) {
                 fontFamily: "'IBM Plex Mono', monospace",
                 fontWeight: 400,
                 fontSize: '11px',
-                color: color || '#4a5568',
+                color: color || '#8892a4',
                 paddingBottom: '4px',
                 maxHeight: isHov && comp.hook ? '22px' : '0px',
                 overflow: 'hidden',
@@ -203,7 +203,7 @@ export default function CompetitorChart({ onOpenPanel }) {
         {[
           { label: 'Pages Present', value: 13,    accent: '#00d4e8' },
           { label: 'Pages Tracked', value: 25,    accent: '#ffffff' },
-          { label: 'Coverage',      value: '52%', accent: '#B8FF00' },
+          { label: 'Coverage',      value: '52%', accent: '#94c864' },
         ].map(({ label, value, accent }) => (
           <div key={label}>
             <div style={{

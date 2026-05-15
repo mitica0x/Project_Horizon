@@ -29,7 +29,7 @@ export default function GapCard({ gap, onDraftOutreach }) {
         background: 'var(--bg-card)',
         borderRadius: 8, padding: '20px', marginBottom: 8,
         borderLeft: `3px solid ${isT1 ? 'var(--t1)' : 'var(--amber)'}`,
-        border: `1px solid ${isT1 ? 'rgba(184,255,0,0.15)' : 'rgba(245,158,11,0.15)'}`,
+        border: `1px solid ${isT1 ? 'rgba(148,200,100,0.15)' : 'rgba(212,168,83,0.15)'}`,
         borderLeftWidth: 3,
       }}
     >
@@ -37,7 +37,7 @@ export default function GapCard({ gap, onDraftOutreach }) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-body)', fontWeight: 500, fontSize: 17, color: 'var(--white)' }}>
             {domain}
-            {review && <span style={{ fontSize: 10, background: 'rgba(245,158,11,0.15)', color: 'var(--amber)', border: '1px solid rgba(245,158,11,0.4)', padding: '1px 6px', borderRadius: 3, fontFamily: 'var(--font-head)', fontWeight: 700, letterSpacing: '.05em' }}>REVIEW</span>}
+            {review && <span style={{ fontSize: 10, background: 'rgba(212,168,83,0.15)', color: 'var(--amber)', border: '1px solid rgba(212,168,83,0.4)', padding: '1px 6px', borderRadius: 3, fontFamily: 'var(--font-head)', fontWeight: 700, letterSpacing: '.05em' }}>REVIEW</span>}
           </div>
           {path && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{path}</div>}
         </div>
@@ -46,7 +46,7 @@ export default function GapCard({ gap, onDraftOutreach }) {
           <span style={{ fontSize: 11, fontFamily: 'var(--font-head)', fontWeight: 700, letterSpacing: '.06em', padding: '2px 7px', borderRadius: 3,
             background: isT1 ? 'var(--t1-dim)' : 'var(--amber-dim)',
             color: isT1 ? 'var(--t1)' : 'var(--amber)',
-            border: isT1 ? '1px solid rgba(184,255,0,.4)' : '1px solid rgba(245,158,11,.4)',
+            border: isT1 ? '1px solid rgba(148,200,100,.4)' : '1px solid rgba(212,168,83,.4)',
           }}>
             {isT1 ? 'T1' : 'T2'}
           </span>
