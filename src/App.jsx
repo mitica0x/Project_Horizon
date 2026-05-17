@@ -87,7 +87,7 @@ export default function App() {
   const dayStatus = useState(() => getDayStatus().overall)[0]
 
   // S8 — single section-aware INTEL entry point.
-  const openIntel = (ctx) => askBriefRef.current?.openWithContext(ctx)
+  const openIntel = (ctx, intel) => askBriefRef.current?.openWithContext(ctx, intel)
   const onScanFromNav = () => {
     setView('dashboard')
     requestAnimationFrame(() => runScan())
@@ -361,6 +361,7 @@ export default function App() {
         scanData={scanData}
         onClose={() => setScanResultsVisible(false)}
         onDraftOutreach={(q) => askBriefRef.current?.openWithQuestion(q)}
+        onAskIntel={openIntel}
       />
       <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 48 }}>
 

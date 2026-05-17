@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchActivations, updateActivationOutcome } from '../lib/horizonStore'
+import { intelKit } from '../utils/intelKit'
 import { Card, Badge, PanelHeader, EmptyState, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 
 // P4 — Campaign Outcome Tracking. Reads org-scoped rows from the activations
@@ -243,6 +244,22 @@ export default function OutcomesPanel({ onAskIntel }) {
   const intelContext = () =>
     `You are reviewing campaign outcomes. Record: ${activated} activated, ${wins} WIN, ${neutral} NEUTRAL, ${miss} MISS, ${reviewDue} review due (win rate ${winRate}%).`
 
+  // Categories aren't on the activation schema yet — seeded, same shape.
+  const topCat = 'event-driven windows'
+  const lowCat = 'evergreen placements'
+  const patternLine =
+    activated === 0
+      ? 'no completed activations yet — log outcomes to surface this'
+      : winRate >= 50
+      ? 'you convert best when you move fast on a single window'
+      : 'spreading across too many windows is diluting close rate'
+
+  const askIntel = () =>
+    onAskIntel(
+      intelContext(),
+      intelKit.outcomes({ rate: winRate, top: topCat, low: lowCat, line: patternLine }),
+    )
+
   return (
     <>
       <PanelHeader
@@ -250,7 +267,7 @@ export default function OutcomesPanel({ onAskIntel }) {
         accent="#94c864"
         count={activated}
         sub="Every activated window — track what the move actually returned"
-        right={onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
+        right={onAskIntel && <AskIntelButton onClick={askIntel} />}
       />
 
       {/* Summary bar */}

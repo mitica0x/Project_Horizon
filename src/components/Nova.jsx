@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { assessCompetitors, fmtClock } from '../utils/horizonData'
 import { startNova, endNova } from '../lib/horizonStore'
 import { FONT_HEAD, FONT_BODY, FONT_MONO, AskIntelButton } from './horizonUI'
+import { intelKit } from '../utils/intelKit'
 
 // P6 — N0VA Mode. Full-screen lime-tinted takeover. Four response playbooks
 // with tickable steps (persisted per browser), live competitor pressure,
@@ -253,7 +254,9 @@ export default function Nova({ onExit, onAskIntel }) {
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {onAskIntel && <AskIntelButton onClick={() => onAskIntel(novaContext())} />}
+            {onAskIntel && (
+              <AskIntelButton onClick={() => onAskIntel(novaContext(), intelKit.nova())} />
+            )}
             <button
               onClick={exit}
               style={{

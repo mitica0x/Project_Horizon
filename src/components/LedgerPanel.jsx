@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { fetchDecisions } from '../lib/horizonStore'
 import { assessCompetitors } from '../utils/horizonData'
+import { intelKit } from '../utils/intelKit'
 import { Card, Badge, PanelHeader, EmptyState, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 
 // P5 — Decision Ledger. Timeline of every activate / skip / defer, newest
@@ -214,6 +215,22 @@ export default function LedgerPanel({ onAskIntel }) {
       .map(d => `${(d.decision || '').toUpperCase()} ${d.event_name || '—'}`)
       .join('; ') || 'none yet'}.`
 
+  // Detect a simple shared trait among activated decisions, else null.
+  const ledgerPattern = (() => {
+    const acts = list.filter(d => d.decision === 'activate')
+    if (acts.length < 3) return null
+    const withRationale = acts.filter(d => (d.rationale || '').trim().length > 0).length
+    if (withRationale / acts.length >= 0.6)
+      return 'a written rationale logged at decision time'
+    return null
+  })()
+
+  const askIntel = () =>
+    onAskIntel(
+      intelContext(),
+      intelKit.ledger({ count: list.length, pattern: ledgerPattern }),
+    )
+
   return (
     <>
       <PanelHeader
@@ -221,7 +238,7 @@ export default function LedgerPanel({ onAskIntel }) {
         accent="#00d4e8"
         count={list.length}
         sub="Every activate / skip / defer — the audit trail behind the moves"
-        right={onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
+        right={onAskIntel && <AskIntelButton onClick={askIntel} />}
       />
 
       {/* Controls */}

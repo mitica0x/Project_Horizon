@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { getWindows } from '../utils/horizonData'
+import { intelKit } from '../utils/intelKit'
 import { fmtDate } from '../../lib/radar/scoring'
 import { activateEvent, dismissEvent, fetchActivations, fetchDecisions } from '../lib/horizonStore'
 import {
@@ -314,7 +315,11 @@ export default function WindowsPanel({ onAskIntel }) {
         title="Windows"
         accent="#00d4e8"
         sub="Your operational patterns — when you activate and win, when you consolidate, and where your next window is building."
-        right={onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
+        right={
+          onAskIntel && (
+            <AskIntelButton onClick={() => onAskIntel(intelContext(), intelKit.windows())} />
+          )
+        }
       />
 
       <div

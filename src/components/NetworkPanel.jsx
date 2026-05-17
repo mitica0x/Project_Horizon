@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useOrg } from '../context/OrgContext'
 import { getWindows } from '../utils/horizonData'
 import { fetchActivations } from '../lib/horizonStore'
+import { intelKit } from '../utils/intelKit'
 import { Card, Badge, PanelHeader, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 
 // P9 — Network Intelligence. Org metrics vs anonymized network benchmarks.
@@ -243,13 +244,25 @@ export default function NetworkPanel({ onAskIntel }) {
       .map(m => `${m.label}: you ${m.fmt(m.org)} vs network ${m.fmt(m.net)}`)
       .join('; ')}.`
 
+  // Contact-graph view is seeded until real relationship data lands.
+  const askIntel = () =>
+    onAskIntel(
+      intelContext(),
+      intelKit.network({
+        nodes: 24,
+        strong: 'DE comparison-site editors',
+        cold: 'UK fintech press',
+        gapRegion: 'the Nordics',
+      }),
+    )
+
   return (
     <>
       <PanelHeader
         title="Network Intelligence"
         accent="#00d4e8"
         sub="Anonymized benchmarks across MID-budget EU operators"
-        right={onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
+        right={onAskIntel && <AskIntelButton onClick={askIntel} />}
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

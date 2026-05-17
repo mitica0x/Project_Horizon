@@ -81,6 +81,8 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
   const [input,    setInput]    = useState('')
   const [loading,  setLoading]  = useState(false)
   const [sysContext, setSysContext] = useState(null)
+  const [intelInsight, setIntelInsight] = useState(null)
+  const [intelChips,   setIntelChips]   = useState(null)
   const threadRef    = useRef(null)
   const textareaRef  = useRef(null)
 
@@ -144,13 +146,18 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
   useImperativeHandle(ref, () => ({
     openWithQuestion: (question) => {
       setSysContext(null)
+      setIntelInsight(null)
+      setIntelChips(null)
       setOpen(true)
       setInput(question)
       handleSend(question)
     },
     // S8 — open the same chat primed with a section-specific system context.
-    openWithContext: (ctx) => {
+    // Optional `intel` = { insight, chips } renders a pre-conversation read.
+    openWithContext: (ctx, intel) => {
       setSysContext(ctx || null)
+      setIntelInsight(intel?.insight || null)
+      setIntelChips(intel?.chips || null)
       setOpen(true)
     },
   }))
@@ -167,12 +174,14 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
       <AnimatePresence>
         {open && (
           <>
+            {/* Backdrop is visual only — INTEL is a conversation, so
+                click-outside-to-close is intentionally disabled. Close via
+                the header X. */}
             <motion.div
               key="intel-backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
               style={{
                 position: 'fixed',
                 inset:    0,
@@ -266,7 +275,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                 gap:            10,
                 scrollbarWidth: 'thin',
               }}>
-                {messages.length === 0 && !loading && (
+                {messages.length === 0 && !loading && !intelInsight && (
                   <div style={{
                     alignSelf:  'flex-start',
                     paddingTop: 4,
@@ -275,6 +284,64 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                     color:      '#8892a4',
                   }}>
                     Intel is standing by.
+                  </div>
+                )}
+
+                {messages.length === 0 && !loading && intelInsight && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 2 }}>
+                    <div>
+                      <div style={{
+                        fontFamily:    "'IBM Plex Mono', monospace",
+                        fontSize:      10,
+                        letterSpacing: '0.16em',
+                        textTransform: 'uppercase',
+                        color:         '#94c864',
+                        marginBottom:  7,
+                      }}>
+                        Intel reads →
+                      </div>
+                      <div style={{
+                        fontFamily: "'Syne', sans-serif",
+                        fontStyle:  'italic',
+                        fontSize:   15,
+                        lineHeight: 1.5,
+                        color:      '#00d4e8',
+                      }}>
+                        {intelInsight}
+                      </div>
+                    </div>
+                    {intelChips && intelChips.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {intelChips.map((c, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSend(c)}
+                            style={{
+                              background:    '#0f1623',
+                              border:        '1px solid rgba(0,212,232,0.35)',
+                              borderRadius:  6,
+                              padding:       '7px 12px',
+                              fontFamily:    "'IBM Plex Mono', monospace",
+                              fontSize:      11,
+                              color:         '#00d4e8',
+                              cursor:        'pointer',
+                              textAlign:     'left',
+                              transition:    'background 0.15s, border-color 0.15s',
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.background = 'rgba(0,212,232,0.08)'
+                              e.currentTarget.style.borderColor = '#00d4e8'
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.background = '#0f1623'
+                              e.currentTarget.style.borderColor = 'rgba(0,212,232,0.35)'
+                            }}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -325,8 +392,8 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                 flexDirection: 'column',
                 background:    '#0f1623',
               }}>
-                {/* Suggestion chips — only when no messages yet */}
-                {messages.length === 0 && (
+                {/* Legacy default pills — suppressed when section chips present */}
+                {messages.length === 0 && !intelChips && (
                   <div style={{
                     display:       'flex',
                     flexWrap:      'wrap',

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { getWindows, getDayStatus, assessCompetitors } from '../utils/horizonData'
+import { intelKit } from '../utils/intelKit'
 import { GAPS_T1 } from '../data/staticData'
 import { fmtDate } from '../../lib/radar/scoring'
 import {
@@ -208,7 +209,15 @@ export default function SignalPanel({ onAskIntel }) {
         title="Budget Deployment Signal"
         accent="#94c864"
         sub="One read on whether to spend — refreshed every load"
-        right={onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
+        right={
+          onAskIntel && (
+            <AskIntelButton
+              onClick={() =>
+                onAskIntel(intelContext(), intelKit.signal({ days: durationDays }))
+              }
+            />
+          )
+        }
       />
 
       {/* Recommendation card (unchanged top) */}

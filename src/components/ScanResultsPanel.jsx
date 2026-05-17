@@ -1,5 +1,7 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { CONTACT_EMAIL } from '../config'
+import { intelKit } from '../utils/intelKit'
+import { AskIntelButton } from './horizonUI'
 
 function buildOutreachMailto(gap) {
   const domain = gap.domain || ''
@@ -84,24 +86,38 @@ const DIFF_AMBER = '#f59e0b'  // neutral / non-positive change
 
 const gapKey = (g) => `${g.domain || ''}${g.path || ''}`
 
-function buildSnapshot(scanData) {
+// `prev` (optional) lets us carry each gap's first-seen timestamp forward so the
+// "how long it was a gap" age in GAPS RESOLVED reflects real elapsed time as
+// soon as scan history accumulates. Until then gapAgeDays() seeds a stable age.
+function buildSnapshot(scanData, prev) {
+  const nowISO = scanData.scannedAt || new Date().toISOString()
+  const prevAges = prev?.gapAges || {}
+  const gaps = (scanData.gaps || []).map((g) => ({
+    domain: g.domain,
+    path: g.path,
+    tier: g.tier,
+    severity: g.severity,
+    country: g.country || null,
+    geo: normaliseGeo(g.country),
+  }))
+  const gapAges = {}
+  gaps.forEach((g) => {
+    const k = gapKey(g)
+    gapAges[k] = prevAges[k] || nowISO // first time we see a gap → stamp now
+  })
   return {
     score: scanData.score ?? 0,
     tier1Gaps: scanData.tier1Gaps ?? 0,
     brandAlerts: scanData.brandAlerts ?? 0,
     wins: scanData.wins ?? 0,
-    gaps: (scanData.gaps || []).map((g) => ({
-      domain: g.domain,
-      path: g.path,
-      tier: g.tier,
-      severity: g.severity,
-    })),
+    gaps,
     // Per-competitor blocked-gap counts — drives competitor momentum (§4).
     competitors: (scanData.competitors || []).map((c) => ({
       name: c.name,
       blocksOnGaps: c.blocksOnGaps ?? 0,
     })),
-    scannedAt: scanData.scannedAt || null,
+    scannedAt: nowISO,
+    gapAges,
   }
 }
 
@@ -113,98 +129,368 @@ const SEED_MOMENTUM = { Revolut: 2, 'Crypto.com': 1, Bitpanda: -1 }
 // T1 gaps, one fewer win, alerts unchanged.
 function seedPriorSnapshot(scanData) {
   const cs = buildSnapshot(scanData)
+  const nowMs = Date.parse(cs.scannedAt) || Date.now()
+  const day = 86400000
+  // Prior-only gaps (now resolved in the current scan). Carry geo so GAPS
+  // RESOLVED renders "[geo] [tier]", and back-date first-seen so the age reads
+  // plausibly (finder 34d, cryptoradar 21d).
+  const seededGaps = [
+    { domain: 'finder.com', path: '/uk/crypto', tier: 'T1', severity: 'high', country: '🇬🇧 UK', geo: 'UK' },
+    { domain: 'cryptoradar.de', path: '/best-exchanges-2024', tier: 'T1', severity: 'high', country: '🇩🇪 DE', geo: 'DE' },
+  ]
+  const gapAges = { ...cs.gapAges }
+  gapAges[gapKey(seededGaps[0])] = new Date(nowMs - 34 * day).toISOString()
+  gapAges[gapKey(seededGaps[1])] = new Date(nowMs - 21 * day).toISOString()
   return {
     ...cs,
     score: Math.max(0, cs.score - 4),
     tier1Gaps: cs.tier1Gaps + 2,
     wins: Math.max(0, cs.wins - 1),
-    gaps: [
-      ...cs.gaps,
-      { domain: 'finder.com', path: '/uk/crypto', tier: 'T1', severity: 'high' },
-      { domain: 'cryptoradar.de', path: '/best-exchanges-2024', tier: 'T1', severity: 'high' },
-    ],
+    gaps: [...cs.gaps, ...seededGaps],
     // Prior competitor counts inverted by SEED_MOMENTUM so the current scan
     // shows the example movement (Revolut +2, Crypto.com +1, Bitpanda −1).
     competitors: cs.competitors.map((c) => ({
       name: c.name,
       blocksOnGaps: Math.max(0, c.blocksOnGaps - (SEED_MOMENTUM[c.name] ?? 0)),
     })),
-    scannedAt: null,
+    gapAges,
+    scannedAt: new Date(nowMs - 7 * day).toISOString(),
     __seeded: true,
   }
 }
 
-function pluralise(n, word) {
-  return `${n} ${word}${Math.abs(n) === 1 ? '' : 's'}`
+function pluralWord(n, word) {
+  return `${word}${Math.abs(n) === 1 ? '' : 's'}`
 }
 
-function computeScanDiff(scanData, prev) {
-  if (!prev) return { hasPrevious: false, rows: [] }
+// Tone → colour. Lime = positive, amber = watch, cyan = neutral. No red here.
+const DIFF_TONE = { lime: DIFF_LIME, amber: DIFF_AMBER, cyan: HZ.teal }
+
+// Deterministic FNV-1a hash — keeps every seeded value stable across renders so
+// mock fields never flicker. Real data replaces these the moment it exists.
+function seedHash(str) {
+  let h = 2166136261
+  for (let i = 0; i < String(str).length; i++) {
+    h ^= str.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+function seedPick(arr, h) {
+  return arr[h % arr.length]
+}
+
+function geoLabel(g) {
+  return (g.geo || normaliseGeo(g.country) || 'GLOBAL').toUpperCase()
+}
+
+const SEED_CLOSE_COMPS = ['Kraken', 'Coinbase', 'Bitpanda', 'OKX', 'Bitvavo']
+const SEED_ALERT_SITES = ['trustpilot.com', 'reddit.com/r/crypto', 'x.com/search', 'producthunt.com']
+const SEED_COMP_SITES = [
+  'cryptocompare.com/exchanges',
+  'finder.com/uk',
+  'coingecko.com/exchanges',
+  'investopedia.com/best-crypto-exchanges',
+]
+
+// Real gap age once history exists; otherwise a stable seeded 14–58 days.
+function gapAgeDays(key, prev, nowMs) {
+  const seen = prev?.gapAges?.[key]
+  if (seen) {
+    const d = Math.round((nowMs - Date.parse(seen)) / 86400000)
+    if (Number.isFinite(d) && d >= 0) return d
+  }
+  return 14 + (seedHash(key) % 45)
+}
+
+// Build the full diff model: one structured section per spec block. Every
+// section carries production shape (rows: {tone, primary, sub[]}); seeded
+// values only fill fields the snapshot can't yet derive.
+function buildDiffSections(scanData, prev) {
+  if (!prev) {
+    return { hasPrevious: false, scoreDelta: 0, gapsDelta: 0, winsDelta: 0, alertsDelta: 0, sections: [] }
+  }
 
   const curr = buildSnapshot(scanData)
+  const nowMs = Date.parse(curr.scannedAt) || Date.now()
   const prevKeys = new Set((prev.gaps || []).map(gapKey))
   const currKeys = new Set(curr.gaps.map(gapKey))
   const resolved = (prev.gaps || []).filter((g) => !currKeys.has(gapKey(g)))
   const opened = curr.gaps.filter((g) => !prevKeys.has(gapKey(g)))
+  // Map opened snapshot gaps back to the live scan gap (has description) so we
+  // can name the competitors actually present.
+  const liveByKey = {}
+  ;(scanData.gaps || []).forEach((g) => {
+    liveByKey[gapKey(g)] = g
+  })
 
   const scoreDelta = curr.score - prev.score
   const gapsDelta = curr.tier1Gaps - prev.tier1Gaps
   const winsDelta = curr.wins - prev.wins
   const alertsDelta = curr.brandAlerts - prev.brandAlerts
 
-  // SCORE summary line
-  const scoreBits = []
-  if (resolved.length) scoreBits.push(pluralise(resolved.length, 'gap') + ' resolved')
-  if (winsDelta > 0) scoreBits.push(pluralise(winsDelta, 'new win'))
-  scoreBits.push(
-    scoreDelta > 0 ? 'field pressure down' : scoreDelta < 0 ? 'field pressure up' : 'field pressure flat'
-  )
+  // ── Competitor movement (feeds SCORE factors + its own section) ──
+  const moves = (scanData.competitors || [])
+    .map((c) => {
+      const p = (prev.competitors || []).find((x) => x.name === c.name)
+      const delta =
+        p != null ? (c.blocksOnGaps ?? 0) - p.blocksOnGaps : SEED_MOMENTUM[c.name] ?? 0
+      const h = seedHash(c.name)
+      const geoS = seedPick(['UK', 'DE', 'EU', 'Global'], h)
+      const tierS = seedPick(['T1', 'T2'], h >> 3)
+      const siteS = seedPick(SEED_COMP_SITES, h >> 5)
+      let glyph, tone, text
+      if (delta >= 2) {
+        glyph = '↑↑'
+        tone = 'amber'
+        text = `appeared on ${delta} new ${geoS} ${tierS} pages since last scan`
+      } else if (delta === 1) {
+        glyph = '↑'
+        tone = 'amber'
+        text = `added 1 ${geoS} ${tierS} listing`
+      } else if (delta <= -1) {
+        glyph = '↓'
+        tone = 'lime'
+        text = `dropped from ${siteS}`
+      } else {
+        glyph = '→'
+        tone = 'cyan'
+        text = 'no change detected across tracked pages'
+      }
+      return { name: c.name, delta, glyph, tone, text }
+    })
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
 
-  // GAPS lines
-  const gapLines = []
-  resolved.forEach((g) => {
-    const url = `${g.domain}${g.path || ''}`
-    gapLines.push(g.tier === 'T1' ? `${url} — T1 gap closed` : `${url} — resolved, Bybit now listed`)
+  // ── SCORE CHANGE ──
+  const byTier = (list) =>
+    list.reduce((m, g) => {
+      const t = g.tier || 'T2'
+      ;(m[t] ||= []).push(g)
+      return m
+    }, {})
+  const resByTier = byTier(resolved)
+  const openByTier = byTier(opened)
+  const factors = []
+  ;['T1', 'T2', 'T3'].forEach((t) => {
+    const arr = resByTier[t]
+    if (arr && arr.length) {
+      const pts = arr.length * (TIER_POINTS[t] ?? 1)
+      const names = arr.slice(0, 2).map((g) => `${g.domain}${g.path || ''}`).join(', ')
+      factors.push({
+        sign: '+',
+        pts,
+        tone: 'lime',
+        text: `${arr.length} ${t} ${pluralWord(arr.length, 'gap')} closed (${names})`,
+      })
+    }
   })
-  opened.forEach((g) => {
-    const url = `${g.domain}${g.path || ''}`
-    gapLines.push(`${url} — new ${g.tier || 'T2'} gap detected`)
+  ;['T1', 'T2', 'T3'].forEach((t) => {
+    const arr = openByTier[t]
+    if (arr && arr.length) {
+      const pts = arr.length * (TIER_POINTS[t] ?? 1)
+      const names = arr.slice(0, 2).map((g) => `${g.domain}${g.path || ''}`).join(', ')
+      factors.push({
+        sign: '-',
+        pts,
+        tone: 'amber',
+        text: `${arr.length} new ${t} ${pluralWord(arr.length, 'gap')} (${names})`,
+      })
+    }
   })
-  if (gapLines.length === 0) gapLines.push('No gap changes since last scan')
-
-  // WINS lines — surface confirmed listings from resolved gaps
-  const winLines = []
-  if (winsDelta > 0) {
-    const fromResolved = resolved.slice(0, winsDelta).map((g) => `${g.domain}${g.path || ''} — Bybit added`)
-    winLines.push(...fromResolved)
-    const remaining = winsDelta - fromResolved.length
-    if (remaining > 0) winLines.push(`${pluralise(remaining, 'new listing')} confirmed`)
-  } else if (winsDelta < 0) {
-    winLines.push(`${pluralise(Math.abs(winsDelta), 'listing')} lost`)
-  } else {
-    winLines.push('No new wins since last scan')
+  moves.forEach((m) => {
+    if (m.delta <= -1) {
+      const n = Math.abs(m.delta)
+      factors.push({
+        sign: '+',
+        pts: 1,
+        tone: 'lime',
+        text: `${m.name} momentum slowed (↓ on ${n} tracked ${pluralWord(n, 'page')})`,
+      })
+    } else if (m.delta >= 1) {
+      factors.push({
+        sign: '-',
+        pts: 1,
+        tone: 'amber',
+        text: `${m.name} momentum up (↑ on ${m.delta} tracked ${pluralWord(m.delta, 'page')})`,
+      })
+    }
+  })
+  // Reconcile the factor sum to the real score delta so the breakdown is honest.
+  const factorSum = factors.reduce((s, f) => s + (f.sign === '+' ? f.pts : -f.pts), 0)
+  const residual = scoreDelta - factorSum
+  if (residual !== 0) {
+    factors.push({
+      sign: residual > 0 ? '+' : '-',
+      pts: Math.abs(residual),
+      tone: residual > 0 ? 'lime' : 'amber',
+      text:
+        residual > 0
+          ? 'field pressure eased (aggregate signal shift)'
+          : 'field pressure rose (aggregate signal shift)',
+    })
+  }
+  if (factors.length === 0) {
+    factors.push({ sign: '·', pts: 0, tone: 'cyan', text: 'no contributing changes — score held flat' })
+  }
+  const scoreSection = {
+    id: 'score',
+    label: 'SCORE CHANGE',
+    badge: {
+      glyph: scoreDelta > 0 ? '↑' : scoreDelta < 0 ? '↓' : '→',
+      value: Math.abs(scoreDelta),
+      tone: scoreDelta > 0 ? 'lime' : scoreDelta < 0 ? 'amber' : 'cyan',
+    },
+    head: `From ${prev.score} → ${curr.score}`,
+    rows: factors.map((f) => ({
+      tone: f.tone,
+      primary: `${f.sign} ${f.pts}${Math.abs(f.pts) === 1 ? 'pt' : 'pts'} — ${f.text}`,
+    })),
   }
 
-  // ALERTS line
-  const alertLines = []
-  if (alertsDelta === 0) alertLines.push('No new alerts since last scan')
-  else if (alertsDelta > 0) alertLines.push(`${pluralise(alertsDelta, 'new alert')} raised`)
-  else alertLines.push(`${pluralise(Math.abs(alertsDelta), 'alert')} cleared`)
+  // ── GAPS RESOLVED ──
+  const resolvedRows = resolved.map((g) => {
+    const url = `${g.domain}${g.path || ''}`
+    const k = gapKey(g)
+    const age = gapAgeDays(k, prev, nowMs)
+    const h = seedHash(k)
+    let trig = seedPick(SEED_CLOSE_COMPS, h)
+    const along = seedPick(SEED_CLOSE_COMPS, h >> 4)
+    if (trig === along) trig = seedPick(SEED_CLOSE_COMPS, h >> 7)
+    return {
+      tone: 'lime',
+      primary: `${url} — ${geoLabel(g)} ${g.tier || 'T2'} — was missing, now listed`,
+      sub: [`gap open ${age} days · Bybit added alongside ${trig}`],
+    }
+  })
+  const gapsResolvedSection = {
+    id: 'resolved',
+    label: 'GAPS RESOLVED',
+    badge: { glyph: '↓', value: resolved.length, tone: resolved.length ? 'lime' : 'cyan' },
+    rows: resolvedRows,
+    empty: resolvedRows.length === 0,
+    emptyText: 'No gaps resolved since last scan',
+  }
+
+  // ── NEW GAPS OPENED ──
+  const openedRows = opened.map((g) => {
+    const live = liveByKey[gapKey(g)] || g
+    const comps = competitorsForGap(live)
+    const url = `${g.domain}${g.path || ''}`
+    return {
+      tone: 'amber',
+      primary: `${url} — ${geoLabel(g)} ${g.tier || 'T2'} — ${comps.join(' + ')} present, Bybit absent`,
+    }
+  })
+  const newGapsSection = {
+    id: 'opened',
+    label: 'NEW GAPS OPENED',
+    badge: { glyph: '↑', value: opened.length, tone: opened.length ? 'amber' : 'cyan' },
+    rows: openedRows,
+    empty: openedRows.length === 0,
+    emptyText: 'No new gaps opened — Bybit holding ground',
+  }
+
+  // ── WINS — confirmed listings, sourced from resolved gaps ──
+  const winCount = Math.max(0, winsDelta)
+  const detected = formatScannedAt(curr.scannedAt)
+  const impactFor = (t) =>
+    t === 'T1'
+      ? 'T1 authority page · est. high editorial reach'
+      : t === 'T2'
+      ? 'T2 page · moderate qualified reach'
+      : 'T3 page · niche but on-intent reach'
+  const winRows =
+    winsDelta > 0
+      ? resolved.slice(0, winCount).map((g) => {
+          const url = `${g.domain}${g.path || ''}`
+          return {
+            tone: 'lime',
+            primary: `${url} — ${geoLabel(g)} ${g.tier || 'T2'}`,
+            sub: [`Confirmed: Bybit now listed · ${detected}`, `Impact: ${impactFor(g.tier)}`],
+          }
+        })
+      : []
+  const winsSection = {
+    id: 'wins',
+    label: 'WINS',
+    badge: {
+      glyph: winsDelta > 0 ? '↑' : winsDelta < 0 ? '↓' : '→',
+      value: Math.abs(winsDelta),
+      tone: winsDelta > 0 ? 'lime' : winsDelta < 0 ? 'amber' : 'cyan',
+    },
+    rows: winRows,
+    empty: winRows.length === 0,
+    emptyText:
+      winsDelta < 0
+        ? `${Math.abs(winsDelta)} ${pluralWord(winsDelta, 'listing')} lost since last scan`
+        : 'No new wins since last scan',
+  }
+
+  // ── ALERTS — only a count is known; seed plausible rows when raised ──
+  let alertRows = []
+  if (alertsDelta > 0) {
+    alertRows = Array.from({ length: alertsDelta }).map((_, i) => {
+      const h = seedHash(`alert${i}${curr.scannedAt}`)
+      const site = seedPick(SEED_ALERT_SITES, h)
+      const why = seedPick(
+        [
+          'competitor block strengthened',
+          'negative sentiment cluster forming',
+          'listing demoted below the fold',
+          'editorial refresh excluded Bybit',
+        ],
+        h >> 3
+      )
+      return { tone: 'amber', primary: `${site} — ${why} — worth a same-day look` }
+    })
+  }
+  const alertsSection = {
+    id: 'alerts',
+    label: 'ALERTS',
+    badge: {
+      glyph: alertsDelta > 0 ? '↑' : alertsDelta < 0 ? '↓' : '→',
+      value: Math.abs(alertsDelta),
+      tone: alertsDelta > 0 ? 'amber' : 'cyan',
+    },
+    rows: alertRows,
+    empty: alertRows.length === 0,
+    emptyText:
+      alertsDelta < 0
+        ? `${Math.abs(alertsDelta)} ${pluralWord(alertsDelta, 'alert')} cleared — field stable`
+        : 'No new alerts since last scan — field stable',
+  }
+
+  // ── COMPETITOR MOVES — always shown, every tracked competitor ──
+  const moverCount = moves.filter((m) => m.delta !== 0).length
+  const anyGain = moves.some((m) => m.delta > 0)
+  const compSection = {
+    id: 'competitors',
+    label: 'COMPETITOR MOVES',
+    badge: {
+      glyph: anyGain ? '↑' : moverCount ? '↓' : '→',
+      value: moverCount,
+      tone: anyGain ? 'amber' : moverCount ? 'lime' : 'cyan',
+    },
+    rows: moves.map((m) => ({ tone: m.tone, primary: `${m.name} ${m.glyph} — ${m.text}` })),
+    empty: moves.length === 0,
+    emptyText: 'No tracked competitors',
+  }
 
   return {
     hasPrevious: true,
-    rows: [
-      { label: 'SCORE', delta: scoreDelta, good: scoreDelta > 0, lines: [scoreBits.join(', ')] },
-      { label: 'GAPS', delta: gapsDelta, good: gapsDelta < 0, lines: gapLines },
-      { label: 'WINS', delta: winsDelta, good: winsDelta > 0, lines: winLines },
-      { label: 'ALERTS', delta: alertsDelta, good: alertsDelta < 0, lines: alertLines },
+    scoreDelta,
+    gapsDelta,
+    winsDelta,
+    alertsDelta,
+    sections: [
+      scoreSection,
+      gapsResolvedSection,
+      newGapsSection,
+      winsSection,
+      alertsSection,
+      compSection,
     ],
   }
-}
-
-function diffArrowColor(delta, good) {
-  if (delta === 0) return HZ.teal // informational — cyan
-  return good ? DIFF_LIME : DIFF_AMBER
 }
 
 function ChevronIcon({ open }) {
@@ -630,6 +916,94 @@ function DeltaChip({ label, delta, positiveIsGood }) {
       {label} {arrow}
       {Math.abs(delta)}
     </span>
+  )
+}
+
+// One collapsible sub-row of the "vs last scan" expanded panel. Header =
+// uppercase cyan label + tone-coloured [glyph value] badge; body = rows with a
+// tone-coloured primary line and optional muted "└ sub" lines.
+function DiffSection({ section, open, onToggle }) {
+  const badgeColor = DIFF_TONE[section.badge.tone] || HZ.teal
+  return (
+    <div>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-label={`Toggle ${section.label}`}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle()
+          }
+        }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          cursor: 'pointer',
+          userSelect: 'none',
+          padding: '4px 0',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span
+            style={{
+              color: HZ.teal,
+              fontWeight: 700,
+              fontSize: 11,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {section.label}
+          </span>
+          <span style={{ color: badgeColor, fontWeight: 700, fontSize: 11 }}>
+            [{section.badge.glyph}
+            {section.badge.value}]
+          </span>
+        </span>
+        <span style={{ color: HZ.muted, display: 'inline-flex' }}>
+          <ChevronIcon open={open} />
+        </span>
+      </div>
+      <div
+        style={{
+          maxHeight: open ? 1400 : 0,
+          opacity: open ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.25s ease',
+        }}
+        aria-hidden={!open}
+      >
+        <div
+          style={{ padding: '6px 0 4px 2px', display: 'flex', flexDirection: 'column', gap: 8 }}
+        >
+          {section.head && (
+            <div style={{ color: HZ.text, fontWeight: 600 }}>{section.head}</div>
+          )}
+          {section.empty ? (
+            <div style={{ color: HZ.muted }}>{section.emptyText}</div>
+          ) : (
+            section.rows.map((r, i) => {
+              const rowColor = DIFF_TONE[r.tone] || HZ.muted
+              return (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ color: rowColor }}>{r.primary}</div>
+                  {(r.sub || []).map((s, j) => (
+                    <div key={j} style={{ color: HZ.muted, paddingLeft: 12 }}>
+                      └ {s}
+                    </div>
+                  ))}
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -1452,84 +1826,284 @@ function CmoBriefPanel({ open, brief, mode, setMode, onClose, onCopy, copied }) 
   )
 }
 
-function GapRow({ gap, index, highlighted }) {
+function GapRow({ gap, index, highlighted, isOpen, onToggle, onAskIntel }) {
   const [hover, setHover] = useState(false)
   const mailtoHref = buildOutreachMailto(gap)
   const opp = gap._opp ?? oppScore(gap)
+  const comps = competitorsForGap(gap)
+  const geo = normaliseGeo(gap.country)
+  const site = gapUrl(gap)
+  const clos = closabilityFor(gap)
+  const closLabel = clos >= 0.85 ? 'HIGH' : clos >= 0.6 ? 'MED' : 'LOW'
+  const closColor = clos >= 0.85 ? '#94c864' : clos >= 0.6 ? '#f59e0b' : '#00d4e8'
+
+  const stop = (e) => e.stopPropagation()
+
+  const askIntel = (e) => {
+    e.stopPropagation()
+    onAskIntel?.(
+      `User is looking at a priority gap: ${site}, ${geo}, ${gap.tier}, competitors: ${
+        comps.join(', ') || 'none'
+      }. Surface the most actionable intelligence about closing this gap.`,
+      intelKit.gap({ site, geo, tier: gap.tier, comps }),
+    )
+  }
+
   return (
     <div
       id={`gap-row-${gapSlug(gap)}`}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0,1fr) auto auto auto auto',
-        alignItems: 'center',
-        gap: 12,
-        padding: '10px 12px',
-        background: hover ? HZ.elevated : 'transparent',
         borderBottom: `1px solid ${HZ.border}`,
-        transition: 'background 0.15s',
         animation: highlighted
           ? 'srpGapPulse 0.5s ease-out 1'
           : `srpRowFade 380ms cubic-bezier(0.16,1,0.3,1) ${index * 50}ms both`,
       }}
     >
-      <div style={{ minWidth: 0, overflow: 'hidden' }}>
-        <div
-          style={{
-            fontFamily: FONT_BODY,
-            fontSize: 13,
-            fontWeight: 500,
-            color: HZ.text,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {gap.domain}
-          <span style={{ color: HZ.muted }}>{gap.path}</span>
-        </div>
-        {gap.description && (
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={isOpen}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle()
+          }
+        }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0,1fr) auto auto auto auto auto',
+          alignItems: 'center',
+          gap: 12,
+          padding: '10px 12px',
+          cursor: 'pointer',
+          userSelect: 'none',
+          background: hover || isOpen ? HZ.elevated : 'transparent',
+          transition: 'background 0.15s',
+        }}
+      >
+        <div style={{ minWidth: 0, overflow: 'hidden' }}>
           <div
             style={{
               fontFamily: FONT_BODY,
-              fontSize: 11,
-              color: HZ.muted,
-              marginTop: 2,
+              fontSize: 13,
+              fontWeight: 500,
+              color: HZ.text,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
             }}
           >
-            {gap.description}
+            {gap.domain}
+            <span style={{ color: HZ.muted }}>{gap.path}</span>
           </div>
-        )}
+          {gap.description && (
+            <div
+              style={{
+                fontFamily: FONT_BODY,
+                fontSize: 11,
+                color: HZ.muted,
+                marginTop: 2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {gap.description}
+            </div>
+          )}
+        </div>
+        <OppBadge opp={opp} />
+        <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: HZ.muted, minWidth: 60 }}>
+          {gap.country}
+        </span>
+        <TierBadge tier={gap.tier} />
+        <a
+          href={mailtoHref}
+          onClick={stop}
+          title="Draft outreach"
+          aria-label={`Draft outreach to ${gap.domain}`}
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 13,
+            color: HZ.muted,
+            textDecoration: 'none',
+            padding: '0 4px',
+            opacity: 0.5,
+            transition: 'opacity 0.15s, color 0.15s',
+            lineHeight: 1,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = HZ.teal }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = HZ.muted }}
+        >
+          ✉
+        </a>
+        <span
+          style={{
+            display: 'inline-flex',
+            color: HZ.muted,
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.25s ease',
+          }}
+        >
+          <ChevronIcon open={isOpen} />
+        </span>
       </div>
-      <OppBadge opp={opp} />
-      <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: HZ.muted, minWidth: 60 }}>
-        {gap.country}
-      </span>
-      <TierBadge tier={gap.tier} />
-      <a
-        href={mailtoHref}
-        title="Draft outreach"
-        aria-label={`Draft outreach to ${gap.domain}`}
+
+      {/* Inline expansion */}
+      <div
         style={{
-          fontFamily: FONT_MONO,
-          fontSize: 13,
-          color: HZ.muted,
-          textDecoration: 'none',
-          padding: '0 4px',
-          opacity: 0.5,
-          transition: 'opacity 0.15s, color 0.15s',
-          lineHeight: 1,
+          maxHeight: isOpen ? 560 : 0,
+          opacity: isOpen ? 1 : 0,
+          overflow: 'hidden',
+          transition:
+            'max-height 0.4s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease',
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = HZ.teal }}
-        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = HZ.muted }}
+        aria-hidden={!isOpen}
       >
-        ✉
-      </a>
+        <div
+          style={{
+            padding: '14px 14px 18px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+            background: 'rgba(255,255,255,0.015)',
+          }}
+        >
+          {/* Row 1 — metrics strip */}
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 18,
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              color: HZ.muted,
+              letterSpacing: '0.06em',
+            }}
+          >
+            <span>
+              OPP{' '}
+              <span style={{ color: oppColor(opp), fontWeight: 700, fontSize: 13 }}>{opp}</span>
+            </span>
+            <span style={{ color: HZ.border }}>·</span>
+            <span>
+              COMPETITORS:{' '}
+              <span style={{ color: HZ.text, fontWeight: 700 }}>{comps.length}</span>
+            </span>
+            <span style={{ color: HZ.border }}>·</span>
+            <span>
+              CLOSABILITY:{' '}
+              <span style={{ color: closColor, fontWeight: 700 }}>{closLabel}</span>
+            </span>
+          </div>
+
+          {/* Row 2 — why this gap */}
+          <div>
+            <div
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 10,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: HZ.muted,
+                marginBottom: 6,
+              }}
+            >
+              Why this gap
+            </div>
+            <div style={{ fontFamily: FONT_BODY, fontSize: 13, lineHeight: 1.6, color: '#c8d0dc' }}>
+              Sites in {gap.tier} / {geo} carry high editorial authority — a listing here is a
+              compounding ranking signal. Competitors know this, which is why{' '}
+              {comps.slice(0, 2).join(' and ') || 'rivals'}
+              {comps.length ? ' already appear here' : ' are circling'}.
+            </div>
+          </div>
+
+          {/* Row 3 — competitors present */}
+          <div>
+            <div
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 10,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: HZ.muted,
+                marginBottom: 8,
+              }}
+            >
+              Competitors present
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {comps.length === 0 ? (
+                <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: HZ.muted }}>
+                  None detected — open field.
+                </span>
+              ) : (
+                comps.map((c) => {
+                  const m = competitorMeta(c)
+                  return (
+                    <span
+                      key={c}
+                      style={{
+                        fontFamily: FONT_MONO,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '3px 8px',
+                        borderRadius: 3,
+                        background: `${m.color}22`,
+                        color: m.color,
+                        border: `1px solid ${m.color}55`,
+                        letterSpacing: '0.04em',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {c} {gap.tier}
+                    </span>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Row 4 — action strip */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+              paddingTop: 12,
+              borderTop: `1px solid ${HZ.border}`,
+            }}
+          >
+            <a
+              href={mailtoHref}
+              onClick={stop}
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                padding: '8px 14px',
+                borderRadius: 4,
+                cursor: 'pointer',
+                background: 'transparent',
+                color: HZ.teal,
+                border: `1px solid rgba(0,212,232,0.4)`,
+                textDecoration: 'none',
+              }}
+            >
+              DRAFT OUTREACH
+            </a>
+            <AskIntelButton onClick={askIntel} />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1548,12 +2122,18 @@ const closeBtnStyle = {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const ScanResultsPanel = forwardRef(function ScanResultsPanel(
-  { visible, scanData, onClose, onDraftOutreach },
+  { visible, scanData, onClose, onDraftOutreach, onAskIntel },
   ref
 ) {
   const [expanded, setExpanded] = useState(false)
+  // Which Priority Gap card is expanded inline (one at a time).
+  const [expandedGap, setExpandedGap] = useState(null)
   // "vs last scan" expandable diff row.
   const [diffOpen, setDiffOpen] = useState(false)
+  // Per-section collapse state for the expanded diff panel. Empty map = every
+  // section open (DiffSection treats `!== false` as open), so clearing this
+  // re-expands all sections on each panel open.
+  const [sectionsOpen, setSectionsOpen] = useState({})
   const [barHover, setBarHover] = useState(false)
   const [prevSnapshot, setPrevSnapshot] = useState(null)
   // Intelligence layer UI state.
@@ -1572,6 +2152,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     if (visible && !wasVisibleRef.current) {
       setOpenCount((c) => c + 1)
       setDiffOpen(false)
+      setSectionsOpen({}) // all sections expanded by default on each open
       // Scan completion: capture the previously-stored snapshot to diff against,
       // then persist the current results for the next scan. Seed a synthetic
       // prior scan if none exists so the diff is never blank (req e).
@@ -1586,7 +2167,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
         if (!prev) prev = seedPriorSnapshot(scanData)
         setPrevSnapshot(prev)
         try {
-          localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(buildSnapshot(scanData)))
+          localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(buildSnapshot(scanData, prev)))
         } catch {
           /* localStorage unavailable — diff still works in-memory this session */
         }
@@ -1595,6 +2176,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     if (!visible) {
       setExpanded(false)
       setDiffOpen(false)
+      setSectionsOpen({})
       setProjOpen(false)
       setPlanOpen(false)
       setBriefOpen(false)
@@ -1621,7 +2203,10 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
   }
 
   const scanDiff = useMemo(
-    () => (scanData ? computeScanDiff(scanData, prevSnapshot) : { hasPrevious: false, rows: [] }),
+    () =>
+      scanData
+        ? buildDiffSections(scanData, prevSnapshot)
+        : { hasPrevious: false, scoreDelta: 0, gapsDelta: 0, winsDelta: 0, alertsDelta: 0, sections: [] },
     [scanData, prevSnapshot]
   )
 
@@ -1704,9 +2289,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     ? momentumFor(topComp, prevSnapshot)
     : { delta: 0, glyph: '→', color: HZ.muted }
   const scoreDelta =
-    scanData.scoreDelta != null
-      ? scanData.scoreDelta
-      : scanDiff.rows.find((r) => r.label === 'SCORE')?.delta ?? 0
+    scanData.scoreDelta != null ? scanData.scoreDelta : scanDiff.scoreDelta ?? 0
   const cmoBrief = buildCmoBrief({
     scanData,
     sortedByOpp: sortedGaps,
@@ -1761,6 +2344,36 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           <span>{sortedGaps.length} GAPS FOUND</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {onAskIntel && (
+            <AskIntelButton
+              onClick={() => {
+                const tg = sortedGaps[0]
+                const ctx = `You are reviewing the post-scan results. EU presence/threat score ${
+                  scanData.score ?? 0
+                }, ${sortedGaps.length} gaps found, top by OPP: ${
+                  tg ? gapUrl(tg) : 'none'
+                }.`
+                onAskIntel(
+                  ctx,
+                  tg
+                    ? intelKit.scan({
+                        score: scanData.score ?? 0,
+                        gapName: gapUrl(tg),
+                        geo: normaliseGeo(tg.country),
+                        tier: tg.tier,
+                        comps: competitorsForGap(tg).length,
+                      })
+                    : intelKit.scan({
+                        score: scanData.score ?? 0,
+                        gapName: 'no open gaps',
+                        geo: '—',
+                        tier: '—',
+                        comps: 0,
+                      }),
+                )
+              }}
+            />
+          )}
           <button
             onClick={() => setBriefOpen(true)}
             style={{
@@ -1984,14 +2597,22 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           ) : (
             <>
               <div key={`gaps-${openCount}`}>
-                {visibleGaps.map((gap, i) => (
-                  <GapRow
-                    key={`${gap.domain}-${gap.path}-${i}`}
-                    gap={gap}
-                    index={i}
-                    highlighted={highlightGapId === `gap-row-${gapSlug(gap)}`}
-                  />
-                ))}
+                {visibleGaps.map((gap, i) => {
+                  const slug = gapSlug(gap)
+                  return (
+                    <GapRow
+                      key={`${gap.domain}-${gap.path}-${i}`}
+                      gap={gap}
+                      index={i}
+                      highlighted={highlightGapId === `gap-row-${slug}`}
+                      isOpen={expandedGap === slug}
+                      onToggle={() =>
+                        setExpandedGap((prev) => (prev === slug ? null : slug))
+                      }
+                      onAskIntel={onAskIntel}
+                    />
+                  )
+                })}
               </div>
               {!expanded && remainingGaps > 0 && (
                 <button
@@ -2082,12 +2703,12 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
         {/* Inline diff panel — slides up directly above the bar */}
         <div
           style={{
-            maxHeight: diffOpen ? 640 : 0,
+            maxHeight: diffOpen ? 2600 : 0,
             opacity: diffOpen ? 1 : 0,
             overflow: 'hidden',
             borderTop: diffOpen ? `1px solid ${HZ.border}` : '1px solid transparent',
             transition:
-              'max-height 0.4s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease, border-color 0.3s ease',
+              'max-height 0.45s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease, border-color 0.3s ease',
           }}
           aria-hidden={!diffOpen}
         >
@@ -2097,41 +2718,37 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                 background: HZ.surface,
                 border: `1px solid ${HZ.border}`,
                 borderRadius: 6,
-                padding: '16px 18px',
+                padding: '6px 18px',
                 fontFamily: FONT_MONO,
                 fontSize: 12,
                 lineHeight: 1.5,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 14,
               }}
             >
               {scanDiff.hasPrevious ? (
-                scanDiff.rows.map((row) => {
-                  const arrow = row.delta > 0 ? '↑' : row.delta < 0 ? '↓' : '→'
-                  const color = diffArrowColor(row.delta, row.good)
-                  return (
-                    <div key={row.label}>
-                      <div style={{ letterSpacing: '0.06em' }}>
-                        <span style={{ color: '#ffffff', fontWeight: 700 }}>{row.label}</span>{' '}
-                        <span style={{ color, fontWeight: 700 }}>
-                          {arrow}
-                          {Math.abs(row.delta)}
-                        </span>
-                      </div>
-                      {row.lines.map((line, i) => (
-                        <div
-                          key={i}
-                          style={{ color: HZ.muted, paddingLeft: 2, marginTop: 4 }}
-                        >
-                          └ {line}
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })
+                scanDiff.sections.map((s, idx) => (
+                  <div
+                    key={s.id}
+                    style={{
+                      padding: '12px 0',
+                      borderTop: idx > 0 ? `1px solid ${HZ.border}` : 'none',
+                    }}
+                  >
+                    <DiffSection
+                      section={s}
+                      open={sectionsOpen[s.id] !== false}
+                      onToggle={() =>
+                        setSectionsOpen((m) => ({
+                          ...m,
+                          [s.id]: m[s.id] === false ? true : false,
+                        }))
+                      }
+                    />
+                  </div>
+                ))
               ) : (
-                <div style={{ color: HZ.muted }}>
+                <div style={{ color: HZ.muted, padding: '12px 0' }}>
                   First scan — no previous data to compare.
                 </div>
               )}

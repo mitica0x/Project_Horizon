@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useOrg } from '../context/OrgContext'
 import { getWindows } from '../utils/horizonData'
+import { intelKit } from '../utils/intelKit'
 import { fetchActivations, fetchDecisions } from '../lib/horizonStore'
 import { fmtDate } from '../../lib/radar/scoring'
 import {
@@ -145,6 +146,23 @@ export default function BriefPanel({ onAskIntel }) {
   const intelContext = () =>
     `You are reviewing the weekly intelligence brief. Opening: "${model.opening}" Activity: ${model.acts} activations, ${model.skips} skips, posture ${posture.signal} (${posture.days}d). Pattern: ${model.patternRead}`
 
+  const briefGap =
+    model.acts === 0
+      ? 'the field is moving while your activation log is empty — narrative shows competitor motion you have not answered'
+      : model.skips > model.acts
+      ? 'your skips outpace activations — the brief reads steadier than your actual cadence'
+      : 'field competitor moves are not yet reflected against your own activation timing'
+
+  const askIntel = () =>
+    onAskIntel(
+      intelContext(),
+      intelKit.brief({
+        events: model.forward.length,
+        moves: FIELD_DID.length,
+        gap: briefGap,
+      }),
+    )
+
   // ---- PDF export -----------------------------------------------------------
   const exportPdf = async () => {
     setExporting(true)
@@ -249,7 +267,7 @@ export default function BriefPanel({ onAskIntel }) {
         title="CEO Brief"
         accent="#00d4e8"
         sub="Narrative-first — auto-assembled from live suite data"
-        right={onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
+        right={onAskIntel && <AskIntelButton onClick={askIntel} />}
       />
 
       <div

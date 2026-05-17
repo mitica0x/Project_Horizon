@@ -1,18 +1,40 @@
 import { useMemo } from 'react'
 import { getDayStatus, statusVerdict, fmtClock } from '../utils/horizonData'
+import { intelKit } from '../utils/intelKit'
 import { Card, RagDot, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 
 // P2 — Morning Status Board. 90-second daily briefing. Verdict reframed:
 // HIGH PRESSURE / ELEVATED WATCH (cyan) · ALL CLEAR (lime). No crisis red.
 
+const VERDICT_KEY = 'horizon_status_verdict'
+const DAY = 86400000
+
 export default function StatusBoard({ onDismiss, onAskIntel }) {
   const { signals, overall, updatedAt } = useMemo(() => getDayStatus(), [])
   const verdict = statusVerdict(overall)
 
+  // How long the day verdict has held (seeded 3d baseline on first sight).
+  const verdictDays = useMemo(() => {
+    const now = Date.now()
+    let rec = null
+    try { rec = JSON.parse(localStorage.getItem(VERDICT_KEY) || 'null') } catch { rec = null }
+    if (!rec || rec.label !== verdict.label) {
+      rec = { label: verdict.label, since: now - 3 * DAY }
+      try { localStorage.setItem(VERDICT_KEY, JSON.stringify(rec)) } catch { /* ignore */ }
+    }
+    return Math.max(0, Math.round((now - rec.since) / DAY))
+  }, [verdict.label])
+
   const intelContext = () =>
-    `You are reviewing the morning status board. Verdict: ${verdict.label}. Signals — ${signals
+    `You are reviewing the morning status board. Verdict: ${verdict.label} (held ${verdictDays}d). Signals — ${signals
       .map(s => `${s.label}: ${s.rag.toUpperCase()} (${s.note})`)
       .join('; ')}.`
+
+  const askIntel = () =>
+    onAskIntel(
+      intelContext(),
+      intelKit.status({ label: verdict.label, days: verdictDays }),
+    )
 
   return (
     <Card style={{ padding: '22px 28px' }}>
@@ -67,7 +89,7 @@ export default function StatusBoard({ onDismiss, onAskIntel }) {
           <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: 'var(--text-muted)' }}>
             Last updated {fmtClock(updatedAt)}
           </span>
-          {onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
+          {onAskIntel && <AskIntelButton onClick={askIntel} />}
           <button
             onClick={onDismiss}
             style={{
