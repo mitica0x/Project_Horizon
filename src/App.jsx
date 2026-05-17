@@ -14,6 +14,7 @@ import { GAPS_T1, GAPS_T2, WINS, SCORE, PAGES_PRESENT, PAGES_TRACKED, TABLE_DATA
 import { sortItems, CRITERIA } from './utils/sortEngine'
 import SortBar from './components/SortBar'
 import CompetitorPanel from './components/CompetitorPanel'
+import AccountMenu from './components/AccountMenu'
 import { computeThreatScore } from './utils/threatScore'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -269,6 +270,7 @@ export default function App() {
           }}>
             C<span style={{ color: '#5BA8B5' }}>0</span>insiglieri
           </div>
+          <AccountMenu />
         </div>
         <style>{`
           @keyframes livePulse {
