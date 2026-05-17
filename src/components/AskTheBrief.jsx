@@ -249,18 +249,35 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                   )}
                   <button
                     onClick={() => setOpen(false)}
+                    aria-label="Close Intel"
+                    title="Close"
                     style={{
-                      background: 'none',
-                      border:     'none',
-                      color:      '#8892a4',
-                      fontSize:   20,
-                      cursor:     'pointer',
-                      lineHeight: 1,
-                      padding:    '0 2px',
-                      transition: 'color 0.15s',
+                      display:        'flex',
+                      alignItems:     'center',
+                      justifyContent: 'center',
+                      width:          28,
+                      height:         28,
+                      borderRadius:   '50%',
+                      background:     'rgba(148,200,100,0.10)',
+                      border:         '1px solid rgba(148,200,100,0.35)',
+                      color:          '#c8d0dc',
+                      fontSize:       20,
+                      cursor:         'pointer',
+                      lineHeight:     1,
+                      padding:        0,
+                      flexShrink:     0,
+                      transition:     'background 0.15s, border-color 0.15s, color 0.15s',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.color = '#ffffff' }}
-                    onMouseLeave={e => { e.currentTarget.style.color = '#8892a4' }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background  = 'rgba(148,200,100,0.20)'
+                      e.currentTarget.style.borderColor = '#94c864'
+                      e.currentTarget.style.color       = '#ffffff'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background  = 'rgba(148,200,100,0.10)'
+                      e.currentTarget.style.borderColor = 'rgba(148,200,100,0.35)'
+                      e.currentTarget.style.color       = '#c8d0dc'
+                    }}
                   >×</button>
                 </div>
               </div>
