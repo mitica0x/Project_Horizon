@@ -360,6 +360,7 @@ export default function App() {
         visible={scanResultsVisible}
         scanData={scanData}
         onClose={() => setScanResultsVisible(false)}
+        onDraftOutreach={(q) => askBriefRef.current?.openWithQuestion(q)}
       />
       <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 48 }}>
 
