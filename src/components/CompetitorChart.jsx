@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { COMPETITORS, TABLE_DATA as SITE_TABLE_DATA, GAPS_T1, GAPS_T2 } from '../data/staticData'
 import { computeThreatScore, buildHookSentence, getThreatColor } from '../utils/threatScore'
 
-export default function CompetitorChart({ onOpenPanel }) {
+export default function CompetitorChart({ onOpenPanel, liveCompetitors, liveCoverage }) {
   const [animated, setAnimated] = useState(false)
   const [hoveredIndex, setHoveredIndex] = useState(null)
 
@@ -11,12 +11,19 @@ export default function CompetitorChart({ onOpenPanel }) {
     return () => clearTimeout(t)
   }, [])
 
-  const ranked = [...COMPETITORS]
+  const seededRanked = [...COMPETITORS]
     .map(c => {
       const td = computeThreatScore(c.name, SITE_TABLE_DATA, GAPS_T1, GAPS_T2)
       return { ...c, ...td, hook: buildHookSentence(td) }
     })
     .sort((a, b) => b.score - a.score)
+
+  // Real competitor momentum (appearance counts across all scan rows, sorted
+  // desc) when scan data exists; seeded threat ranking otherwise.
+  const live = Array.isArray(liveCompetitors) && liveCompetitors.length > 0
+  const ranked = live
+    ? liveCompetitors.map(c => ({ name: c.name, score: c.count, tier: 2, hook: '' }))
+    : seededRanked
 
   const maxScore = ranked[0]?.score || 1
 
@@ -201,9 +208,9 @@ export default function CompetitorChart({ onOpenPanel }) {
       </div>
       <div style={{ display: 'flex', gap: '40px' }}>
         {[
-          { label: 'Pages Present', value: 13,    accent: '#00d4e8' },
-          { label: 'Pages Tracked', value: 25,    accent: '#ffffff' },
-          { label: 'Coverage',      value: '52%', accent: '#94c864' },
+          { label: 'Pages Present', value: liveCoverage ? liveCoverage.present : 13,        accent: '#00d4e8' },
+          { label: 'Pages Tracked', value: liveCoverage ? liveCoverage.tracked : 25,        accent: '#ffffff' },
+          { label: 'Coverage',      value: `${liveCoverage ? liveCoverage.pct : 52}%`,      accent: '#94c864' },
         ].map(({ label, value, accent }) => (
           <div key={label}>
             <div style={{

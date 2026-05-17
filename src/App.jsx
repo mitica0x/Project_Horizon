@@ -83,6 +83,69 @@ function transformScan(payload) {
     }))
     .sort((a, b) => b.threatScore - a.threatScore)
 
+  // ── Dashboard wiring — spec-exact real values for the main display.
+  // Additive only: ScanResultsPanel keeps reading score/gaps/competitors as
+  // before. `dashboard` is null when no rows so the seeded fallback holds.
+  const normGeo = (g) => {
+    const s = String(g || '').toLowerCase()
+    if (s.includes('gb') || s.includes('uk')) return 'UK'
+    if (s.includes('de')) return 'DE'
+    if (s.includes('europe') || s === 'eu') return 'EU'
+    return 'GLOBAL'
+  }
+  const tierOf = (r) =>
+    r.tier ||
+    ((r.opp_score ?? 0) >= 40 ? 'T1' : (r.opp_score ?? 0) >= 20 ? 'T2' : 'T3')
+  const dTotal = results.length
+  const dBybit = results.filter((r) => r.bybit_present).length
+  const dEuScore = dTotal ? Math.round((dBybit / dTotal) * 100) : 0
+  const dT1Gaps = results.filter(
+    (r) => !r.bybit_present && tierOf(r) === 'T1',
+  ).length
+  const dBrandAlerts = results.filter(
+    (r) =>
+      !r.bybit_present &&
+      (r.competitors_present || []).some((c) => c === 'Revolut' || c === 'N26'),
+  ).length
+  const dGapCards = results
+    .filter((r) => !r.bybit_present)
+    .slice()
+    .sort((a, b) => (b.opp_score ?? 0) - (a.opp_score ?? 0))
+    .slice(0, 9)
+    .map((r) => ({
+      url: r.url,
+      domain: host(r.url),
+      path: r.path || '',
+      competitors:
+        r.competitors_present && r.competitors_present.length
+          ? r.competitors_present
+          : ['Unverified'],
+      country: normGeo(r.geo),
+      tier: tierOf(r),
+      _opp: r.opp_score,
+    }))
+  const dBarAcc = {}
+  results.forEach((r) =>
+    (r.competitors_present || []).forEach((c) => {
+      dBarAcc[c] = (dBarAcc[c] || 0) + 1
+    }),
+  )
+  const dCompetitorBars = Object.entries(dBarAcc)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+  const dashboard =
+    dTotal > 0
+      ? {
+          sitesMonitored: dTotal,
+          bybitPresent: dBybit,
+          tier1Gaps: dT1Gaps,
+          brandAlerts: dBrandAlerts,
+          euScore: dEuScore,
+          gapCards: dGapCards,
+          competitorBars: dCompetitorBars,
+        }
+      : null
+
   const total = payload.total_tracked || results.length
   const verified =
     payload.verified ?? results.filter(considered).length
@@ -104,6 +167,7 @@ function transformScan(payload) {
     scannedAt: payload.scanned_at || new Date().toISOString(),
     gaps,
     competitors,
+    dashboard,
     _total: total,
     _verified: verified,
     _failed: failed,
@@ -438,9 +502,15 @@ export default function App() {
     askBriefRef.current?.openWithQuestion(question)
   }
 
+  // Real scan data drives the main display when present; seeded staticData is
+  // the fallback (only overridden when scan_results.length > 0 — see transformScan).
+  const dash = scanData?.dashboard || null
+  const t1Source = dash?.gapCards ?? GAPS_T1
   const sortedGapsT1 = sortState.gaps_t1.length > 0
-    ? sortItems(GAPS_T1, sortState.gaps_t1)
-    : [...GAPS_T1].sort((a,b) => (b.competitors||[]).length - (a.competitors||[]).length)
+    ? sortItems(t1Source, sortState.gaps_t1)
+    : dash
+      ? t1Source // real gaps already sorted by opp_score DESC (top 9)
+      : [...GAPS_T1].sort((a,b) => (b.competitors||[]).length - (a.competitors||[]).length)
   const sortedGapsT2 = sortState.gaps_t2.length > 0
     ? sortItems(GAPS_T2, sortState.gaps_t2)
     : [...GAPS_T2].sort((a,b) => (a.competitors||[]).length - (b.competitors||[]).length)
@@ -535,7 +605,18 @@ export default function App() {
 
       {view === 'dashboard' ? (
       <div className="hz-shell">
-      <HeroCanvas scanState={scanState} />
+      <HeroCanvas
+        scanState={scanState}
+        targetScore={dash?.euScore}
+        metrics={
+          dash && {
+            sitesMonitored: dash.sitesMonitored,
+            bybitPresent: dash.bybitPresent,
+            tier1Gaps: dash.tier1Gaps,
+            brandAlerts: dash.brandAlerts,
+          }
+        }
+      />
       <ScanResultsPanel
         ref={scanResultsPanelRef}
         visible={scanResultsVisible}
@@ -602,7 +683,7 @@ export default function App() {
           <div className="container">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               <span style={{ fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 16, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--t1)' }}>Priority Gaps — Tier 1</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '1px 8px', borderRadius: 99, background: 'var(--t1-dim)', color: 'var(--t1)', border: '1px solid rgba(148,200,100,.3)' }}>{GAPS_T1.length}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '1px 8px', borderRadius: 99, background: 'var(--t1-dim)', color: 'var(--t1)', border: '1px solid rgba(148,200,100,.3)' }}>{t1Source.length}</span>
             </div>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-muted)', marginBottom: 20 }}>Sites where Tier 1 competitors are listed and Bybit is absent</p>
             <SortBar sectionId="gaps_t1" activeCriteria={sortState.gaps_t1} onToggle={(key) => handleToggle('gaps_t1', key)} onReset={() => handleReset('gaps_t1')} strategyBanner={strategyBanners.gaps_t1} onApplyStrategy={(c) => handleApplyStrategy('gaps_t1', c)} />
@@ -622,6 +703,14 @@ export default function App() {
                 siteData={SITE_TABLE_DATA}
                 gapsT1={GAPS_T1}
                 gapsT2={GAPS_T2}
+                liveCompetitors={dash?.competitorBars}
+                liveCoverage={
+                  dash && {
+                    present: dash.bybitPresent,
+                    tracked: dash.sitesMonitored,
+                    pct: dash.euScore,
+                  }
+                }
                 onOpenPanel={handleOpenPanel}
               />
             </div>
@@ -678,7 +767,7 @@ export default function App() {
           <div className="container">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 16 }}>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 300, color: 'var(--text-muted)' }}>C<span style={{ color: '#5BA8B5' }}>0</span>insiglieri</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--cyan)' }}>{SCORE}% EU Presence</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--cyan)' }}>{dash?.euScore ?? SCORE}% EU Presence</span>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 300, color: 'var(--text-muted)', textAlign: 'right' }}>Project Horiz<span style={{ color: '#94c864' }}>0</span>n v4 · Sentry · Mirror · Herald</span>
             </div>
           </div>

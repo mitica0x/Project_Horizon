@@ -44,7 +44,16 @@ const isActivelyScanning = (s) => s === 'sentry' || s === 'mirror' || s === 'her
 const SWEEP_BG_IDLE = 'conic-gradient(from 0deg, transparent 0deg, rgba(0,212,232,0.18) 0deg, transparent 70deg)';
 const SWEEP_BG_SCAN = 'conic-gradient(from 0deg, transparent 0deg, rgba(0,212,232,0.45) 0deg, transparent 70deg)';
 
-export default function HeroCanvas({ scanState = 'idle' } = {}) {
+export default function HeroCanvas({ scanState = 'idle', targetScore, metrics } = {}) {
+  // Real EU-presence score / metrics when scan data exists; seeded otherwise.
+  const TARGET =
+    typeof targetScore === 'number' && targetScore >= 0 ? targetScore : SCORE;
+  const M = metrics || {
+    sitesMonitored: 25,
+    bybitPresent: 13,
+    tier1Gaps: 9,
+    brandAlerts: 1,
+  };
   const [score, setScore] = useState(0);
   const [hovered, setHovered] = useState(null);
   const [runId, setRunId] = useState(0);
@@ -92,12 +101,12 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
     function step(ts) {
       if (!start) start = ts;
       const p = Math.min((ts - start) / duration, 1);
-      setScore(Math.round(p * SCORE));
+      setScore(Math.round(p * TARGET));
       if (p < 1) raf = requestAnimationFrame(step);
     }
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [runId]);
+  }, [runId, TARGET]);
 
   // mouse parallax + sweep + blip drift loop
   useEffect(() => {
@@ -299,10 +308,10 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
         </div>
         <div style={{ display:'flex', gap:12, marginTop:32 }}>
           {[
-            { label:'Sites Monitored', value:25, color:'#fff' },
-            { label:'Bybit Present',   value:13, color:'#00d4e8' },
-            { label:'Tier 1 Gaps',     value:9,  color:'#ff4d6d' },
-            { label:'Brand Alerts',    value:1,  color:'#D4A853' },
+            { label:'Sites Monitored', value:M.sitesMonitored, color:'#fff' },
+            { label:'Bybit Present',   value:M.bybitPresent,    color:'#00d4e8' },
+            { label:'Tier 1 Gaps',     value:M.tier1Gaps,       color:'#ff4d6d' },
+            { label:'Brand Alerts',    value:M.brandAlerts,     color:'#D4A853' },
           ].map((k,i) => (
             <div key={i} style={{ background:'rgba(19,25,41,0.85)',
               border:'1px solid rgba(255,255,255,0.06)', borderRadius:8,
