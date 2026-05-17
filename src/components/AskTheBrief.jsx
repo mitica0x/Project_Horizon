@@ -210,6 +210,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
             >
               {/* HEADER */}
               <div style={{
+                position:       'relative',
                 flexShrink:     0,
                 padding:        '18px 20px',
                 borderBottom:   '1px solid rgba(148,200,100,0.1)',
@@ -252,31 +253,22 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                     aria-label="Close Intel"
                     title="Close"
                     style={{
-                      display:        'flex',
-                      alignItems:     'center',
+                      position: 'absolute',
+                      top: '12px',
+                      right: '12px',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.15)',
+                      border: '1.5px solid rgba(255,255,255,0.4)',
+                      color: '#ffffff',
+                      fontSize: '18px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
                       justifyContent: 'center',
-                      width:          28,
-                      height:         28,
-                      borderRadius:   '50%',
-                      background:     'rgba(148,200,100,0.10)',
-                      border:         '1px solid rgba(148,200,100,0.35)',
-                      color:          '#c8d0dc',
-                      fontSize:       20,
-                      cursor:         'pointer',
-                      lineHeight:     1,
-                      padding:        0,
-                      flexShrink:     0,
-                      transition:     'background 0.15s, border-color 0.15s, color 0.15s',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background  = 'rgba(148,200,100,0.20)'
-                      e.currentTarget.style.borderColor = '#94c864'
-                      e.currentTarget.style.color       = '#ffffff'
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background  = 'rgba(148,200,100,0.10)'
-                      e.currentTarget.style.borderColor = 'rgba(148,200,100,0.35)'
-                      e.currentTarget.style.color       = '#c8d0dc'
+                      lineHeight: 1,
+                      zIndex: 10
                     }}
                   >×</button>
                 </div>
