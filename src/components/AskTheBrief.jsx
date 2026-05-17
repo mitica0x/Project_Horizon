@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ANTHROPIC_KEY } from '../config'
+import { supabase } from '../lib/supabase'
 
 const DEFAULT_PILLS = [
   'Where are our biggest gaps this week?',
@@ -200,19 +200,17 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
     setLoading(true)
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/intel/chat`, {
         method: 'POST',
         headers: {
-          'Content-Type':                              'application/json',
-          'x-api-key':                                 ANTHROPIC_KEY,
-          'anthropic-version':                         '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          model:      'claude-sonnet-4-6',
-          max_tokens: 1024,
-          system:     (sysContext ? `${SYSTEM}\n\n${sysContext}` : SYSTEM) + guideSection,
-          messages:   newMessages.map(m => ({ role: m.role, content: m.content })),
+          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          system: (sysContext ? `${SYSTEM}\n\n${sysContext}` : SYSTEM) + guideSection,
         }),
       })
 

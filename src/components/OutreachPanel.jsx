@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ANTHROPIC_KEY, CONTACT_EMAIL } from '../config'
+import { CONTACT_EMAIL } from '../config'
+import { supabase } from '../lib/supabase'
 
 const SYSTEM_PROMPT = 'You are an outreach strategist for Bybit, Europe\'s leading crypto exchange. Draft professional, concise outreach for fintech comparison sites. Always lead with value for the site, not Bybit\'s needs. Keep responses under 250 words.'
 
@@ -45,26 +46,18 @@ export default function OutreachPanel({ site, onClose }) {
   }, [onClose])
 
   async function send(prompt) {
-    if (!ANTHROPIC_KEY) {
-      setResponse('__NO_KEY__')
-      return
-    }
     setLoading(true)
     setResponse('')
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/outreach/draft`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_KEY,
-          'anthropic-version': '2023-06-01',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: prompt }],
-        }),
+        body: JSON.stringify({ prompt }),
       })
       const data = await res.json()
       setResponse(data.content?.[0]?.text || 'No response received.')
