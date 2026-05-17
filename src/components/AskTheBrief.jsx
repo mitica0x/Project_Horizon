@@ -10,6 +10,86 @@ const DEFAULT_PILLS = [
 
 const SYSTEM = `You are Intel, an AI analyst embedded in Project Horizon — a competitive intelligence system monitoring Bybit's EU market presence across 25 fintech comparison sites. You help C0insiglieri Team (Bybit Lead Marketing Europe) identify gaps, threats, and outreach opportunities. Be direct, concise, and actionable. No filler. Intelligence-grade tone.`
 
+const HORIZ0N_GUIDE = `
+HORIZ0N PRODUCT GUIDE — use this when the user asks how to use the product, what
+something means, or what they should do.
+
+SECTIONS:
+- SCAN: The core intelligence view. Shows EU Presence Score (% of tracked sites where
+  Bybit appears), Field Map (who owns what by tier and geography), Gap Cards (sites where
+  Bybit is absent and competitors are present), Competitor Momentum (how often each
+  competitor appears across all tracked sites), BUILD PLAN (30-day action sequence),
+  CMO BRIEF (executive summary), VS LAST SCAN (what changed since previous scan).
+- STATUS: Daily action board. Shows recommended actions today based on current scan,
+  recent changes in the field, and upcoming activation windows.
+- WINDOWS: Timing intelligence. Shows when activation windows open based on editorial
+  cycles, seasonal patterns, and competitor movement.
+- OUTCOMES: Activation tracking. Log what you activated, when, and what happened.
+  Builds the pattern database over time.
+- LEDGER: Decision log. Record strategic decisions and their rationale. INTEL learns
+  from these over time.
+- SIGNAL: Verdict system. Gives MOVE/PREPARE/HOLD based on current field conditions.
+  MOVE means activate now. PREPARE means get ready, window opening soon. HOLD means
+  conditions unfavorable.
+- BRIEF: Full intelligence brief. Narrative-first summary of the current situation.
+  Toggle client-ready to generate a version safe to share externally.
+- NETWORK: Contact intelligence. Maps known contacts to specific gap sites. Tracks
+  outreach status per gap.
+- TRACE: Source monitor. Tracks the URLs being monitored and their scan status.
+- N0VA: AI war room. Deep strategic session mode for complex decisions.
+- INTEL: This panel. Ask anything about the market or how to use Horiz0n.
+
+KEY METRICS:
+- EU Presence Score: % of tracked sites where Bybit appears. Higher = better field
+  coverage. Currently calculated as (sites with Bybit) / (total sites tracked) × 100.
+- OPP Score: Opportunity score per site (0-100). Higher = bigger gap to close. Driven
+  by site tier, competitor density, and geographic priority.
+- T1/T2/T3 Tiers: Site quality tiers. T1 = highest traffic/authority comparison sites
+  (finder.com, investopedia, moneysavingexpert). T2 = mid-tier. T3 = niche/emerging.
+- Bybit Present: Site where Bybit is already listed. Green in Field Map.
+- Brand Alerts: Sites where brand-threat competitors (Revolut, N26) appear and Bybit
+  is absent. High priority gaps.
+- Competitor Momentum: How many tracked sites each competitor appears on. Longer bar =
+  wider presence = stronger competitor.
+
+KEY ACTIONS:
+- SCAN NOW: Triggers a fresh crawl of all 24 tracked sites. Updates all data. Use when
+  you want latest data outside the daily automatic scan (runs 6am UTC daily).
+- BUILD PLAN: Auto-generated 30-day outreach sequence based on current gaps, sorted by
+  OPP score. Shows which sites to contact in what order.
+- CMO BRIEF: One-click executive summary. Toggle client-ready to remove internal
+  notes. Safe to send to Bybit leadership.
+- VS LAST SCAN: Shows what changed since the previous scan — new gaps, closed gaps,
+  competitor movements.
+- Draft Outreach: On each gap card, generates a draft outreach email to the site's
+  editorial team.
+- SCAN → OUTCOMES flow: When you activate a gap (contact a site and get listed), log
+  it in OUTCOMES. This builds your pattern database and improves WINDOWS predictions.
+
+THE WORKFLOW:
+1. Check SIGNAL — is it MOVE, PREPARE, or HOLD?
+2. If MOVE — open SCAN, look at top OPP score gaps in your priority geo
+3. Open BUILD PLAN — follow the 30-day sequence
+4. Use Draft Outreach to contact sites
+5. Log activations in OUTCOMES
+6. Track decisions in LEDGER
+7. Use BRIEF / CMO BRIEF for weekly reporting to leadership
+`;
+
+// Route product/how-to questions to the guide; market questions use scan context.
+const isProductQuestion = (userMessage) => {
+  const productKeywords = [
+    'what is', 'what does', 'how do i', 'how to', 'what should',
+    'explain', 'what means', 'opp score', 'eu presence', 'tier',
+    'signal', 'windows', 'outcomes', 'ledger', 'brief', 'network',
+    'trace', 'nova', 'n0va', 'scan now', 'build plan', 'cmo brief',
+    'how does', 'what are', 'tell me about horiz0n', 'help', 'guide',
+    'workflow', 'how should i', 'what do i do', 'getting started'
+  ];
+  const lower = (userMessage || '').toLowerCase();
+  return productKeywords.some(kw => lower.includes(kw));
+};
+
 function SendIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -107,6 +187,12 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
     const text = (overrideText ?? input).trim()
     if (!text || loading) return
 
+    // Product/how-to questions get the Horiz0n guide appended; market questions
+    // keep the existing market-intel system prompt only.
+    const guideSection = isProductQuestion(text)
+      ? `\n\nPRODUCT GUIDE:\n${HORIZ0N_GUIDE}`
+      : ''
+
     const userMsg = { role: 'user', content: text }
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
@@ -125,7 +211,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
         body: JSON.stringify({
           model:      'claude-sonnet-4-6',
           max_tokens: 1024,
-          system:     sysContext ? `${SYSTEM}\n\n${sysContext}` : SYSTEM,
+          system:     (sysContext ? `${SYSTEM}\n\n${sysContext}` : SYSTEM) + guideSection,
           messages:   newMessages.map(m => ({ role: m.role, content: m.content })),
         }),
       })
