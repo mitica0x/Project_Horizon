@@ -302,13 +302,13 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                   position: 'fixed',
                   top: '16px',
                   right: '16px',
-                  width: '32px',
-                  height: '32px',
+                  width: '24px',
+                  height: '24px',
                   borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.2)',
-                  border: '1.5px solid rgba(255,255,255,0.6)',
-                  color: '#ffffff',
-                  fontSize: '18px',
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: '14px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -336,27 +336,6 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                   textTransform:  'uppercase',
                 }}>
                   ⬡ Intel
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  {messages.length > 0 && (
-                    <button
-                      onClick={() => setMessages([])}
-                      style={{
-                        background:  'none',
-                        border:      'none',
-                        fontFamily:  "'Geist', sans-serif",
-                        fontSize:    11,
-                        color:       '#8892a4',
-                        cursor:      'pointer',
-                        padding:     0,
-                        transition:  'color 0.15s',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.color = '#ffffff' }}
-                      onMouseLeave={e => { e.currentTarget.style.color = '#8892a4' }}
-                    >
-                      Clear
-                    </button>
-                  )}
                 </div>
               </div>
 
