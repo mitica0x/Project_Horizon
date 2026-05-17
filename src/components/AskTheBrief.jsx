@@ -90,6 +90,32 @@ const isProductQuestion = (userMessage) => {
   return productKeywords.some(kw => lower.includes(kw));
 };
 
+// Attachment support — one image or PDF per message.
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+const ATTACH_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,application/pdf'
+const MAX_ATTACH_BYTES = 5 * 1024 * 1024
+
+const fileToBase64 = (file) =>
+  new Promise((res) => {
+    const reader = new FileReader()
+    reader.onload = () => res(reader.result.split(',')[1])
+    reader.readAsDataURL(file)
+  })
+
+function PaperclipIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M21 11.5l-8.5 8.5a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5l-9 9a2 2 0 0 1-3-3l8-8"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 function SendIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -163,8 +189,46 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
   const [sysContext, setSysContext] = useState(null)
   const [intelInsight, setIntelInsight] = useState(null)
   const [intelChips,   setIntelChips]   = useState(null)
+  const [attachment,   setAttachment]   = useState(null) // { file, name, type, isImage, previewUrl }
+  const [attachError,  setAttachError]  = useState(null)
   const threadRef    = useRef(null)
   const textareaRef  = useRef(null)
+  const fileInputRef = useRef(null)
+
+  const clearAttachment = () => {
+    setAttachment(prev => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl)
+      return null
+    })
+    setAttachError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const onPickFile = (e) => {
+    const file = e.target.files && e.target.files[0]
+    if (!file) return
+    const ok =
+      IMAGE_TYPES.includes(file.type) || file.type === 'application/pdf'
+    if (!ok) {
+      setAttachError('Unsupported file type')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+    if (file.size > MAX_ATTACH_BYTES) {
+      setAttachError('File too large (max 5MB)')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+    const isImage = IMAGE_TYPES.includes(file.type)
+    setAttachError(null)
+    setAttachment({
+      file,
+      name: file.name,
+      type: file.type,
+      isImage,
+      previewUrl: isImage ? URL.createObjectURL(file) : null,
+    })
+  }
 
   const pills = suggestionPills && suggestionPills.length ? suggestionPills : DEFAULT_PILLS
 
@@ -185,7 +249,8 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
 
   const handleSend = async (overrideText) => {
     const text = (overrideText ?? input).trim()
-    if (!text || loading) return
+    const att = attachment
+    if ((!text && !att) || loading) return
 
     // Product/how-to questions get the Horiz0n guide appended; market questions
     // keep the existing market-intel system prompt only.
@@ -193,13 +258,30 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
       ? `\n\nPRODUCT GUIDE:\n${HORIZ0N_GUIDE}`
       : ''
 
-    const userMsg = { role: 'user', content: text }
+    // History + thread render stay string-content (unchanged). The attachment
+    // is injected only into the outgoing API message construction.
+    const displayText = text || `📎 ${att ? att.name : ''}`
+    const userMsg = { role: 'user', content: displayText }
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
     setInput('')
     setLoading(true)
 
     try {
+      const apiMessages = newMessages.map(m => ({ role: m.role, content: m.content }))
+      if (att) {
+        const base64 = await fileToBase64(att.file)
+        const apiText = text || `Please review the attached ${att.isImage ? 'image' : 'document'}.`
+        const block = att.isImage
+          ? { type: 'image', source: { type: 'base64', media_type: att.type, data: base64 } }
+          : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
+        apiMessages[apiMessages.length - 1] = {
+          role: 'user',
+          content: [block, { type: 'text', text: apiText }],
+        }
+      }
+      clearAttachment()
+
       const { data: sess } = await supabase.auth.getSession()
       const token = sess?.session?.access_token
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/intel/chat`, {
@@ -209,7 +291,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          messages: apiMessages,
           system: (sysContext ? `${SYSTEM}\n\n${sysContext}` : SYSTEM) + guideSection,
         }),
       })
@@ -483,6 +565,74 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                   </div>
                 )}
 
+                {/* attachment preview chip */}
+                {attachment && (
+                  <div style={{
+                    display:      'inline-flex',
+                    alignItems:   'center',
+                    gap:          8,
+                    alignSelf:    'flex-start',
+                    maxWidth:     '100%',
+                    background:   'rgba(255,255,255,0.04)',
+                    border:       '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 8,
+                    padding:      '6px 8px 6px 6px',
+                    marginBottom: 8,
+                  }}>
+                    {attachment.isImage ? (
+                      <img
+                        src={attachment.previewUrl}
+                        alt={attachment.name}
+                        style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
+                      />
+                    ) : (
+                      <span style={{
+                        width: 28, height: 28, borderRadius: 4, flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'rgba(0,212,232,0.12)', color: '#00d4e8',
+                        fontFamily: "'Geist Mono', monospace", fontSize: 9, fontWeight: 700,
+                      }}>PDF</span>
+                    )}
+                    <span style={{
+                      fontFamily: "'Geist Mono', monospace",
+                      fontSize: 11,
+                      color: '#c8d0dc',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: 320,
+                    }}>{attachment.name}</span>
+                    <button
+                      onClick={clearAttachment}
+                      title="Remove attachment"
+                      aria-label="Remove attachment"
+                      style={{
+                        background: 'none', border: 'none', color: '#8892a4',
+                        fontSize: 14, lineHeight: 1, cursor: 'pointer', padding: '0 2px',
+                        flexShrink: 0,
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#ffffff' }}
+                      onMouseLeave={e => { e.currentTarget.style.color = '#8892a4' }}
+                    >×</button>
+                  </div>
+                )}
+                {attachError && (
+                  <div style={{
+                    fontFamily: "'Geist Mono', monospace",
+                    fontSize: 11,
+                    color: '#ff4d6d',
+                    marginBottom: 8,
+                  }}>{attachError}</div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ATTACH_ACCEPT}
+                  onChange={onPickFile}
+                  style={{ display: 'none' }}
+                />
+
                 {/* textarea + send */}
                 <div style={{
                   display:    'flex',
@@ -516,16 +666,41 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                     onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
                   />
                   <button
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    disabled={loading || !!attachment}
+                    title="Attach image or PDF (max 5MB)"
+                    aria-label="Attach a file"
+                    style={{
+                      width:           36,
+                      height:          36,
+                      borderRadius:    8,
+                      background:      'rgba(255,255,255,0.04)',
+                      border:          '1px solid rgba(255,255,255,0.08)',
+                      color:           attachment ? '#94c864' : '#8892a4',
+                      cursor:          loading || attachment ? 'not-allowed' : 'pointer',
+                      opacity:         loading || attachment ? 0.5 : 1,
+                      display:         'flex',
+                      alignItems:      'center',
+                      justifyContent:  'center',
+                      flexShrink:      0,
+                      transition:      'color 0.15s, border-color 0.15s, opacity 0.15s',
+                    }}
+                    onMouseEnter={e => { if (!loading && !attachment) e.currentTarget.style.borderColor = 'rgba(0,212,232,0.3)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
+                  >
+                    <PaperclipIcon />
+                  </button>
+                  <button
                     onClick={() => handleSend()}
-                    disabled={!input.trim() || loading}
+                    disabled={(!input.trim() && !attachment) || loading}
                     style={{
                       width:           36,
                       height:          36,
                       borderRadius:    8,
                       background:      '#00d4e8',
                       border:          'none',
-                      cursor:          !input.trim() || loading ? 'not-allowed' : 'pointer',
-                      opacity:         !input.trim() || loading ? 0.3 : 1,
+                      cursor:          (!input.trim() && !attachment) || loading ? 'not-allowed' : 'pointer',
+                      opacity:         (!input.trim() && !attachment) || loading ? 0.3 : 1,
                       display:         'flex',
                       alignItems:      'center',
                       justifyContent:  'center',
