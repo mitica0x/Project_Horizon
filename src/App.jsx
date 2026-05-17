@@ -124,15 +124,15 @@ function transformScan(payload) {
       tier: tierOf(r),
       _opp: r.opp_score,
     }))
-  const dBarAcc = {}
-  results.forEach((r) =>
-    (r.competitors_present || []).forEach((c) => {
-      dBarAcc[c] = (dBarAcc[c] || 0) + 1
-    }),
-  )
-  const dCompetitorBars = Object.entries(dBarAcc)
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
+  // Competitor bars come from the backend competitorCounts tally. Empty or
+  // absent → []; CompetitorChart then keeps its seeded fallback.
+  const dCompetitorBars =
+    payload.competitorCounts && typeof payload.competitorCounts === 'object'
+      ? Object.entries(payload.competitorCounts)
+          .filter(([, n]) => n > 0)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+      : []
   const dashboard =
     dTotal > 0
       ? {
@@ -156,7 +156,7 @@ function transformScan(payload) {
   const threat = payload.threat_score ?? 0
 
   return {
-    score: Math.max(0, Math.min(100, 100 - threat)),
+    score: payload.score ?? Math.max(0, Math.min(100, 100 - threat)),
     sitesMonitored: total,
     sitesChecked: verified,
     tier1Gaps:
