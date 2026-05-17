@@ -21,11 +21,94 @@ import StatusBoard from './components/StatusBoard'
 import HorizonView from './components/HorizonView'
 import Nova from './components/Nova'
 import { getDayStatus } from './utils/horizonData'
+import { supabase, getActiveOrgId } from './lib/supabase'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const STATUS_VIEWED_KEY = 'horizon_last_status_viewed'
 const todayKey = () => new Date().toISOString().slice(0, 10)
+
+// Production backend (Railway). Real crawler data replaces seeded scan data.
+const BACKEND =
+  import.meta.env.VITE_BACKEND_URL || 'https://web-production-e204.up.railway.app'
+
+async function authHeaders() {
+  try {
+    const { data } = await supabase.auth.getSession()
+    const t = data?.session?.access_token
+    return t ? { Authorization: `Bearer ${t}` } : {}
+  } catch {
+    return {}
+  }
+}
+
+// Map /api/scan/latest (or /api/scan/trigger summary) → the shape
+// ScanResultsPanel already consumes, so the intelligence layer keeps working.
+function transformScan(payload) {
+  const results = Array.isArray(payload?.results) ? payload.results : []
+  const host = (u) => {
+    try { return new URL(u).hostname.replace(/^www\./, '') } catch { return u }
+  }
+  const considered = (r) => r.status === 'success' || r.status === 'stale'
+  const sevFor = (t) => (t === 'T1' ? 'high' : t === 'T2' ? 'medium' : 'low')
+
+  const gaps = results
+    .filter((r) => !r.bybit_present && considered(r))
+    .map((r) => ({
+      domain: host(r.url),
+      path: r.path || '',
+      severity: sevFor(r.tier),
+      tier: r.tier,
+      country: r.geo,
+      description: `Bybit absent — ${
+        (r.competitors_present || []).slice(0, 3).join(', ') || 'no named competitors'
+      }`,
+      _opp: r.opp_score,
+      unverified: r.status === 'stale',
+    }))
+
+  const acc = {}
+  results.forEach((r) =>
+    (r.competitors_present || []).forEach((c) => {
+      acc[c] = acc[c] || { name: c, blocksOnGaps: 0 }
+      if (!r.bybit_present && considered(r)) acc[c].blocksOnGaps += 1
+    }),
+  )
+  const maxBlocks = Math.max(1, ...Object.values(acc).map((c) => c.blocksOnGaps))
+  const competitors = Object.values(acc)
+    .map((c) => ({
+      name: c.name,
+      blocksOnGaps: c.blocksOnGaps,
+      threatScore: Math.round((c.blocksOnGaps / maxBlocks) * 100),
+    }))
+    .sort((a, b) => b.threatScore - a.threatScore)
+
+  const total = payload.total_tracked || results.length
+  const verified =
+    payload.verified ?? results.filter(considered).length
+  const failed =
+    payload.failed ?? results.filter((r) => r.status === 'unverified').length
+  const wins =
+    payload.wins_this_scan ?? results.filter((r) => r.bybit_present).length
+  const threat = payload.threat_score ?? 0
+
+  return {
+    score: Math.max(0, Math.min(100, 100 - threat)),
+    sitesMonitored: total,
+    sitesChecked: verified,
+    tier1Gaps:
+      payload.t1_gaps ?? gaps.filter((g) => g.tier === 'T1').length,
+    brandAlerts: 0,
+    wins,
+    coverage: total ? Math.round((verified / total) * 100) : 0,
+    scannedAt: payload.scanned_at || new Date().toISOString(),
+    gaps,
+    competitors,
+    _total: total,
+    _verified: verified,
+    _failed: failed,
+  }
+}
 
 // DEV mock used by the T-key fake scan and as a fallback if /api/dashboard
 // is missing on the backend. Mirrors the hero stat-card numbers (52 / 25 / 9 / 1)
@@ -85,6 +168,54 @@ export default function App() {
   const [statusOpen, setStatusOpen] = useState(false)
   const [novaOpen, setNovaOpen] = useState(false)
   const dayStatus = useState(() => getDayStatus().overall)[0]
+  const [scanProgress, setScanProgress] = useState(null)
+  const [marketMoves, setMarketMoves] = useState(null)
+  const [scanEmpty, setScanEmpty] = useState(false)
+
+  // On load: pull the latest real scan + market moves for this org so the
+  // dashboard shows live crawler data, not seeds.
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const orgId = getActiveOrgId()
+      if (!orgId) return
+      const headers = await authHeaders()
+      try {
+        const r = await fetch(
+          `${BACKEND}/api/scan/latest?org_id=${encodeURIComponent(orgId)}`,
+          { headers },
+        )
+        if (alive && r.ok) {
+          const j = await r.json()
+          if ((j.results || []).length > 0) {
+            setScanData(transformScan(j))
+            setScanResultsVisible(true)
+          } else {
+            setScanEmpty(true)
+          }
+        } else if (alive) {
+          setScanEmpty(true)
+        }
+      } catch {
+        if (alive) setScanEmpty(true)
+      }
+      try {
+        const m = await fetch(
+          `${BACKEND}/api/market-moves?org_id=${encodeURIComponent(orgId)}&limit=20`,
+          { headers },
+        )
+        if (alive && m.ok) {
+          const mj = await m.json()
+          setMarketMoves(mj.moves || [])
+        }
+      } catch {
+        /* market moves optional — panel falls back to seeded narrative */
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [])
 
   // S8 — single section-aware INTEL entry point.
   const openIntel = (ctx, intel) => askBriefRef.current?.openWithContext(ctx, intel)
@@ -129,44 +260,94 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  // Recognisable hosts streamed during the wait (the trigger endpoint runs
+  // the crawl synchronously server-side; this animates progress client-side).
+  const SCAN_TICKER = [
+    'finder.com', 'uswitch.com', 'thisismoney.co.uk', 'investopedia.com',
+    'nerdwallet.com', 'coinmarketcap.com', 'forbes.com', 'cryptoradar.de',
+    'kryptoszene.de', 'tradersunion.com', 'cryptonews.com', 'blockworks.co',
+  ]
+
   async function runScan() {
     if (scanState !== 'idle') return
-    console.log('[runScan] start')
-    // Make sure the radar hero is in view so the scan-state visuals are visible
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-    try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
-      for (const agent of ['sentry', 'mirror', 'herald']) {
-        console.log(`[runScan] setScanState('${agent}')`)
-        setScanState(agent)
-        const res = await fetch(`${backendUrl}/run/${agent}`, { method: 'POST' })
-        if (!res.ok) throw new Error(`${agent} failed`)
-      }
-      console.log("[runScan] setScanState('complete')")
-      setScanState('complete')
-      // Fetch live dashboard for the post-scan results panel.
-      // /api/dashboard isn't built on the backend yet — null triggers the
-      // panel's error state ("SCAN COMPLETE — DATA UNAVAILABLE"), no crash.
-      try {
-        const res = await fetch(`${backendUrl}/api/dashboard`)
-        const data = res.ok ? await res.json() : null
-        setScanData(data)
-        console.log('[runScan] dashboard fetch:', res.status, data ? 'ok' : 'no data')
-      } catch (e) {
-        console.log('[runScan] dashboard fetch failed:', e?.message ?? e)
-        setScanData(null)
-      }
-      setScanResultsVisible(true)
-      // Auto-scroll to the panel — 600ms lets the slide-up start so the user
-      // sees the panel emerging rather than jumping to blank space.
-      setTimeout(() => {
-        window.scrollBy({ top: 400, behavior: 'smooth' })
-      }, 600)
-      setTimeout(() => { console.log("[runScan] setScanState('idle')"); setScanState('idle') }, 3000)
-    } catch (err) {
-      console.log('[runScan] error:', err?.message ?? err)
+    const orgId = getActiveOrgId()
+    if (!orgId) {
       setScanState('error')
-      setTimeout(() => { console.log("[runScan] setScanState('idle') after error"); setScanState('idle') }, 4000)
+      setScanProgress('No organisation bound to this account.')
+      setTimeout(() => { setScanState('idle'); setScanProgress(null) }, 4000)
+      return
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
+
+    // Pre-scan timestamp so polling knows when fresh results land.
+    let prevAt = null
+    try {
+      const r = await fetch(
+        `${BACKEND}/api/scan/latest?org_id=${encodeURIComponent(orgId)}`,
+        { headers },
+      )
+      if (r.ok) prevAt = (await r.json()).scanned_at || null
+    } catch { /* first scan — no prior */ }
+
+    setScanState('sentry')
+    let tick = 0
+    const ticker = setInterval(() => {
+      const host = SCAN_TICKER[tick % SCAN_TICKER.length]
+      setScanProgress(`Checking ${host}… ✓`)
+      tick += 1
+    }, 1100)
+
+    try {
+      const tr = await fetch(`${BACKEND}/api/scan/trigger`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ org_id: orgId }),
+      })
+      if (!tr.ok) throw new Error(`scan trigger failed (${tr.status})`)
+      setScanState('mirror')
+
+      // Poll /api/scan/latest every 3s until results are newer than pre-scan.
+      let payload = null
+      for (let i = 0; i < 40; i += 1) {
+        await new Promise((s) => setTimeout(s, 3000))
+        try {
+          const lr = await fetch(
+            `${BACKEND}/api/scan/latest?org_id=${encodeURIComponent(orgId)}`,
+            { headers },
+          )
+          if (!lr.ok) continue
+          const j = await lr.json()
+          if (j.scanned_at && j.scanned_at !== prevAt && (j.results || []).length) {
+            payload = j
+            break
+          }
+        } catch { /* transient — keep polling */ }
+      }
+      // Fallback: the trigger response is itself the full summary.
+      if (!payload) payload = await tr.json().catch(() => null)
+      if (!payload || !(payload.results || []).length) {
+        throw new Error('scan produced no results')
+      }
+
+      clearInterval(ticker)
+      const data = transformScan(payload)
+      setScanData(data)
+      setScanEmpty(false)
+      setScanResultsVisible(true)
+      setScanState('complete')
+      setScanProgress(
+        `Scan complete — ${data.sitesChecked} sites checked, ` +
+          `${data.gaps.length} gaps found, ${data.wins} wins confirmed`,
+      )
+      setTimeout(() => window.scrollBy({ top: 400, behavior: 'smooth' }), 600)
+      setTimeout(() => { setScanState('idle'); setScanProgress(null) }, 5000)
+    } catch (err) {
+      clearInterval(ticker)
+      console.error('[runScan]', err?.message ?? err)
+      setScanState('error')
+      setScanProgress(`Scan failed: ${String(err?.message ?? err).slice(0, 80)}`)
+      setTimeout(() => { setScanState('idle'); setScanProgress(null) }, 5000)
     }
   }
 
@@ -293,7 +474,7 @@ export default function App() {
         boxSizing:            'border-box',
       }}>
         <div style={{
-          fontFamily:    "'Syne', sans-serif",
+          fontFamily:    "'Geist', sans-serif",
           fontSize:      12,
           fontWeight:    700,
           letterSpacing: '0.2em',
@@ -312,7 +493,7 @@ export default function App() {
               animation:    'livePulse 2s ease-in-out infinite',
             }} />
             <span style={{
-              fontFamily:    "'IBM Plex Mono', monospace",
+              fontFamily:    "'Geist Mono', monospace",
               fontSize:      10,
               color:         '#94c864',
               letterSpacing: '0.15em',
@@ -321,7 +502,7 @@ export default function App() {
             </span>
           </div>
           <div style={{
-            fontFamily: "'IBM Plex Sans', sans-serif",
+            fontFamily: "'Geist', sans-serif",
             fontSize:   11,
             color:      '#8892a4',
           }}>
@@ -359,11 +540,56 @@ export default function App() {
         ref={scanResultsPanelRef}
         visible={scanResultsVisible}
         scanData={scanData}
+        marketMoves={marketMoves}
         onClose={() => setScanResultsVisible(false)}
         onDraftOutreach={(q) => askBriefRef.current?.openWithQuestion(q)}
         onAskIntel={openIntel}
       />
       <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 48 }}>
+
+        {scanEmpty && !scanResultsVisible && (
+          <div className="container" style={{ paddingTop: 24 }}>
+            <div
+              style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                padding: '28px 30px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 16,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div>
+                <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 18, color: 'var(--white)' }}>
+                  No scan data yet
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                  Run the first crawl to populate live presence, gaps and competitor data.
+                </div>
+              </div>
+              <button
+                onClick={runScan}
+                disabled={scanState !== 'idle'}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 13,
+                  letterSpacing: '0.06em',
+                  color: scanState === 'idle' ? '#94c864' : 'var(--text-muted)',
+                  background: '#131929',
+                  border: '1px solid rgba(148,200,100,0.4)',
+                  borderRadius: 6,
+                  padding: '12px 22px',
+                  cursor: scanState === 'idle' ? 'pointer' : 'default',
+                }}
+              >
+                ⟳ Run first scan
+              </button>
+            </div>
+          </div>
+        )}
 
         {statusOpen && (
           <div id="hz-status" className="container" style={{ paddingTop: 24 }}>
@@ -488,6 +714,40 @@ export default function App() {
       <AskTheBrief ref={askBriefRef} onSortStrategy={handleSortStrategy} />
 
       {novaOpen && <Nova onExit={() => setNovaOpen(false)} onAskIntel={openIntel} />}
+
+      {scanProgress && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 2000,
+            background: '#131929',
+            border: `1px solid ${
+              scanState === 'error'
+                ? 'rgba(255,77,109,0.4)'
+                : scanState === 'complete'
+                ? 'rgba(148,200,100,0.4)'
+                : 'rgba(0,212,232,0.35)'
+            }`,
+            borderRadius: 8,
+            padding: '12px 22px',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12,
+            color:
+              scanState === 'error'
+                ? '#ff4d6d'
+                : scanState === 'complete'
+                ? '#94c864'
+                : '#00d4e8',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+            maxWidth: '90vw',
+          }}
+        >
+          {scanProgress}
+        </div>
+      )}
     </>
   )
 }

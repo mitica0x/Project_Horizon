@@ -185,10 +185,10 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
         zIndex: 200,
         whiteSpace: 'nowrap',
       }}>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#fff' }}>
+        <div style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#fff' }}>
           {hovered.domain}
         </div>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9,
+        <div style={{ fontFamily: "'Geist Mono', monospace", fontSize: 9,
           color, letterSpacing: '0.08em', marginTop: 4 }}>
           {label}
         </div>
@@ -286,9 +286,9 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
 
       {/* overlay */}
       <div style={{ position:'relative', zIndex:50, textAlign:'center',
-        fontFamily:"'Syne', sans-serif", pointerEvents:'none' }}>
+        fontFamily:"'Geist', sans-serif", pointerEvents:'none' }}>
         <div style={{ fontSize:96, fontWeight:700, lineHeight:1,
-          color:'#00d4e8', fontFamily:"'IBM Plex Mono', monospace",
+          color:'#00d4e8', fontFamily:"'Geist Mono', monospace",
           opacity: scanning ? 0.3 : 1,
           transition: 'opacity 300ms ease-out',
         }}>
@@ -308,7 +308,7 @@ export default function HeroCanvas({ scanState = 'idle' } = {}) {
               border:'1px solid rgba(255,255,255,0.06)', borderRadius:8,
               padding:'16px 20px', minWidth:90, textAlign:'center' }}>
               <div style={{ fontSize:28, fontWeight:700, color:k.color,
-                fontFamily:"'IBM Plex Mono', monospace" }}>{k.value}</div>
+                fontFamily:"'Geist Mono', monospace" }}>{k.value}</div>
               <div style={{ fontSize:10, color:'#8892a4', marginTop:4,
                 letterSpacing:'0.05em' }}>{k.label}</div>
             </div>

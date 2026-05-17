@@ -20,7 +20,7 @@ export default function AccountMenu() {
         {org?.name && (
           <span
             style={{
-              fontFamily: "'IBM Plex Mono', monospace",
+              fontFamily: "'Geist Mono', monospace",
               fontSize: 11,
               color: '#94c864',
               letterSpacing: '0.06em',
@@ -31,7 +31,7 @@ export default function AccountMenu() {
         )}
         <span
           style={{
-            fontFamily: "'IBM Plex Mono', monospace",
+            fontFamily: "'Geist Mono', monospace",
             fontSize: 10,
             color: 'var(--text-muted)',
           }}
@@ -42,7 +42,7 @@ export default function AccountMenu() {
       <button
         onClick={signOut}
         style={{
-          fontFamily: "'IBM Plex Mono', monospace",
+          fontFamily: "'Geist Mono', monospace",
           fontSize: 10,
           letterSpacing: '0.12em',
           textTransform: 'uppercase',

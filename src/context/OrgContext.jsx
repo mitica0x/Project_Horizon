@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase, setActiveOrgId } from '../lib/supabase'
+import { supabase, setActiveOrgId, setActiveOrgSlug } from '../lib/supabase'
 import { useAuth } from './AuthContext'
 
 const OrgContext = createContext(null)
@@ -14,7 +14,7 @@ function LoadingOrg() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontFamily: "'IBM Plex Mono', monospace",
+        fontFamily: "'Geist Mono', monospace",
         fontSize: 12,
         letterSpacing: '0.18em',
         textTransform: 'uppercase',
@@ -57,12 +57,14 @@ export function OrgProvider({ children }) {
           setError(qErr?.message ?? 'No organisation bound to this account.')
           setOrg(null)
           setActiveOrgId(null)
+          setActiveOrgSlug(null)
           setLoading(false)
           return
         }
 
         setOrg(data.orgs)
         setActiveOrgId(data.orgs.id)
+        setActiveOrgSlug(data.orgs.slug)
         setLoading(false)
       })
 

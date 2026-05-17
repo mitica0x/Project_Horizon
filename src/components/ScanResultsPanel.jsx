@@ -1097,11 +1097,14 @@ function StatCard({
   )
 }
 
-function CompetitorRow({ comp, maxScore, isVisible, index, momentum, blockedGaps }) {
+function CompetitorRow({ comp, maxScore, isVisible, index, momentum, blockedGaps, realMove }) {
   const [open, setOpen] = useState(false)
   const [hover, setHover] = useState(false)
   const pct = maxScore > 0 ? (comp.threatScore / maxScore) * 100 : 0
-  const narrative = narrativeFor(comp, momentum, blockedGaps)
+  // Real news headline (Section 9) takes precedence over seeded narrative.
+  const narrative = realMove?.headline
+    ? `${realMove.headline}${realMove.impact_level ? ` [${realMove.impact_level}]` : ''}`
+    : narrativeFor(comp, momentum, blockedGaps)
   const topGap = blockedGaps[0]
   return (
     <div style={{ borderBottom: `1px solid ${HZ.border}` }}>
@@ -1896,6 +1899,14 @@ function GapRow({ gap, index, highlighted, isOpen, onToggle, onAskIntel }) {
               textOverflow: 'ellipsis',
             }}
           >
+            {gap.unverified && (
+              <span
+                title="Automated check unavailable — verify manually or ask Intel"
+                style={{ color: HZ.amber, marginRight: 6, cursor: 'help' }}
+              >
+                ⚠
+              </span>
+            )}
             {gap.domain}
             <span style={{ color: HZ.muted }}>{gap.path}</span>
           </div>
@@ -2122,9 +2133,18 @@ const closeBtnStyle = {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const ScanResultsPanel = forwardRef(function ScanResultsPanel(
-  { visible, scanData, onClose, onDraftOutreach, onAskIntel },
+  { visible, scanData, marketMoves, onClose, onDraftOutreach, onAskIntel },
   ref
 ) {
+  // Latest real news headline per competitor (Section 9). Seeded narrative
+  // is used only when there is no real move for that competitor.
+  const movesByComp = useMemo(() => {
+    const m = {}
+    for (const mv of marketMoves || []) {
+      if (mv && mv.competitor && !m[mv.competitor]) m[mv.competitor] = mv
+    }
+    return m
+  }, [marketMoves])
   const [expanded, setExpanded] = useState(false)
   // Which Priority Gap card is expanded inline (one at a time).
   const [expandedGap, setExpandedGap] = useState(null)
@@ -2339,7 +2359,18 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           <span style={{ color: HZ.border }}>·</span>
           <span>{formatScannedAt(scanData.scannedAt)}</span>
           <span style={{ color: HZ.border }}>·</span>
-          <span>{scanData.sitesChecked ?? 0} SITES CHECKED</span>
+          <span
+            title={
+              (scanData._failed ?? 0) > 0
+                ? `${scanData._failed} site(s) could not be auto-verified — last known result shown where available`
+                : 'All tracked sites verified this scan'
+            }
+            style={{ color: (scanData._failed ?? 0) > 0 ? HZ.amber : HZ.muted }}
+          >
+            {scanData._verified ?? scanData.sitesChecked ?? 0} of{' '}
+            {scanData._total ?? scanData.sitesMonitored ?? 0} sites verified
+            {(scanData._failed ?? 0) > 0 ? ` · ⚠ ${scanData._failed}` : ''}
+          </span>
           <span style={{ color: HZ.border }}>·</span>
           <span>{sortedGaps.length} GAPS FOUND</span>
         </div>
@@ -2691,6 +2722,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                   index={i}
                   momentum={momentumFor(c, prevSnapshot)}
                   blockedGaps={gapsByCompetitor[c.name] || []}
+                  realMove={movesByComp[c.name]}
                 />
               ))}
             </div>

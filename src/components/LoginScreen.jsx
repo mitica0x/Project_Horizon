@@ -34,7 +34,7 @@ export default function LoginScreen() {
     border: '1px solid var(--border)',
     borderRadius: 6,
     padding: '11px 13px',
-    fontFamily: "'IBM Plex Mono', monospace",
+    fontFamily: "'Geist Mono', monospace",
     fontSize: 13,
     color: 'var(--white)',
     outline: 'none',
@@ -69,7 +69,7 @@ export default function LoginScreen() {
         {/* Wordmark — same Syne treatment as the app header */}
         <div
           style={{
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: "'Geist', sans-serif",
             fontSize: 28,
             fontWeight: 800,
             letterSpacing: '0.16em',
@@ -81,7 +81,7 @@ export default function LoginScreen() {
         </div>
         <div
           style={{
-            fontFamily: "'IBM Plex Mono', monospace",
+            fontFamily: "'Geist Mono', monospace",
             fontSize: 11,
             letterSpacing: '0.12em',
             color: 'var(--text-muted)',
@@ -97,7 +97,7 @@ export default function LoginScreen() {
           <label
             style={{
               display: 'block',
-              fontFamily: "'IBM Plex Mono', monospace",
+              fontFamily: "'Geist Mono', monospace",
               fontSize: 10,
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
@@ -121,7 +121,7 @@ export default function LoginScreen() {
           <label
             style={{
               display: 'block',
-              fontFamily: "'IBM Plex Mono', monospace",
+              fontFamily: "'Geist Mono', monospace",
               fontSize: 10,
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
@@ -145,7 +145,7 @@ export default function LoginScreen() {
           {error && (
             <div
               style={{
-                fontFamily: "'IBM Plex Mono', monospace",
+                fontFamily: "'Geist Mono', monospace",
                 fontSize: 12,
                 color: 'var(--red)',
                 marginTop: 18,
@@ -161,7 +161,7 @@ export default function LoginScreen() {
             style={{
               width: '100%',
               marginTop: 26,
-              fontFamily: "'IBM Plex Mono', monospace",
+              fontFamily: "'Geist Mono', monospace",
               fontSize: 13,
               letterSpacing: '0.12em',
               color: submitting ? 'var(--text-muted)' : 'var(--cyan)',

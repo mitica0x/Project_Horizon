@@ -25,13 +25,13 @@ export default function CompetitorChart({ onOpenPanel }) {
       background: '#131929',
       borderRadius: '12px',
       padding: '36px 40px 32px',
-      fontFamily: "'IBM Plex Sans', sans-serif",
+      fontFamily: "'Geist', sans-serif",
     }}>
 
       {/* Header */}
       <div style={{ marginBottom: '28px' }}>
         <div style={{
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: "'Geist', sans-serif",
           fontWeight: 700,
           fontSize: '12px',
           letterSpacing: '0.12em',
@@ -93,7 +93,7 @@ export default function CompetitorChart({ onOpenPanel }) {
                   background: comp.tier === 1 ? '#94c864' : comp.tier === 2 ? '#00d4e8' : '#8892a4',
                 }} />
                 <span style={{
-                  fontFamily: "'Syne', sans-serif",
+                  fontFamily: "'Geist', sans-serif",
                   fontWeight: 700,
                   fontSize: '16px',
                   color: isHov ? '#ffffff' : '#8892a4',
@@ -153,7 +153,7 @@ export default function CompetitorChart({ onOpenPanel }) {
 
               {/* Cell 3: Score */}
               <div style={{
-                fontFamily: "'IBM Plex Mono', monospace",
+                fontFamily: "'Geist Mono', monospace",
                 fontWeight: 600,
                 fontSize: '14px',
                 color: comp.score > 0 ? '#ffffff' : '#8892a4',
@@ -165,7 +165,7 @@ export default function CompetitorChart({ onOpenPanel }) {
               {/* Hook sentence — spans cols 2–3, row 2 */}
               <div style={{
                 gridColumn: '2 / 4',
-                fontFamily: "'IBM Plex Mono', monospace",
+                fontFamily: "'Geist Mono', monospace",
                 fontWeight: 400,
                 fontSize: '11px',
                 color: color || '#8892a4',
@@ -189,7 +189,7 @@ export default function CompetitorChart({ onOpenPanel }) {
         margin: '22px 0',
       }} />
       <div style={{
-        fontFamily: "'Syne', sans-serif",
+        fontFamily: "'Geist', sans-serif",
         fontWeight: 700,
         fontSize: '11px',
         letterSpacing: '0.1em',
@@ -207,7 +207,7 @@ export default function CompetitorChart({ onOpenPanel }) {
         ].map(({ label, value, accent }) => (
           <div key={label}>
             <div style={{
-              fontFamily: "'IBM Plex Sans', sans-serif",
+              fontFamily: "'Geist', sans-serif",
               fontSize: '13px',
               color: '#8892a4',
               marginBottom: '2px',
@@ -215,7 +215,7 @@ export default function CompetitorChart({ onOpenPanel }) {
               {label}
             </div>
             <div style={{
-              fontFamily: "'IBM Plex Mono', monospace",
+              fontFamily: "'Geist Mono', monospace",
               fontWeight: 600,
               fontSize: '24px',
               color: accent,

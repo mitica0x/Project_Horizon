@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase, supabaseConfigured, setActiveOrgId } from '../lib/supabase'
+import { supabase, supabaseConfigured, setActiveOrgId, setActiveOrgSlug } from '../lib/supabase'
 import LoginScreen from '../components/LoginScreen'
 
 const AuthContext = createContext(null)
@@ -16,7 +16,7 @@ function FullScreenMessage({ children, accent = 'var(--text-muted)' }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontFamily: "'IBM Plex Mono', monospace",
+        fontFamily: "'Geist Mono', monospace",
         fontSize: 12,
         letterSpacing: '0.18em',
         textTransform: 'uppercase',
@@ -61,6 +61,7 @@ export function AuthProvider({ children }) {
   async function signOut() {
     await supabase.auth.signOut()
     setActiveOrgId(null)
+    setActiveOrgSlug(null)
     setSession(null)
   }
 

@@ -34,3 +34,15 @@ export function setActiveOrgId(id) {
 export function getActiveOrgId() {
   return activeOrgId
 }
+
+// Active org slug — same lifecycle as activeOrgId. The data layer reads this to
+// gate demo seed data (e.g. the Bybit EU demo) without threading React context.
+let activeOrgSlug = null
+
+export function setActiveOrgSlug(slug) {
+  activeOrgSlug = slug ?? null
+}
+
+export function getActiveOrgSlug() {
+  return activeOrgSlug
+}

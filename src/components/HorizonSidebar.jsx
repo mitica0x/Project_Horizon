@@ -171,11 +171,11 @@ export default function HorizonSidebar({
       >
         {collapsed ? (
           <>
-            H<span style={{ color: 'var(--cyan)' }}>0</span>
+            H<span style={{ color: 'var(--cyan)', fontFamily: 'inherit', fontWeight: 'inherit', fontSize: 'inherit', lineHeight: 1, display: 'inline-block', fontVariantNumeric: 'lining-nums tabular-nums' }}>0</span>
           </>
         ) : (
           <>
-            HORIZ<span style={{ color: 'var(--cyan)' }}>0</span>N
+            HORIZ<span style={{ color: 'var(--cyan)', fontFamily: 'inherit', fontWeight: 'inherit', fontSize: 'inherit', lineHeight: 1, display: 'inline-block', fontVariantNumeric: 'lining-nums tabular-nums' }}>0</span>N
           </>
         )}
       </button>

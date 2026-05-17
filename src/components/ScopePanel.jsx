@@ -39,7 +39,7 @@ function TierBadge({ tier }) {
   const s = TIER_STYLES[tier] || TIER_STYLES['Tier 2']
   return (
     <span style={{
-      fontFamily:    "'Syne', sans-serif",
+      fontFamily:    "'Geist', sans-serif",
       fontWeight:    700,
       fontSize:      10,
       letterSpacing: '0.06em',
@@ -90,7 +90,7 @@ function TrackedTab() {
           <StatusDot status={s.status} />
           <span style={{
             flex:         1,
-            fontFamily:   "'IBM Plex Mono', monospace",
+            fontFamily:   "'Geist Mono', monospace",
             fontSize:     13,
             color:        '#00d4e8',
             overflow:     'hidden',
@@ -145,7 +145,7 @@ function CandidatesTab() {
               marginBottom: 4,
             }}>
               <span style={{
-                fontFamily:   "'IBM Plex Mono', monospace",
+                fontFamily:   "'Geist Mono', monospace",
                 fontSize:     13,
                 color:        '#ffffff',
                 overflow:     'hidden',
@@ -155,7 +155,7 @@ function CandidatesTab() {
               <TierBadge tier={c.tier} />
             </div>
             <div style={{
-              fontFamily: "'IBM Plex Sans', sans-serif",
+              fontFamily: "'Geist', sans-serif",
               fontSize:   11,
               color:      '#8892a4',
               lineHeight: 1.4,
@@ -167,7 +167,7 @@ function CandidatesTab() {
               background:   'transparent',
               border:       '1px solid rgba(148,200,100,0.3)',
               color:        '#94c864',
-              fontFamily:   "'IBM Plex Mono', monospace",
+              fontFamily:   "'Geist Mono', monospace",
               fontSize:     11,
               padding:      '6px 10px',
               borderRadius: 4,
@@ -212,7 +212,7 @@ function AddNewTab() {
 
   const labelStyle = {
     display:        'block',
-    fontFamily:     "'Syne', sans-serif",
+    fontFamily:     "'Geist', sans-serif",
     fontWeight:     600,
     fontSize:       11,
     letterSpacing:  '0.08em',
@@ -240,7 +240,7 @@ function AddNewTab() {
             border:       `1px solid ${focus === 'url' ? 'rgba(0,212,232,0.4)' : 'rgba(255,255,255,0.08)'}`,
             borderRadius: 6,
             padding:      '10px 12px',
-            fontFamily:   "'IBM Plex Mono', monospace",
+            fontFamily:   "'Geist Mono', monospace",
             fontSize:     13,
             color:        '#00d4e8',
             outline:      'none',
@@ -264,7 +264,7 @@ function AddNewTab() {
                   flex:           1,
                   padding:        '8px 12px',
                   borderRadius:   4,
-                  fontFamily:     "'Syne', sans-serif",
+                  fontFamily:     "'Geist', sans-serif",
                   fontWeight:     700,
                   fontSize:       11,
                   letterSpacing:  '0.06em',
@@ -299,7 +299,7 @@ function AddNewTab() {
             border:       `1px solid ${focus === 'notes' ? 'rgba(0,212,232,0.4)' : 'rgba(255,255,255,0.08)'}`,
             borderRadius: 6,
             padding:      '10px 12px',
-            fontFamily:   "'IBM Plex Sans', sans-serif",
+            fontFamily:   "'Geist', sans-serif",
             fontSize:     13,
             color:        '#ffffff',
             resize:       'vertical',
@@ -317,7 +317,7 @@ function AddNewTab() {
           borderRadius:   6,
           background:     'transparent',
           color:          '#94c864',
-          fontFamily:     "'Syne', sans-serif",
+          fontFamily:     "'Geist', sans-serif",
           fontWeight:     700,
           fontSize:       13,
           letterSpacing:  '0.06em',
@@ -336,7 +336,7 @@ function AddNewTab() {
           borderRadius: 4,
           background:   msg.includes('required') ? 'rgba(255,77,109,0.08)' : 'rgba(0,229,160,0.08)',
           border:       `1px solid ${msg.includes('required') ? 'rgba(255,77,109,0.3)' : 'rgba(0,229,160,0.3)'}`,
-          fontFamily:   "'IBM Plex Mono', monospace",
+          fontFamily:   "'Geist Mono', monospace",
           fontSize:     11,
           color:        msg.includes('required') ? '#ff4d6d' : '#94c864',
         }}>
@@ -411,7 +411,7 @@ export default function ScopePanel({ open, onClose, onAskIntel }) {
           justifyContent: 'space-between',
         }}>
           <div style={{
-            fontFamily:     "'Syne', sans-serif",
+            fontFamily:     "'Geist', sans-serif",
             fontWeight:     700,
             fontSize:       14,
             letterSpacing:  '0.1em',
@@ -457,7 +457,7 @@ export default function ScopePanel({ open, onClose, onAskIntel }) {
                   border:         'none',
                   borderBottom:   `2px solid ${active ? '#94c864' : 'transparent'}`,
                   color:          active ? '#ffffff' : '#8892a4',
-                  fontFamily:     "'Syne', sans-serif",
+                  fontFamily:     "'Geist', sans-serif",
                   fontWeight:     700,
                   fontSize:       11,
                   letterSpacing:  '0.08em',

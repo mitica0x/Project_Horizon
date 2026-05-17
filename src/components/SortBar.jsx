@@ -15,7 +15,7 @@ function Chip({ label, active, weight, onClick }) {
         borderRadius: 20,
         padding: '5px 12px',
         fontSize: 11,
-        fontFamily: "'IBM Plex Mono', monospace",
+        fontFamily: "'Geist Mono', monospace",
         cursor: 'pointer',
         transition: 'all 0.15s',
         display: 'flex',
@@ -65,7 +65,7 @@ export default function SortBar({ activeCriteria, onToggle, onReset, sectionId, 
           display: 'flex',
           alignItems: 'center',
         }}>
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#94c864' }}>
+          <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#94c864' }}>
             ⬡ Intel suggests: {strategyBanner.label}
           </span>
           <button
@@ -74,7 +74,7 @@ export default function SortBar({ activeCriteria, onToggle, onReset, sectionId, 
               background: 'transparent',
               border: 'none',
               color: '#94c864',
-              fontFamily: "'IBM Plex Mono', monospace",
+              fontFamily: "'Geist Mono', monospace",
               fontSize: 11,
               cursor: 'pointer',
               marginLeft: 8,
@@ -119,7 +119,7 @@ export default function SortBar({ activeCriteria, onToggle, onReset, sectionId, 
               border: 'none',
               color: '#8892a4',
               fontSize: 11,
-              fontFamily: "'IBM Plex Mono', monospace",
+              fontFamily: "'Geist Mono', monospace",
               cursor: 'pointer',
               transition: 'color 0.15s',
             }}

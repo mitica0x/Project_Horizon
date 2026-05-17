@@ -36,7 +36,7 @@ function SuggestionPill({ label, onClick, compact = false }) {
         border:       `1px solid ${hover ? 'rgba(0,212,232,0.2)' : 'rgba(255,255,255,0.1)'}`,
         borderRadius: 20,
         padding:      compact ? '5px 10px' : '8px 16px',
-        fontFamily:   "'IBM Plex Sans', sans-serif",
+        fontFamily:   "'Geist', sans-serif",
         fontSize:     compact ? 11 : 13,
         color:        hover ? '#ffffff' : '#8892a4',
         cursor:       'pointer',
@@ -218,7 +218,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                 justifyContent: 'space-between',
               }}>
                 <div style={{
-                  fontFamily:     "'Syne', sans-serif",
+                  fontFamily:     "'Geist', sans-serif",
                   fontWeight:     700,
                   fontSize:       14,
                   letterSpacing:  '0.1em',
@@ -234,7 +234,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                       style={{
                         background:  'none',
                         border:      'none',
-                        fontFamily:  "'IBM Plex Sans', sans-serif",
+                        fontFamily:  "'Geist', sans-serif",
                         fontSize:    11,
                         color:       '#8892a4',
                         cursor:      'pointer',
@@ -279,7 +279,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                   <div style={{
                     alignSelf:  'flex-start',
                     paddingTop: 4,
-                    fontFamily: "'IBM Plex Mono', monospace",
+                    fontFamily: "'Geist Mono', monospace",
                     fontSize:   12,
                     color:      '#8892a4',
                   }}>
@@ -291,7 +291,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 2 }}>
                     <div>
                       <div style={{
-                        fontFamily:    "'IBM Plex Mono', monospace",
+                        fontFamily:    "'Geist Mono', monospace",
                         fontSize:      10,
                         letterSpacing: '0.16em',
                         textTransform: 'uppercase',
@@ -301,7 +301,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                         Intel reads →
                       </div>
                       <div style={{
-                        fontFamily: "'Syne', sans-serif",
+                        fontFamily: "'Geist', sans-serif",
                         fontStyle:  'italic',
                         fontSize:   15,
                         lineHeight: 1.5,
@@ -321,7 +321,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                               border:        '1px solid rgba(0,212,232,0.35)',
                               borderRadius:  6,
                               padding:       '7px 12px',
-                              fontFamily:    "'IBM Plex Mono', monospace",
+                              fontFamily:    "'Geist Mono', monospace",
                               fontSize:      11,
                               color:         '#00d4e8',
                               cursor:        'pointer',
@@ -357,7 +357,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                             border:       '1px solid rgba(0, 212, 232, 0.15)',
                             borderRadius: '8px 8px 2px 8px',
                             padding:      '10px 14px',
-                            fontFamily:   "'IBM Plex Sans', sans-serif",
+                            fontFamily:   "'Geist', sans-serif",
                             fontSize:     14,
                             color:        '#ffffff',
                           }
@@ -368,7 +368,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                             border:       '1px solid rgba(255,255,255,0.06)',
                             borderRadius: '8px 8px 8px 2px',
                             padding:      '10px 14px',
-                            fontFamily:   "'IBM Plex Sans', sans-serif",
+                            fontFamily:   "'Geist', sans-serif",
                             fontSize:     14,
                             lineHeight:   1.7,
                             color:        '#c8d0dc',
@@ -431,7 +431,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                       border:      '1px solid rgba(255,255,255,0.08)',
                       borderRadius: 8,
                       padding:     '10px 14px',
-                      fontFamily:  "'IBM Plex Sans', sans-serif",
+                      fontFamily:  "'Geist', sans-serif",
                       fontSize:    14,
                       color:       '#ffffff',
                       resize:      'none',

@@ -2,9 +2,9 @@
 // is visually indistinguishable from P1. Tokens lifted verbatim from
 // index.css / existing components (ScopePanel, AccountMenu, App section heads).
 
-export const FONT_HEAD = "'Syne', sans-serif"
-export const FONT_BODY = "'IBM Plex Sans', sans-serif"
-export const FONT_MONO = "'IBM Plex Mono', monospace"
+export const FONT_HEAD = "'Geist', sans-serif"
+export const FONT_BODY = "'Geist', sans-serif"
+export const FONT_MONO = "'Geist Mono', monospace"
 
 // Accent per nav view — uses the existing palette only.
 export const VIEW_ACCENT = {

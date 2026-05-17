@@ -284,9 +284,9 @@ export default function OutcomesPanel({ onAskIntel }) {
       >
         {[
           { k: 'Activated', v: activated, c: 'var(--cyan)' },
-          { k: 'Review Due', v: reviewDue, c: '#D4A853' },
+          { k: 'Review Due', v: reviewDue, c: '#f59e0b' },
           { k: 'Wins', v: wins, c: '#94c864' },
-          { k: 'Activation → Win', v: `${winRate}%`, c: '#94c864' },
+          { k: 'Activation → Win', v: `${winRate}%`, c: winRate > 0 ? '#94c864' : 'var(--cyan)' },
         ].map((s, i) => (
           <div
             key={s.k}
@@ -298,7 +298,7 @@ export default function OutcomesPanel({ onAskIntel }) {
               background: 'var(--bg-card)',
             }}
           >
-            <div style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: 22, color: s.c }}>
+            <div style={{ fontFamily: FONT_MONO, fontWeight: 600, fontSize: 36, lineHeight: 1, color: s.c }}>
               {s.v}
             </div>
             <div

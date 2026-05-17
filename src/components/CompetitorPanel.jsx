@@ -14,7 +14,7 @@ function UrlSection({ title, urls }) {
           padding: '4px 0', width: '100%',
         }}
       >
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#8892a4', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#8892a4', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           {title} ({urls.length})
         </span>
         <span style={{ color: '#8892a4', fontSize: 10 }}>{open ? '▲' : '▼'}</span>
@@ -29,7 +29,7 @@ function UrlSection({ title, urls }) {
               rel="noopener noreferrer"
               style={{
                 display: 'block',
-                fontFamily: "'IBM Plex Mono', monospace",
+                fontFamily: "'Geist Mono', monospace",
                 fontSize: 12, color: '#00d4e8', marginBottom: 4,
                 textDecoration: 'none',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -61,7 +61,7 @@ function IntelPill({ label, onClick }) {
         borderRadius: 20,
         padding: '8px 16px',
         fontSize: 12,
-        fontFamily: "'IBM Plex Mono', monospace",
+        fontFamily: "'Geist Mono', monospace",
         cursor: 'pointer',
         marginBottom: 8,
         transition: 'border-color 0.15s, color 0.15s',
@@ -93,6 +93,12 @@ export default function CompetitorPanel({ competitor, onClose, onAskIntel }) {
   ]
 
   return (
+    <>
+      {/* Click-outside backdrop — closes the competitor detail panel (S1). */}
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 99 }}
+      />
     <div
       style={{
         position: 'fixed', top: 0, right: 0,
@@ -110,12 +116,12 @@ export default function CompetitorPanel({ competitor, onClose, onAskIntel }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
             <div style={{
-              fontFamily: "'Syne', sans-serif", fontWeight: 700,
+              fontFamily: "'Geist', sans-serif", fontWeight: 700,
               fontSize: 22, color: '#ffffff', marginBottom: 6,
             }}>
               {name}
             </div>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: threatColor, letterSpacing: '0.08em' }}>
+            <div style={{ fontFamily: "'Geist Mono', monospace", fontSize: 12, color: threatColor, letterSpacing: '0.08em' }}>
               THREAT SCORE {score}
             </div>
           </div>
@@ -145,10 +151,10 @@ export default function CompetitorPanel({ competitor, onClose, onAskIntel }) {
             { value: priorityPages, label: 'Priority Markets', color: '#60a5fa'  },
           ].map(({ value, label, color }) => (
             <div key={label} style={{ background: '#0a0e1a', borderRadius: 8, padding: '12px 16px' }}>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 24, fontWeight: 700, color, marginBottom: 4 }}>
+              <div style={{ fontFamily: "'Geist Mono', monospace", fontSize: 24, fontWeight: 700, color, marginBottom: 4 }}>
                 {value}
               </div>
-              <div style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 11, color: '#8892a4' }}>
+              <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#8892a4' }}>
                 {label}
               </div>
             </div>
@@ -163,10 +169,10 @@ export default function CompetitorPanel({ competitor, onClose, onAskIntel }) {
         {/* Trend indicator (scaffolded) */}
         <div style={{ marginBottom: 24, padding: '12px 16px', background: '#0a0e1a', borderRadius: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#8892a4', letterSpacing: '0.08em' }}>TREND</span>
+            <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#8892a4', letterSpacing: '0.08em' }}>TREND</span>
             <span style={{ color: '#94c864', fontSize: 12 }}>↑</span>
           </div>
-          <div style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 12, color: '#8892a4', fontStyle: 'italic' }}>
+          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#8892a4', fontStyle: 'italic' }}>
             — Data available after 2+ scan cycles
           </div>
         </div>
@@ -174,7 +180,7 @@ export default function CompetitorPanel({ competitor, onClose, onAskIntel }) {
         {/* Intel prompts */}
         <div>
           <div style={{
-            fontFamily: "'IBM Plex Mono', monospace", fontSize: 11,
+            fontFamily: "'Geist Mono', monospace", fontSize: 11,
             color: '#94c864', letterSpacing: '0.1em',
             textTransform: 'uppercase', marginBottom: 12,
           }}>
@@ -187,5 +193,6 @@ export default function CompetitorPanel({ competitor, onClose, onAskIntel }) {
 
       </div>
     </div>
+    </>
   )
 }

@@ -1,4 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+
+/* Tailwind v4 CSS-first config (no tailwind.config.js exists in v4).
+   Geist everywhere: font-sans → Geist, font-mono → Geist Mono. */
+@theme {
+  --font-sans: 'Geist', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+}
 
 :root {
   --bg-primary:    #0a0e1a;
@@ -22,9 +30,9 @@
   --text-muted:    #8892a4;
   --border:        rgba(255,255,255,0.06);
   --border-subtle: rgba(255,255,255,0.03);
-  --font-head:     'Syne', sans-serif;
-  --font-body:     'IBM Plex Sans', sans-serif;
-  --font-mono:     'IBM Plex Mono', monospace;
+  --font-head:     'Geist', sans-serif;
+  --font-body:     'Geist', sans-serif;
+  --font-mono:     'Geist Mono', monospace;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
