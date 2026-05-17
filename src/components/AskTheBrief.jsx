@@ -203,11 +203,34 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                 height:        '100vh',
                 background:    '#131929',
                 borderLeft:    '1px solid rgba(148,200,100,0.15)',
-                zIndex:        100,
+                zIndex:        300,
                 display:       'flex',
                 flexDirection: 'column',
               }}
             >
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close Intel"
+                title="Close"
+                style={{
+                  position: 'fixed',
+                  top: '16px',
+                  right: '16px',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1.5px solid rgba(255,255,255,0.6)',
+                  color: '#ffffff',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 99999
+                }}
+              >×</button>
+
               {/* HEADER */}
               <div style={{
                 position:       'relative',
@@ -248,29 +271,6 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                       Clear
                     </button>
                   )}
-                  <button
-                    onClick={() => setOpen(false)}
-                    aria-label="Close Intel"
-                    title="Close"
-                    style={{
-                      position: 'absolute',
-                      top: '12px',
-                      right: '12px',
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      background: 'rgba(255,255,255,0.15)',
-                      border: '1.5px solid rgba(255,255,255,0.4)',
-                      color: '#ffffff',
-                      fontSize: '18px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      lineHeight: 1,
-                      zIndex: 10
-                    }}
-                  >×</button>
                 </div>
               </div>
 
