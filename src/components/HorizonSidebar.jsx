@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react'
 import { FONT_HEAD, FONT_MONO } from './horizonUI'
-import { statusVerdict } from '../utils/horizonData'
+import { statusVerdict, getDayStatus } from '../utils/horizonData'
+
+// S6 — sidebar micro-line under the STATUS label, derived from the day verdict.
+const STATUS_MICRO = {
+  'HIGH PRESSURE': '3 actions · field moving',
+  'ELEVATED WATCH': '1 action · monitor field',
+  'ALL CLEAR': 'Field clear',
+}
 
 // Left nav for the Horiz0n suite. Collapsible (persisted). Sits below the
 // unchanged 48px header. Floating buttons are now nav items (TRACE / INTEL /
@@ -18,7 +25,7 @@ const NAV = [
 
 const COLLAPSE_KEY = 'horizon_sidebar_collapsed'
 
-function NavRow({ glyph, label, active, onClick, collapsed, tone }) {
+function NavRow({ glyph, label, active, onClick, collapsed, tone, subLine }) {
   const [hover, setHover] = useState(false)
   const lit = active || hover
   const color = active ? (tone || 'var(--cyan)') : lit ? '#c8d0dc' : 'var(--text-muted)'
@@ -50,7 +57,24 @@ function NavRow({ glyph, label, active, onClick, collapsed, tone }) {
       <span style={{ fontSize: 14, width: 16, textAlign: 'center', flexShrink: 0 }}>
         {glyph}
       </span>
-      {!collapsed && <span>{label}</span>}
+      {!collapsed && (
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <span>{label}</span>
+          {subLine && (
+            <span
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 10,
+                letterSpacing: '0.04em',
+                textTransform: 'none',
+                color: 'var(--text-muted)',
+              }}
+            >
+              {subLine}
+            </span>
+          )}
+        </span>
+      )}
     </button>
   )
 }
@@ -101,6 +125,8 @@ export default function HorizonSidebar({
   }, [collapsed])
 
   const verdict = compactStatus ? statusVerdict(compactStatus) : null
+  const statusMicro =
+    STATUS_MICRO[(verdict || statusVerdict(getDayStatus().overall)).label] || null
   const scanLabel =
     scanState === 'idle'
       ? 'SCAN NOW'
@@ -223,6 +249,7 @@ export default function HorizonSidebar({
             label={it.label}
             active={view === it.id}
             collapsed={collapsed}
+            subLine={it.id === 'status' ? statusMicro : undefined}
             onClick={() => onNav(it.id)}
           />
         ))}

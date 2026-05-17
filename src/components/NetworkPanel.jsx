@@ -1,369 +1,533 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useOrg } from '../context/OrgContext'
-import { getWindows } from '../utils/horizonData'
-import { fetchActivations } from '../lib/horizonStore'
+import { GAPS_T1 } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
-import { Card, Badge, PanelHeader, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
+import {
+  Card,
+  Badge,
+  PanelHeader,
+  AskIntelButton,
+  FONT_BODY,
+  FONT_MONO,
+} from './horizonUI'
 
-// P9 — Network Intelligence. Org metrics vs anonymized network benchmarks.
-// Network averages are seeded synthetic constants (replace with real
-// aggregation when more clients onboard).
+// P9 — Network Intelligence, rebuilt as contact intelligence mapped to the
+// live T1 gap list. Contacts persist to localStorage; Gmail sync is the
+// next-phase automation (surfaced as coming-soon). One DIRECT contact is
+// seeded for the Bybit EU demo org so the page reads as live on load.
 
-const NET = {
-  activationRate: 28,   // %
-  briefGen: 12,         // per month
-  windowCoverage: 34,   // %
-  responseSpeed: 4.2,   // days (lower = better)
+const CONTACTS_KEY = 'horizon_network_contacts'
+const DEMO_ORG_SLUG = 'bybit-eu'
+
+const WARMTH = ['DIRECT', 'WARM PATH', 'COLD']
+
+function urlPath(url) {
+  const d = url.split('/')[0]
+  const rest = url.slice(d.length)
+  return rest && rest !== '/' ? rest : ''
 }
 
-function position(org, net, higherIsBetter) {
-  const tol = Math.max(net * 0.08, 0.5)
-  const better = higherIsBetter ? org - net : net - org
-  if (Math.abs(better) <= tol) return { label: 'ON PAR', color: '#8892a4' }
-  return better > 0
-    ? { label: 'ABOVE NETWORK AVG', color: '#00d4e8' }
-    : { label: 'BELOW NETWORK AVG', color: '#D4A853' }
+function geoLabel(country) {
+  if (!country || country === 'GLOBAL') return 'Global'
+  if (country === 'UK' || country === 'GB') return 'UK'
+  return country
 }
 
-function ComparisonRow({ m }) {
-  const pos = position(m.org, m.net, m.higherIsBetter)
-  const scaleMax = Math.max(m.org, m.net) * 1.25 || 1
-  const orgPct = (m.org / scaleMax) * 100
-  const netPct = (m.net / scaleMax) * 100
+function readContacts() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CONTACTS_KEY) || 'null')
+    return v && typeof v === 'object' ? v : {}
+  } catch {
+    return {}
+  }
+}
 
-  const Bar = ({ pct, color, label, value }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0' }}>
-      <span
-        style={{
-          flex: '0 0 64px',
-          fontFamily: FONT_MONO,
-          fontSize: 10,
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          color: 'var(--text-muted)',
-        }}
-      >
-        {label}
-      </span>
-      <div
-        style={{
-          flex: 1,
-          height: 14,
-          background: 'rgba(255,255,255,0.04)',
-          borderRadius: 99,
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            width: `${Math.max(2, Math.min(100, pct))}%`,
-            height: '100%',
-            background: color,
-            borderRadius: 99,
-            transition: 'width 0.6s cubic-bezier(0.16,1,0.3,1)',
-          }}
-        />
-      </div>
-      <span
-        style={{
-          flex: '0 0 70px',
-          textAlign: 'right',
-          fontFamily: FONT_HEAD,
-          fontWeight: 700,
-          fontSize: 14,
-          color,
-        }}
-      >
-        {value}
-      </span>
-    </div>
-  )
+function writeContacts(map) {
+  try {
+    localStorage.setItem(CONTACTS_KEY, JSON.stringify(map))
+  } catch {
+    /* storage blocked — non-fatal, in-memory state still holds */
+  }
+}
+
+// Badge derivation: DIRECT warmth → DIRECT (lime); any other recorded
+// contact → WARM (amber); none → caller renders the + ADD CONTACT button.
+function badgeFor(contact) {
+  if (!contact) return null
+  if (contact.warmth === 'DIRECT')
+    return { label: 'DIRECT', color: '#94c864', bg: 'rgba(148,200,100,0.12)', border: 'rgba(148,200,100,0.4)' }
+  return { label: 'WARM', color: '#D4A853', bg: 'rgba(212,168,83,0.12)', border: 'rgba(212,168,83,0.4)' }
+}
+
+const inputStyle = {
+  width: '100%',
+  boxSizing: 'border-box',
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 6,
+  padding: '9px 12px',
+  fontFamily: FONT_BODY,
+  fontSize: 13,
+  color: 'var(--white)',
+  outline: 'none',
+}
+
+const labelStyle = {
+  display: 'block',
+  fontFamily: FONT_MONO,
+  fontSize: 10,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+  color: 'var(--text-muted)',
+  marginBottom: 6,
+}
+
+function ContactForm({ gap, initial, onSave, onCancel }) {
+  const [name, setName] = useState(initial?.name || '')
+  const [role, setRole] = useState(initial?.role || '')
+  const [company, setCompany] = useState(initial?.company || gap.domain)
+  const [how, setHow] = useState(initial?.how || '')
+  const [warmth, setWarmth] = useState(initial?.warmth || 'WARM PATH')
+
+  const save = () => {
+    if (!name.trim()) return
+    onSave({ name: name.trim(), role: role.trim(), company: company.trim(), how: how.trim(), warmth })
+  }
 
   return (
-    <Card style={{ padding: '18px 22px' }}>
+    <div
+      style={{
+        marginTop: 12,
+        padding: '16px 18px',
+        background: 'rgba(0,212,232,0.03)',
+        border: '1px solid rgba(0,212,232,0.18)',
+        borderRadius: 8,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        animation: 'srpRowFade 240ms ease both',
+      }}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div>
+          <label style={labelStyle}>Name</label>
+          <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Full name" />
+        </div>
+        <div>
+          <label style={labelStyle}>Role / Title</label>
+          <input style={inputStyle} value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Partnerships Editor" />
+        </div>
+        <div>
+          <label style={labelStyle}>Company</label>
+          <input style={inputStyle} value={company} onChange={e => setCompany(e.target.value)} />
+        </div>
+        <div>
+          <label style={labelStyle}>How you know them <span style={{ opacity: 0.6 }}>(optional)</span></label>
+          <input style={inputStyle} value={how} onChange={e => setHow(e.target.value)} placeholder="e.g. Met at a conference" />
+        </div>
+      </div>
+      <div>
+        <label style={labelStyle}>Warmth</label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {WARMTH.map(w => {
+            const active = warmth === w
+            return (
+              <button
+                key={w}
+                onClick={() => setWarmth(w)}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  borderRadius: 5,
+                  fontFamily: FONT_MONO,
+                  fontSize: 11,
+                  letterSpacing: '0.06em',
+                  cursor: 'pointer',
+                  background: active ? 'rgba(0,212,232,0.1)' : 'transparent',
+                  border: `1px solid ${active ? 'rgba(0,212,232,0.4)' : 'var(--border)'}`,
+                  color: active ? 'var(--cyan)' : 'var(--text-muted)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {w}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <button
+          onClick={save}
+          disabled={!name.trim()}
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: '#0b1f0b',
+            background: name.trim() ? '#94c864' : 'rgba(148,200,100,0.3)',
+            border: 'none',
+            borderRadius: 5,
+            padding: '9px 18px',
+            cursor: name.trim() ? 'pointer' : 'default',
+          }}
+        >
+          Save Contact
+        </button>
+        <button
+          onClick={onCancel}
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            letterSpacing: '0.06em',
+            color: 'var(--text-muted)',
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            borderRadius: 5,
+            padding: '9px 14px',
+            cursor: 'pointer',
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ContactCard({ gap, contact, onDraft, onEdit, onRemove }) {
+  const Field = ({ k, v }) => (
+    <div style={{ display: 'flex', gap: 10, padding: '3px 0' }}>
+      <span style={{ minWidth: 130, fontFamily: FONT_MONO, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        {k}
+      </span>
+      <span style={{ fontFamily: FONT_BODY, fontSize: 13, color: '#c8d0dc' }}>{v || '—'}</span>
+    </div>
+  )
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        padding: '16px 18px',
+        background: 'rgba(148,200,100,0.04)',
+        border: '1px solid rgba(148,200,100,0.2)',
+        borderRadius: 8,
+        animation: 'srpRowFade 240ms ease both',
+      }}
+    >
+      <Field k="Name" v={contact.name} />
+      <Field k="Role" v={contact.role} />
+      <Field k="Company" v={contact.company} />
+      <Field k="Warmth" v={contact.warmth} />
+      <Field k="How you know them" v={contact.how} />
+      <div
+        style={{
+          display: 'flex',
+          gap: 10,
+          marginTop: 14,
+          paddingTop: 12,
+          borderTop: '1px solid rgba(255,255,255,0.05)',
+          flexWrap: 'wrap',
+        }}
+      >
+        <button
+          onClick={onDraft}
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: '#94c864',
+            background: 'transparent',
+            border: '1px solid rgba(148,200,100,0.4)',
+            borderRadius: 5,
+            padding: '8px 14px',
+            cursor: 'pointer',
+          }}
+        >
+          ⬡ Draft Outreach
+        </button>
+        <button
+          onClick={onEdit}
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: 'var(--cyan)',
+            background: 'transparent',
+            border: '1px solid rgba(0,212,232,0.35)',
+            borderRadius: 5,
+            padding: '8px 14px',
+            cursor: 'pointer',
+          }}
+        >
+          Edit
+        </button>
+        <button
+          onClick={onRemove}
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: 'var(--text-muted)',
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            borderRadius: 5,
+            padding: '8px 14px',
+            cursor: 'pointer',
+          }}
+        >
+          Remove
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function GapContactRow({ gap, contact, expanded, editing, onToggle, onAdd, onSave, onCancel, onDraft, onEdit, onRemove }) {
+  const path = urlPath(gap.url)
+  const geo = geoLabel(gap.country)
+  const badge = badgeFor(contact)
+
+  return (
+    <Card style={{ padding: '14px 18px' }}>
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 12,
-          marginBottom: 12,
+          gap: 14,
+          flexWrap: 'wrap',
         }}
       >
-        <span style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 15, color: 'var(--white)' }}>
-          {m.label}
-        </span>
-        <Badge color={pos.color} bg="transparent" border={pos.color + '4d'}>
-          {pos.label}
-        </Badge>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <span style={{ fontFamily: FONT_BODY, fontSize: 14, fontWeight: 500, color: 'var(--white)' }}>
+            {gap.domain}
+            <span style={{ color: 'var(--text-muted)' }}>{path}</span>
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: 'var(--cyan)' }}>{geo}</span>
+            <Badge color="var(--t1)" bg="var(--t1-dim)" border="rgba(148,200,100,0.4)">T1</Badge>
+          </div>
+        </div>
+
+        {badge ? (
+          <button
+            onClick={onToggle}
+            title={badge.label === 'DIRECT' ? 'You have a contact at this domain' : 'You have a contact who may know someone here'}
+            style={{
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: badge.color,
+              background: badge.bg,
+              border: `1px solid ${badge.border}`,
+              borderRadius: 5,
+              padding: '7px 14px',
+              cursor: 'pointer',
+            }}
+          >
+            {badge.label} {expanded ? '▾' : '▸'}
+          </button>
+        ) : (
+          <button
+            onClick={onAdd}
+            style={{
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color: 'var(--cyan)',
+              background: 'transparent',
+              border: '1px solid rgba(0,212,232,0.4)',
+              borderRadius: 5,
+              padding: '7px 14px',
+              cursor: 'pointer',
+            }}
+          >
+            + Add Contact
+          </button>
+        )}
       </div>
-      <Bar pct={orgPct} color={pos.color} label="You" value={m.fmt(m.org)} />
-      <Bar pct={netPct} color="#5a6478" label="Network" value={m.fmt(m.net)} />
-      <div
-        style={{
-          fontFamily: FONT_BODY,
-          fontSize: 13,
-          color: 'var(--text-muted)',
-          marginTop: 10,
-          lineHeight: 1.6,
-        }}
-      >
-        {m.insight(pos.label)}
-      </div>
+
+      {editing && (
+        <ContactForm gap={gap} initial={contact} onSave={onSave} onCancel={onCancel} />
+      )}
+      {!editing && expanded && contact && (
+        <ContactCard
+          gap={gap}
+          contact={contact}
+          onDraft={onDraft}
+          onEdit={onEdit}
+          onRemove={onRemove}
+        />
+      )}
     </Card>
   )
 }
 
 export default function NetworkPanel({ onAskIntel }) {
   const { org } = useOrg()
-  const [acts, setActs] = useState([])
-  const { rows } = useMemo(() => getWindows(90), [])
+  const [contacts, setContacts] = useState(readContacts)
+  // gap.url → 'form' (add/edit form open) | 'card' (contact card open) | null
+  const [openState, setOpenState] = useState({})
 
+  const t1Gaps = GAPS_T1
+
+  // Seed one DIRECT contact for the Bybit EU demo org (finder.com), once.
   useEffect(() => {
-    fetchActivations().then(({ data }) => setActs(data || []))
+    if (org?.slug !== DEMO_ORG_SLUG) return
+    const finder = t1Gaps.find(g => g.domain === 'finder.com')
+    if (!finder) return
+    setContacts(prev => {
+      if (prev[finder.url]) return prev
+      const next = {
+        ...prev,
+        [finder.url]: {
+          name: 'James Whitfield',
+          role: 'Partnerships Editor',
+          company: 'Finder.com',
+          how: 'Met at Affiliate Summit London 2025',
+          warmth: 'DIRECT',
+        },
+      }
+      writeContacts(next)
+      return next
+    })
+  }, [org, t1Gaps])
+
+  const persist = useCallback((next) => {
+    setContacts(next)
+    writeContacts(next)
   }, [])
 
-  const briefCount = useMemo(() => {
-    try {
-      return Number(localStorage.getItem('horizon_brief_count') || 0)
-    } catch {
-      return 0
-    }
-  }, [])
+  const withContact = useMemo(
+    () => t1Gaps.filter(g => contacts[g.url]).length,
+    [t1Gaps, contacts],
+  )
+  const total = t1Gaps.length
+  const scorePct = total ? Math.round((withContact / total) * 100) : 0
 
-  const metrics = useMemo(() => {
-    const moveNow = rows.filter(w => w.action === 'MOVE NOW')
-    const actNames = new Set(acts.map(a => (a.event_name || '').toLowerCase()))
-    const coveredMove = moveNow.filter(w => actNames.has(w.event.name.toLowerCase()))
-
-    const activationRate = rows.length
-      ? Math.min(100, Math.round((acts.length / rows.length) * 100))
-      : 0
-    const windowCoverage = moveNow.length
-      ? Math.round((coveredMove.length / moveNow.length) * 100)
-      : 0
-
-    // Response speed: days from approx window-open (event − 60d) to activation.
-    const samples = acts
-      .map(a => {
-        const ts = a.activated_at || a.created_at
-        const ev = rows.find(
-          w => w.event.name.toLowerCase() === (a.event_name || '').toLowerCase(),
-        )
-        if (!ts || !ev) return null
-        const open = new Date(ev.event.date).getTime() - 60 * 86400000
-        return Math.max(0, (new Date(ts).getTime() - open) / 86400000)
-      })
-      .filter(v => v != null)
-    const responseSpeed = samples.length
-      ? Math.round((samples.reduce((s, v) => s + v, 0) / samples.length) * 10) / 10
-      : null
-
-    return [
-      {
-        label: 'Activation Rate',
-        org: activationRate,
-        net: NET.activationRate,
-        higherIsBetter: true,
-        fmt: v => `${v}%`,
-        insight: p =>
-          p === 'ABOVE NETWORK AVG'
-            ? 'You convert more detected windows into campaigns than the typical EU operator.'
-            : p === 'BELOW NETWORK AVG'
-            ? 'You are leaving windows unconverted relative to peers — review the WINDOWS backlog.'
-            : 'You activate windows at roughly the network rate.',
-      },
-      {
-        label: 'Brief Generation',
-        org: briefCount,
-        net: NET.briefGen,
-        higherIsBetter: true,
-        fmt: v => `${v}/mo`,
-        insight: p =>
-          p === 'ABOVE NETWORK AVG'
-            ? 'Leadership reporting cadence is ahead of the network.'
-            : p === 'BELOW NETWORK AVG'
-            ? 'Fewer briefs than peers — exported briefs are counted locally; wire server tracking for accuracy.'
-            : 'Brief cadence is on par with the network.',
-      },
-      {
-        label: 'Window Coverage',
-        org: windowCoverage,
-        net: NET.windowCoverage,
-        higherIsBetter: true,
-        fmt: v => `${v}%`,
-        insight: p =>
-          p === 'ABOVE NETWORK AVG'
-            ? 'You act on a larger share of MOVE NOW windows than the field.'
-            : p === 'BELOW NETWORK AVG'
-            ? 'High-priority windows are slipping past — coverage trails the network.'
-            : 'MOVE NOW coverage matches the network.',
-      },
-      {
-        label: 'Response Speed',
-        org: responseSpeed ?? NET.responseSpeed,
-        net: NET.responseSpeed,
-        higherIsBetter: false,
-        fmt: v => (responseSpeed == null ? 'n/a' : `${v}d`),
-        insight: p =>
-          responseSpeed == null
-            ? 'Not enough matched activations yet to measure response speed.'
-            : p === 'ABOVE NETWORK AVG'
-            ? 'You move on windows faster than the typical operator.'
-            : p === 'BELOW NETWORK AVG'
-            ? 'Slower to activate than peers — tighten the window-to-activation loop.'
-            : 'Response speed is in line with the network.',
-      },
-    ]
-  }, [rows, acts, briefCount])
-
-  // Telegram webhook persisted to org settings (localStorage stand-in until
-  // the backend settings write-path exists; fired server-side when built).
-  const tgKey = `horizon_tg_webhook_${org?.id || 'default'}`
-  const [tg, setTg] = useState('')
-  const [tgSaved, setTgSaved] = useState(false)
-  useEffect(() => {
-    try {
-      setTg(localStorage.getItem(tgKey) || '')
-    } catch {
-      /* ignore */
-    }
-  }, [tgKey])
-  const saveTg = () => {
-    try {
-      localStorage.setItem(tgKey, tg.trim())
-      setTgSaved(true)
-      setTimeout(() => setTgSaved(false), 1800)
-    } catch {
-      /* ignore */
-    }
+  const draftOutreach = (gap, contact) => {
+    const comp = (gap.competitors || [])[0] || 'a competitor'
+    const geo = geoLabel(gap.country)
+    const prompt = `Draft outreach to ${contact.name}, ${contact.role || 'contact'} at ${
+      contact.company || gap.domain
+    }. Context: ${gap.domain}${urlPath(gap.url)} is a T1 gap for Bybit in ${geo}. ${comp} is currently listed. Goal: get Bybit listed on this page. Tone: warm, brief, value-first${
+      contact.how ? `. You know them: ${contact.how}` : ''
+    }.`
+    onAskIntel?.(
+      `You are helping draft outreach to a known contact for a Bybit EU T1 gap. Contact: ${contact.name} (${contact.role}) at ${contact.company}. Gap: ${gap.domain}${urlPath(gap.url)} — ${geo}, ${comp} currently listed.`,
+      { insight: 'Outreach context loaded — tap below to draft the email.', chips: [prompt] },
+    )
   }
 
   const intelContext = () =>
-    `You are reviewing network benchmarks. Your metrics vs peers — ${metrics
-      .map(m => `${m.label}: you ${m.fmt(m.org)} vs network ${m.fmt(m.net)}`)
-      .join('; ')}.`
-
-  // Contact-graph view is seeded until real relationship data lands.
-  const askIntel = () =>
-    onAskIntel(
-      intelContext(),
-      intelKit.network({
-        nodes: 24,
-        strong: 'DE comparison-site editors',
-        cold: 'UK fintech press',
-        gapRegion: 'the Nordics',
-      }),
-    )
+    `You are reviewing network intelligence. ${withContact} of ${total} T1 gaps have a known contact (${scorePct}%). Gmail sync not yet wired.`
 
   return (
     <>
       <PanelHeader
         title="Network Intelligence"
         accent="#00d4e8"
-        sub="Anonymized benchmarks across MID-budget EU operators"
-        right={onAskIntel && <AskIntelButton onClick={askIntel} />}
+        sub="Contact intelligence mapped to your gap list. Add contacts as you work each gap. Gmail sync coming."
+        right={onAskIntel && (
+          <AskIntelButton
+            onClick={() =>
+              onAskIntel(
+                intelContext(),
+                intelKit.network({
+                  nodes: withContact,
+                  strong: 'your DIRECT T1 contacts',
+                  cold: 'uncontacted T1 gaps',
+                  gapRegion: 'most of the T1 list',
+                }),
+              )
+            }
+          />
+        )}
       />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {metrics.map(m => (
-          <ComparisonRow key={m.label} m={m} />
-        ))}
-      </div>
-
-      {/* Delivery */}
-      <Card style={{ padding: '20px 24px', marginTop: 16 }}>
-        <div
-          style={{
-            fontFamily: FONT_MONO,
-            fontSize: 11,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: 'var(--text-muted)',
-            marginBottom: 16,
-          }}
-        >
-          Digest delivery
-        </div>
-
+      {/* NETWORK SCORE */}
+      <Card style={{ padding: '18px 22px', marginBottom: 18 }}>
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'baseline',
             justifyContent: 'space-between',
-            gap: 12,
-            padding: '10px 0',
-            opacity: 0.5,
+            marginBottom: 10,
           }}
         >
-          <span style={{ fontFamily: FONT_BODY, fontSize: 14, color: 'var(--white)' }}>
-            Email digest
+          <span style={{ fontFamily: FONT_BODY, fontSize: 14, color: '#c8d0dc' }}>
+            <span style={{ fontFamily: FONT_MONO, fontSize: 22, fontWeight: 600, color: '#94c864' }}>
+              {withContact}
+            </span>{' '}
+            of {total} T1 gaps have a known contact
           </span>
-          <Badge>Coming soon</Badge>
+          <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)' }}>
+            {scorePct}%
+          </span>
         </div>
-
-        <div style={{ paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ width: '100%', height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
           <div
             style={{
-              fontFamily: FONT_BODY,
-              fontSize: 14,
-              color: 'var(--white)',
-              marginBottom: 8,
+              width: `${scorePct}%`,
+              height: '100%',
+              background: '#94c864',
+              borderRadius: 99,
+              transition: 'width 0.6s cubic-bezier(0.16,1,0.3,1)',
             }}
-          >
-            Telegram webhook
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <input
-              value={tg}
-              onChange={e => setTg(e.target.value)}
-              placeholder="https://api.telegram.org/bot…/sendMessage?chat_id=…"
-              style={{
-                flex: 1,
-                boxSizing: 'border-box',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 6,
-                padding: '9px 13px',
-                fontFamily: FONT_MONO,
-                fontSize: 12,
-                color: 'var(--white)',
-                outline: 'none',
-              }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,212,232,0.4)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
-            />
-            <button
-              onClick={saveTg}
-              style={{
-                fontFamily: FONT_MONO,
-                fontSize: 11,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: tgSaved ? '#94c864' : '#00d4e8',
-                background: 'transparent',
-                border: `1px solid ${tgSaved ? 'rgba(148,200,100,0.4)' : 'rgba(0,212,232,0.35)'}`,
-                borderRadius: 5,
-                padding: '8px 16px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {tgSaved ? '✓ Saved' : 'Save'}
-            </button>
-          </div>
-          <div
-            style={{
-              fontFamily: FONT_MONO,
-              fontSize: 11,
-              color: 'var(--text-muted)',
-              marginTop: 8,
-            }}
-          >
-            Saved to org settings — fired server-side once the backend digest job ships.
-          </div>
+          />
         </div>
       </Card>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {t1Gaps.map(gap => {
+          const contact = contacts[gap.url] || null
+          const state = openState[gap.url] || null
+          return (
+            <GapContactRow
+              key={gap.url}
+              gap={gap}
+              contact={contact}
+              expanded={state === 'card'}
+              editing={state === 'form'}
+              onToggle={() =>
+                setOpenState(s => ({ ...s, [gap.url]: s[gap.url] === 'card' ? null : 'card' }))
+              }
+              onAdd={() => setOpenState(s => ({ ...s, [gap.url]: 'form' }))}
+              onEdit={() => setOpenState(s => ({ ...s, [gap.url]: 'form' }))}
+              onCancel={() => setOpenState(s => ({ ...s, [gap.url]: null }))}
+              onSave={c => {
+                persist({ ...contacts, [gap.url]: c })
+                setOpenState(s => ({ ...s, [gap.url]: null }))
+              }}
+              onRemove={() => {
+                const next = { ...contacts }
+                delete next[gap.url]
+                persist(next)
+                setOpenState(s => ({ ...s, [gap.url]: null }))
+              }}
+              onDraft={() => draftOutreach(gap, contact)}
+            />
+          )
+        })}
+      </div>
+
+      <div
+        style={{
+          marginTop: 18,
+          fontFamily: FONT_MONO,
+          fontSize: 11,
+          color: 'var(--text-muted)',
+          lineHeight: 1.6,
+        }}
+      >
+        Gmail sync will automatically detect contacts across your gap list. Coming soon.
+      </div>
     </>
   )
 }

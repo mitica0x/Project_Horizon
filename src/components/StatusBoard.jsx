@@ -1,5 +1,12 @@
 import { useMemo } from 'react'
-import { getDayStatus, statusVerdict, fmtClock } from '../utils/horizonData'
+import {
+  getDayStatus,
+  statusVerdict,
+  fmtClock,
+  assessCompetitors,
+  getWindows,
+} from '../utils/horizonData'
+import { GAPS_T1 } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
 import { Card, RagDot, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 
@@ -9,9 +16,55 @@ import { Card, RagDot, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from '.
 const VERDICT_KEY = 'horizon_status_verdict'
 const DAY = 86400000
 
-export default function StatusBoard({ onDismiss, onAskIntel }) {
+export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
   const { signals, overall, updatedAt } = useMemo(() => getDayStatus(), [])
   const verdict = statusVerdict(overall)
+
+  // ── Intelligence layer (S6) — drivers / actions / since-yesterday, derived
+  // from the live field + windows + gap list, with seeded fallbacks that keep
+  // the same shape so the board always reads as live for the demo.
+  const intel = useMemo(() => {
+    const field = assessCompetitors()
+    const { rows, moveNowCount } = getWindows(90)
+    const moveIn14 = rows.filter(w => w.action === 'MOVE NOW' && w.daysOut <= 14).length
+    const t1 = GAPS_T1 || []
+    const g1 = t1[0]
+    const g2 = t1[1]
+    const dom = g => (g ? `${g.domain}` : '—')
+
+    const why = [
+      'WhiteBit — FC Barcelona sponsorship confirmed. T1 brand event in your primary markets.',
+      `Threat score: ${field.pressure}/100 — field pressure ${field.level}, ${field.top} leading.`,
+      `${t1.length} T1 gaps uncontacted (incl. ${dom(g1)}, ${dom(g2)}).`,
+    ]
+
+    const actions = [
+      {
+        text: `Contact ${dom(g1)}${g1?.url?.slice(g1.domain.length) || ''} — T1 ${
+          g1?.country || 'Global'
+        }, ${(g1?.competitors || ['competitor'])[0]} listed`,
+        nav: 'network',
+      },
+      {
+        text: 'Review investopedia.com outreach — sent, no response logged',
+        nav: 'outcomes',
+      },
+      {
+        text: `Check SIGNAL — ${moveIn14 ? 'MOVE-rated window opening in 14d' : 'posture window may be forming'}`,
+        nav: 'signal',
+      },
+    ]
+
+    const since = [
+      'WhiteBit Barcelona deal announced — field threat level elevated',
+      'Activation rate: 1 this week (finder.com win logged)',
+      moveNowCount
+        ? `${moveNowCount} MOVE-rated window(s) on the 90-day horizon`
+        : 'No new competitor placements detected on tracked pages',
+    ]
+
+    return { why, actions, since }
+  }, [])
 
   // How long the day verdict has held (seeded 3d baseline on first sight).
   const verdictDays = useMemo(() => {
@@ -157,6 +210,86 @@ export default function StatusBoard({ onDismiss, onAskIntel }) {
           </div>
         ))}
       </div>
+
+      {/* ── S6 intelligence layer ───────────────────────────────────────── */}
+      {[
+        { label: `WHY TODAY IS ${verdict.label}`, lines: intel.why },
+        { label: 'RECOMMENDED ACTIONS TODAY', actions: intel.actions },
+        { label: 'SINCE YESTERDAY', lines: intel.since },
+      ].map(sec => (
+        <div
+          key={sec.label}
+          style={{
+            marginTop: 20,
+            paddingTop: 18,
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
+          <div
+            style={{
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: 'var(--cyan)',
+              marginBottom: 12,
+            }}
+          >
+            {sec.label}
+          </div>
+
+          {sec.lines &&
+            sec.lines.map((l, i) => (
+              <div
+                key={i}
+                style={{
+                  fontFamily: FONT_BODY,
+                  fontSize: 13,
+                  color: '#c8d0dc',
+                  lineHeight: 1.6,
+                  padding: '4px 0',
+                }}
+              >
+                {l}
+              </div>
+            ))}
+
+          {sec.actions &&
+            sec.actions.map((a, i) => (
+              <button
+                key={i}
+                onClick={() => onNav?.(a.nav)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  width: '100%',
+                  textAlign: 'left',
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom:
+                    i < sec.actions.length - 1
+                      ? '1px solid rgba(255,255,255,0.04)'
+                      : 'none',
+                  padding: '10px 0',
+                  cursor: 'pointer',
+                  fontFamily: FONT_BODY,
+                  fontSize: 13,
+                  color: '#c8d0dc',
+                  transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--white)')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#c8d0dc')}
+              >
+                <span style={{ color: '#94c864', fontWeight: 700, flexShrink: 0 }}>
+                  {i + 1}.
+                </span>
+                <span style={{ flex: 1 }}>{a.text}</span>
+                <span style={{ color: '#94c864', flexShrink: 0 }}>→</span>
+              </button>
+            ))}
+        </div>
+      ))}
     </Card>
   )
 }

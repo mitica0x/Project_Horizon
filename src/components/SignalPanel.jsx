@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { getWindows, getDayStatus, assessCompetitors } from '../utils/horizonData'
 import { intelKit } from '../utils/intelKit'
-import { GAPS_T1 } from '../data/staticData'
+import { GAPS_T1, GAPS_T2, SCORE } from '../data/staticData'
 import { fmtDate } from '../../lib/radar/scoring'
 import {
   Card,
@@ -42,6 +42,38 @@ const FIELD_POSTURE = [
 const POSTURE_KEY = 'horizon_signal_posture'
 const HISTORY_KEY = 'horizon_signal_history'
 const DAY = 86400000
+
+// S7 — posture-duration fix. "You have been in PREPARE for 0 days" was wrong
+// on first sight. Store a per-verdict start date; default to 3 days ago when
+// none exists so the demo never shows a 0-day posture.
+const POSTURE_START_PREFIX = 'horizon_posture_start_'
+function postureStartDays(verdict) {
+  const key = POSTURE_START_PREFIX + verdict
+  let start = null
+  try { start = localStorage.getItem(key) } catch { start = null }
+  if (!start) {
+    start = new Date(Date.now() - 3 * DAY).toISOString()
+    try { localStorage.setItem(key, start) } catch { /* ignore */ }
+  }
+  return Math.max(0, Math.floor((Date.now() - new Date(start).getTime()) / DAY))
+}
+
+// Lightweight OPP proxy for static GAPS (lower competitor density → higher
+// opportunity). Mirrors the ScanResultsPanel intuition without importing it.
+function oppFor(gap) {
+  const n = (gap.competitors || []).length || 1
+  return Math.max(55, Math.min(95, 95 - (n - 1) * 9))
+}
+function geoOf(country) {
+  if (!country || country === 'GLOBAL') return 'Global'
+  if (country === 'UK' || country === 'GB') return 'UK'
+  return country
+}
+function pathOf(url) {
+  const d = url.split('/')[0]
+  const rest = url.slice(d.length)
+  return rest && rest !== '/' ? rest : ''
+}
 
 function computeSignal() {
   const { rows } = getWindows(90)
@@ -171,12 +203,160 @@ function Section({ title, children }) {
   )
 }
 
-export default function SignalPanel({ onAskIntel }) {
+// S7 — verdict-driven "What to do now" action block.
+function WhatToDoNow({ verdict, onAskIntel, onNav }) {
+  const draftGap = g => {
+    const geo = geoOf(g.country)
+    const comp = (g.competitors || [])[0] || 'a competitor'
+    const prompt = `Draft outreach to get Bybit listed on ${g.domain}${pathOf(
+      g.url,
+    )} (${geo}, T1). ${comp} is currently listed; Bybit is absent. Tone: confident, brief, value-first. Max 150 words.`
+    onAskIntel?.(
+      `Budget signal verdict is ${verdict}. Acting on T1 gap ${g.domain}${pathOf(
+        g.url,
+      )} — ${geo}, ${comp} currently listed.`,
+      { insight: 'Outreach context loaded — tap below to draft.', chips: [prompt] },
+    )
+  }
+
+  const GapLine = ({ g }) => {
+    const opp = oppFor(g)
+    return (
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 12, color: '#c8d0dc' }}>
+          {g.domain}
+          <span style={{ color: 'var(--text-muted)' }}>{pathOf(g.url)}</span> —{' '}
+          <span style={{ color: 'var(--cyan)' }}>{geoOf(g.country)} T1</span> —{' '}
+          <span style={{ color: opp >= 80 ? '#94c864' : '#D4A853', fontWeight: 700 }}>
+            OPP {opp}
+          </span>
+        </div>
+        <button
+          onClick={() => draftGap(g)}
+          style={{
+            marginTop: 5,
+            fontFamily: FONT_MONO,
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            color: 'var(--cyan)',
+            background: 'transparent',
+            border: '1px solid rgba(0,212,232,0.4)',
+            borderRadius: 4,
+            padding: '4px 10px',
+            cursor: 'pointer',
+          }}
+        >
+          DRAFT OUTREACH
+        </button>
+      </div>
+    )
+  }
+
+  const NavLine = ({ label, nav }) => (
+    <button
+      onClick={() => onNav?.(nav)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        textAlign: 'left',
+        background: 'transparent',
+        border: 'none',
+        padding: '9px 0',
+        cursor: 'pointer',
+        fontFamily: FONT_BODY,
+        fontSize: 14,
+        color: '#c8d0dc',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.color = 'var(--white)')}
+      onMouseLeave={e => (e.currentTarget.style.color = '#c8d0dc')}
+    >
+      <span style={{ color: '#94c864' }}>·</span>
+      <span style={{ flex: 1 }}>{label}</span>
+      <span style={{ color: '#94c864' }}>→</span>
+    </button>
+  )
+
+  const topT1 = [...GAPS_T1].sort((a, b) => oppFor(b) - oppFor(a)).slice(0, 3)
+  const easy = (GAPS_T2 || []).slice(0, 3)
+  const toScore = Math.min(100, SCORE + 12)
+
+  let body
+  if (verdict === 'DEPLOY') {
+    body = (
+      <>
+        <div style={{ fontFamily: FONT_BODY, fontSize: 14, color: '#c8d0dc', marginBottom: 14 }}>
+          Window is open. Activate on these gaps this week:
+        </div>
+        {topT1.map(g => (
+          <GapLine key={g.url} g={g} />
+        ))}
+        <div
+          style={{
+            marginTop: 8,
+            fontFamily: FONT_MONO,
+            fontSize: 13,
+            fontWeight: 700,
+            color: '#94c864',
+          }}
+        >
+          Executing all 3 moves this score from {SCORE}% to {toScore}%.
+        </div>
+      </>
+    )
+  } else if (verdict === 'HOLD') {
+    body = (
+      <>
+        <div style={{ fontFamily: FONT_BODY, fontSize: 14, color: '#c8d0dc', marginBottom: 8 }}>
+          Field pressure is low. Use this period:
+        </div>
+        <NavLine label="Log any unrecorded outcomes in OUTCOMES" nav="outcomes" />
+        <NavLine label="Capture recent decisions in LEDGER" nav="ledger" />
+        <NavLine
+          label="Let competitors over-extend — your next window is projected in WINDOWS"
+          nav="windows"
+        />
+      </>
+    )
+  } else {
+    body = (
+      <>
+        <div style={{ fontFamily: FONT_BODY, fontSize: 14, color: '#c8d0dc', marginBottom: 8 }}>
+          Not yet. These conditions would trigger DEPLOY:
+        </div>
+        <div
+          style={{
+            fontFamily: FONT_BODY,
+            fontSize: 14,
+            color: 'var(--text-muted)',
+            lineHeight: 1.7,
+            marginBottom: 16,
+          }}
+        >
+          {FLIP_LINE.PREPARE}
+        </div>
+        <div style={{ fontFamily: FONT_BODY, fontSize: 14, color: '#c8d0dc', marginBottom: 12 }}>
+          While you wait — these gaps are affiliate-ready, lower effort, can start now:
+        </div>
+        {easy.map(g => (
+          <GapLine key={g.url} g={g} />
+        ))}
+      </>
+    )
+  }
+
+  return <Section title="What to do now">{body}</Section>
+}
+
+export default function SignalPanel({ onAskIntel, onNav }) {
   const sig = useMemo(() => computeSignal(), [])
-  const { posture, history, durationDays } = useMemo(
+  const { posture, history } = useMemo(
     () => resolvePosture(sig.verdict),
     [sig.verdict],
   )
+  const durationDays = useMemo(() => postureStartDays(sig.verdict), [sig.verdict])
   const v = VERDICT[sig.verdict]
 
   // 90-day rhythm distribution — from history if rich enough, else seeded.
@@ -373,6 +553,8 @@ export default function SignalPanel({ onAskIntel }) {
             {FLIP_LINE[sig.verdict]}
           </div>
         </Section>
+
+        <WhatToDoNow verdict={sig.verdict} onAskIntel={onAskIntel} onNav={onNav} />
 
         <Section title="Signal track record">
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

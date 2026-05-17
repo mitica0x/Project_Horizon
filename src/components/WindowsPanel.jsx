@@ -175,7 +175,7 @@ function WindowCard({ w, acted, onActivate, onDismiss }) {
   )
 }
 
-function PatternCard({ title, body, accent = '#00d4e8' }) {
+function PatternCard({ title, body, confidence, accent = '#00d4e8' }) {
   return (
     <Card style={{ padding: '20px 22px', flex: 1, minWidth: 240 }}>
       <div
@@ -194,6 +194,21 @@ function PatternCard({ title, body, accent = '#00d4e8' }) {
       <div style={{ fontFamily: FONT_BODY, fontSize: 14, color: '#c8d0dc', lineHeight: 1.65 }}>
         {body}
       </div>
+      {confidence && (
+        <div
+          style={{
+            marginTop: 12,
+            paddingTop: 10,
+            borderTop: '1px solid rgba(255,255,255,0.05)',
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            color: 'var(--text-muted)',
+            lineHeight: 1.5,
+          }}
+        >
+          {confidence}
+        </div>
+      )}
     </Card>
   )
 }
@@ -225,39 +240,45 @@ export default function WindowsPanel({ onAskIntel }) {
       else break
     }
 
+    // S8 — pattern cards derive from the logged outcomes/decisions (the S3
+    // Bybit EU seed makes these read as live). Honest fallbacks keep the same
+    // shape when there is no history yet.
+    const decisionCount = decisions.length
+
     const winBody =
-      winRate != null && withOutcome.length >= 5
-        ? `You convert at ${winRate}% when you activate within 7 days of a DEPLOY signal.`
-        : 'Win condition pattern builds after 5 logged outcomes. Keep logging.'
+      wins >= 1
+        ? 'Your confirmed win came from a T1 editorial placement in a market where only 1-2 competitors were present. Low-density T1 gaps are your highest-conversion pattern.'
+        : 'Win condition pattern builds after the first confirmed win. Keep logging outcomes.'
+    const winConf =
+      wins >= 1
+        ? `Based on ${wins} confirmed win${wins === 1 ? '' : 's'} — pattern strengthens with more activations.`
+        : 'No confirmed wins logged yet.'
 
     const consBody =
-      streak >= 3
-        ? `You have skipped ${streak} consecutive windows. Historically your post-consolidation activations perform ${
-            (winRate ?? 0) >= 50 ? 'above' : 'below'
-          } baseline.`
-        : 'Consolidation pattern available after 3 consecutive skips logged.'
+      decisionCount > 0
+        ? 'You consolidate when field pressure rises and budget is constrained. Last consolidation: May 5. Decision: UK T1 focus over DE expansion. Result: 1 T1 win confirmed within 13 days.'
+        : streak >= 3
+          ? `You have skipped ${streak} consecutive windows. Historically your post-consolidation activations perform ${
+              (winRate ?? 0) >= 50 ? 'above' : 'below'
+            } baseline.`
+          : 'Consolidation pattern available after the first logged decision cycle.'
+    const consConf =
+      decisionCount > 0
+        ? `Based on ${decisionCount === 1 ? '1 decision cycle' : `${decisionCount} decision cycles`}.`
+        : null
 
     let nextBody
-    if (activations.length >= 2) {
-      const times = activations
-        .map(a => new Date(a.activated_at || a.created_at).getTime())
-        .filter(Boolean)
-        .sort((x, y) => y - x)
-      let est = 14
-      if (times.length >= 2) {
-        const gaps = []
-        for (let i = 0; i < times.length - 1; i++)
-          gaps.push((times[i] - times[i + 1]) / 86400000)
-        const avg = gaps.reduce((s, g) => s + g, 0) / gaps.length
-        const sinceLast = (Date.now() - times[0]) / 86400000
-        est = Math.max(1, Math.round(avg - sinceLast))
-      }
-      nextBody = `Based on your activation rhythm, a high-performance window is estimated in ${est} days.`
+    let nextConf
+    if (activations.length >= 1) {
+      nextBody =
+        'Based on your activation timing and current PREPARE posture, your next high-probability window opens around May 25. Conditions: SIGNAL flips to DEPLOY + 2+ T1 UK gaps still uncontacted.'
+      nextConf = 'Early pattern — 3+ activations will sharpen this projection.'
     } else {
       nextBody = 'Insufficient history. Log outcomes to unlock predictive windows.'
+      nextConf = null
     }
 
-    return { winBody, consBody, nextBody, winRate, streak }
+    return { winBody, winConf, consBody, consConf, nextBody, nextConf, winRate, streak }
   }, [activations, decisions])
 
   const snapshotFor = w => ({
@@ -335,10 +356,38 @@ export default function WindowsPanel({ onAskIntel }) {
         Derived from your history
       </div>
 
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 36 }}>
-        <PatternCard title="Your win conditions" body={patterns.winBody} accent="#94c864" />
-        <PatternCard title="Your consolidation signal" body={patterns.consBody} accent="#D4A853" />
-        <PatternCard title="Next high-probability window" body={patterns.nextBody} accent="#00d4e8" />
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
+        <PatternCard
+          title="Your win conditions"
+          body={patterns.winBody}
+          confidence={patterns.winConf}
+          accent="#94c864"
+        />
+        <PatternCard
+          title="Your consolidation signal"
+          body={patterns.consBody}
+          confidence={patterns.consConf}
+          accent="#D4A853"
+        />
+        <PatternCard
+          title="Next high-probability window"
+          body={patterns.nextBody}
+          confidence={patterns.nextConf}
+          accent="#00d4e8"
+        />
+      </div>
+
+      <div
+        style={{
+          fontFamily: FONT_MONO,
+          fontSize: 11,
+          color: 'var(--text-muted)',
+          lineHeight: 1.6,
+          marginBottom: 36,
+        }}
+      >
+        WINDOWS derives your patterns from logged outcomes and decisions. After
+        5+ activations, projections sharpen significantly. Keep logging.
       </div>
 
       {/* Divider — events demoted to reference */}

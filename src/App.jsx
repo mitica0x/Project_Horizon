@@ -593,7 +593,7 @@ export default function App() {
 
         {statusOpen && (
           <div id="hz-status" className="container" style={{ paddingTop: 24 }}>
-            <StatusBoard onDismiss={() => setStatusOpen(false)} onAskIntel={openIntel} />
+            <StatusBoard onDismiss={() => setStatusOpen(false)} onAskIntel={openIntel} onNav={handleNav} />
           </div>
         )}
 

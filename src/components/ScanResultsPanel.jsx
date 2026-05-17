@@ -709,6 +709,44 @@ function narrativeFor(comp, momentum, blockedGaps) {
   return 'No movement. Holding existing slots.'
 }
 
+// ─── §5b Market moves — real-world competitive events ──────────────────────────
+// Sponsorships, filings, launches, brand events. These don't show on affiliate
+// pages — they change the competitive landscape directly. `expanding` → ↑↑
+// amber (brand-expanding); `neutral` → no amber border, muted; otherwise a
+// single ↑ amber (maintained presence). `placement` overrides the placement
+// narrative for competitors not yet on tracked pages (e.g. WhiteBit).
+const MARKET_MOVES = {
+  WhiteBit: {
+    expanding: true,
+    placement:
+      'No placement data — not yet on tracked affiliate pages in EU market.',
+    move:
+      'FC Barcelona sponsorship confirmed. Front-of-shirt deal. European reach: 300M+ impressions. Significant T1 brand visibility event in key Bybit markets.',
+    impact:
+      'Brand move of this scale typically accelerates affiliate listing requests within 60 days.',
+  },
+  Binance: {
+    expanding: true,
+    move:
+      'MiCA compliance filing published — EU regulatory positioning ahead of enforcement deadline. Likely to strengthen EU affiliate relationships.',
+  },
+  Revolut: {
+    neutral: true,
+    move: 'No major announcements detected this cycle.',
+  },
+  Kraken: {
+    expanding: true,
+    move:
+      'Kraken Pro relaunch announced — targeting advanced traders. May shift editorial framing on comparison sites toward pro positioning.',
+  },
+  OKX: {
+    expanding: false,
+    move:
+      'Champions League sleeve sponsor renewal confirmed. European brand presence maintained.',
+  },
+}
+const MARKET_MOVE_NAMES = Object.keys(MARKET_MOVES)
+
 // §5d outreach prompt fed to the existing INTEL panel.
 function outreachPrompt(gap) {
   const comp = competitorsForGap(gap)[0] || 'a competitor'
@@ -1097,14 +1135,166 @@ function StatCard({
   )
 }
 
-function CompetitorRow({ comp, maxScore, isVisible, index, momentum, blockedGaps, realMove }) {
+// §5b — real-world market-move block, rendered below the placement narrative.
+// Amber 3px left border + ↑↑ for brand-expanding moves; neutral → no border.
+function MarketMoveBlock({ mm }) {
+  const amber = '#D4A853'
+  const isNeutral = !!mm.neutral
+  const glyph = isNeutral ? '→' : mm.expanding ? '↑↑' : '↑'
+  const accent = isNeutral ? HZ.muted : amber
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        paddingLeft: 10,
+        borderLeft: isNeutral
+          ? '3px solid rgba(255,255,255,0.08)'
+          : `3px solid ${amber}`,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontFamily: FONT_MONO,
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: accent,
+          marginBottom: 4,
+        }}
+      >
+        MARKET MOVE
+        <span style={{ fontSize: 12 }}>{glyph}</span>
+      </div>
+      <div
+        style={{
+          fontFamily: FONT_BODY,
+          fontSize: 12,
+          lineHeight: 1.6,
+          color: isNeutral ? HZ.muted : '#c8d0dc',
+        }}
+      >
+        {mm.move}
+      </div>
+      {mm.impact && (
+        <div
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 10,
+            color: HZ.muted,
+            marginTop: 4,
+            fontStyle: 'italic',
+          }}
+        >
+          {mm.impact}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// §5c — per-competitor battle plan: top-3 OPP gaps where they are listed and
+// Bybit is absent. Closing these directly reduces their dominance.
+function BattlePlan({ comp, gaps, onDraft }) {
+  const top3 = gaps.slice(0, 3)
+  return (
+    <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${HZ.border}` }}>
+      <div
+        style={{
+          fontFamily: FONT_MONO,
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: '#ffffff',
+          marginBottom: 4,
+        }}
+      >
+        Battle Plan vs {comp.name.toUpperCase()}
+      </div>
+      <div
+        style={{
+          fontFamily: FONT_BODY,
+          fontSize: 12,
+          color: HZ.muted,
+          marginBottom: 10,
+          lineHeight: 1.5,
+        }}
+      >
+        {top3.length
+          ? `${top3.length} gap${top3.length === 1 ? '' : 's'} where ${comp.name} is listed and Bybit is absent — closing these directly reduces their dominance.`
+          : `No tracked gaps where ${comp.name} is currently listed — monitor the market move above.`}
+      </div>
+      {top3.map((g, i) => {
+        const opp = g._opp ?? oppScore(g)
+        const geo = normaliseGeo(g.country)
+        return (
+          <div key={i} style={{ marginBottom: 10 }}>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: HZ.text }}>
+              <span style={{ color: HZ.teal }}>&rarr; </span>
+              {gapUrl(g)} <span style={{ color: HZ.muted }}>&mdash; {geo} {g.tier}</span>{' '}
+              <span style={{ color: oppColor(opp), fontWeight: 700 }}>&mdash; OPP {opp}</span>
+            </div>
+            <div
+              style={{
+                fontFamily: FONT_BODY,
+                fontSize: 12,
+                color: HZ.muted,
+                margin: '3px 0 5px',
+                paddingLeft: 14,
+                lineHeight: 1.5,
+              }}
+            >
+              Closing this removes {comp.name}&rsquo;s exclusive advantage on {geo}{' '}
+              {intentFor(g)} traffic.
+            </div>
+            <div style={{ paddingLeft: 14 }}>
+              <button
+                onClick={() => onDraft?.(g)}
+                style={{
+                  fontFamily: FONT_MONO,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  padding: '3px 9px',
+                  borderRadius: 3,
+                  cursor: 'pointer',
+                  background: 'transparent',
+                  color: HZ.teal,
+                  border: '1px solid rgba(0,212,232,0.4)',
+                }}
+              >
+                DRAFT OUTREACH
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function CompetitorRow({ comp, maxScore, isVisible, index, momentum, blockedGaps, realMove, onDraft }) {
   const [open, setOpen] = useState(false)
   const [hover, setHover] = useState(false)
   const pct = maxScore > 0 ? (comp.threatScore / maxScore) * 100 : 0
-  // Real news headline (Section 9) takes precedence over seeded narrative.
+  // Real news headline (Section 9) takes precedence over the seeded narrative;
+  // the seeded placement line overrides only when there is no real move.
+  const seededMove = MARKET_MOVES[comp.name]
   const narrative = realMove?.headline
     ? `${realMove.headline}${realMove.impact_level ? ` [${realMove.impact_level}]` : ''}`
-    : narrativeFor(comp, momentum, blockedGaps)
+    : seededMove?.placement || narrativeFor(comp, momentum, blockedGaps)
+  // §5b — unified market-move block: real backend move if present, else seed.
+  const mmBlock = realMove?.headline
+    ? {
+        move: realMove.headline,
+        impact: realMove.impact_level ? `Impact level: ${realMove.impact_level}.` : null,
+        expanding: true,
+      }
+    : seededMove
   const topGap = blockedGaps[0]
   return (
     <div style={{ borderBottom: `1px solid ${HZ.border}` }}>
@@ -1208,6 +1398,7 @@ function CompetitorRow({ comp, maxScore, isVisible, index, momentum, blockedGaps
         >
           {narrative}
         </div>
+        {mmBlock && <MarketMoveBlock mm={mmBlock} />}
       </div>
 
       {open && (
@@ -1248,6 +1439,7 @@ function CompetitorRow({ comp, maxScore, isVisible, index, momentum, blockedGaps
               advantage on {normaliseGeo(topGap.country)} {intentFor(topGap)} traffic.
             </div>
           )}
+          <BattlePlan comp={comp} gaps={blockedGaps} onDraft={onDraft} />
         </div>
       )}
     </div>
@@ -2285,9 +2477,17 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     (g) => g.severity === 'high' || g.severity === 'medium'
   ).length
 
-  const sortedCompetitors = [...scanData.competitors]
+  const baseComps = [...scanData.competitors]
+  // §5b — ensure spec'd market-move competitors render even when absent from
+  // the live competitor set (e.g. WhiteBit, OKX in the demo). Equal visual
+  // weight is preserved by CompetitorRow; only bar width differs.
+  MARKET_MOVE_NAMES.forEach((n) => {
+    if (!baseComps.some((c) => c.name === n))
+      baseComps.push({ name: n, threatScore: 0, blocksOnGaps: 0 })
+  })
+  const sortedCompetitors = baseComps
     .sort((a, b) => b.threatScore - a.threatScore)
-    .slice(0, 5)
+    .slice(0, 8)
   const maxThreatScore = sortedCompetitors[0]?.threatScore || 100
 
   // §2 — tier×geo field map. §4 — gaps grouped per competitor.
@@ -2723,6 +2923,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                   momentum={momentumFor(c, prevSnapshot)}
                   blockedGaps={gapsByCompetitor[c.name] || []}
                   realMove={movesByComp[c.name]}
+                  onDraft={draftOutreach}
                 />
               ))}
             </div>
