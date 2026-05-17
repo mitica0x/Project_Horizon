@@ -16,8 +16,16 @@ import SortBar from './components/SortBar'
 import CompetitorPanel from './components/CompetitorPanel'
 import AccountMenu from './components/AccountMenu'
 import { computeThreatScore } from './utils/threatScore'
+import HorizonSidebar from './components/HorizonSidebar'
+import StatusBoard from './components/StatusBoard'
+import HorizonView from './components/HorizonView'
+import WarRoom from './components/WarRoom'
+import { getDayStatus } from './utils/horizonData'
 
 gsap.registerPlugin(ScrollTrigger)
+
+const STATUS_VIEWED_KEY = 'horizon_last_status_viewed'
+const todayKey = () => new Date().toISOString().slice(0, 10)
 
 // DEV mock used by the T-key fake scan and as a fallback if /api/dashboard
 // is missing on the backend. Mirrors the hero stat-card numbers (52 / 25 / 9 / 1)
@@ -71,6 +79,48 @@ export default function App() {
   })
   const [competitorPanel, setCompetitorPanel] = useState(null)
   const [scopeOpen, setScopeOpen] = useState(false)
+
+  // Horiz0n suite navigation. 'dashboard' = the untouched P1 tree.
+  const [view, setView] = useState('dashboard')
+  const [statusOpen, setStatusOpen] = useState(false)
+  const [warRoomOpen, setWarRoomOpen] = useState(false)
+  const dayStatus = useState(() => getDayStatus().overall)[0]
+
+  // Auto-open the Morning Status board once per day (first visit).
+  useEffect(() => {
+    let viewed = null
+    try { viewed = localStorage.getItem(STATUS_VIEWED_KEY) } catch { /* ignore */ }
+    if (viewed !== todayKey()) setStatusOpen(true)
+  }, [])
+
+  // Mark seen the moment the board is shown so it won't re-pop today.
+  useEffect(() => {
+    if (!statusOpen) return
+    try { localStorage.setItem(STATUS_VIEWED_KEY, todayKey()) } catch { /* ignore */ }
+  }, [statusOpen])
+
+  const handleNav = (id) => {
+    if (id === 'dashboard') {
+      setView('dashboard')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    if (id === 'status') {
+      setView('dashboard')
+      setStatusOpen(true)
+      requestAnimationFrame(() =>
+        setTimeout(() => {
+          document.getElementById('hz-status')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          })
+        }, 60),
+      )
+      return
+    }
+    setView(id)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   async function runScan() {
     if (scanState !== 'idle') return
@@ -280,6 +330,15 @@ export default function App() {
         `}</style>
       </header>
 
+      <HorizonSidebar
+        view={view}
+        onNav={handleNav}
+        onWarRoom={() => setWarRoomOpen(true)}
+        compactStatus={statusOpen ? null : dayStatus}
+      />
+
+      {view === 'dashboard' ? (
+      <div className="hz-shell">
       <HeroCanvas scanState={scanState} />
       <ScanResultsPanel
         ref={scanResultsPanelRef}
@@ -288,6 +347,12 @@ export default function App() {
         onClose={() => setScanResultsVisible(false)}
       />
       <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 48 }}>
+
+        {statusOpen && (
+          <div id="hz-status" className="container" style={{ paddingTop: 24 }}>
+            <StatusBoard onDismiss={() => setStatusOpen(false)} />
+          </div>
+        )}
 
 {/* Priority Gaps T1 — 2-column grid */}
         <section className="scroll-reveal" style={{ padding: '48px 0' }}>
@@ -377,6 +442,15 @@ export default function App() {
         </footer>
 
       </main>
+      </div>
+      ) : (
+      <div className="hz-shell">
+        <HorizonView view={view} onNav={handleNav} />
+      </div>
+      )}
+
+      {view === 'dashboard' && (
+      <>
       {activeSite && <OutreachPanel site={activeSite} onClose={() => setActiveSite(null)} />}
 
       {/* Scan Now — floating button */}
@@ -431,6 +505,10 @@ export default function App() {
         />
       )}
       <ScopePanel open={scopeOpen} onClose={() => setScopeOpen(false)} />
+      </>
+      )}
+
+      {warRoomOpen && <WarRoom onExit={() => setWarRoomOpen(false)} />}
     </>
   )
 }

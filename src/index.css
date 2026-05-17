@@ -45,6 +45,16 @@ body {
 
 .container { max-width: 1280px; margin: 0 auto; padding: 0 40px; }
 
+/* Horiz0n suite — left sidebar offset. Header stays full-width & unchanged. */
+:root { --hz-sidebar: 210px; }
+.hz-shell { padding-left: var(--hz-sidebar); transition: padding-left .2s ease; }
+.hz-nav   { width: var(--hz-sidebar); }
+.hz-nav-label { display: inline; }
+@media (max-width: 880px) {
+  :root { --hz-sidebar: 58px; }
+  .hz-nav-label { display: none; }
+}
+
 /* Pulse animation */
 @keyframes pulse {
   0%,100% { opacity:1; box-shadow:0 0 8px rgba(0,212,232,.7); }
