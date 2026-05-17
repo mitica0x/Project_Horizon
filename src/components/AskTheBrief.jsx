@@ -130,6 +130,27 @@ function SendIcon() {
   )
 }
 
+function MicIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 11a7 7 0 0 0 14 0M12 18v3"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 function SuggestionPill({ label, onClick, compact = false }) {
   const [hover, setHover] = useState(false)
   return (
@@ -191,9 +212,12 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
   const [intelChips,   setIntelChips]   = useState(null)
   const [attachment,   setAttachment]   = useState(null) // { file, name, type, isImage, previewUrl }
   const [attachError,  setAttachError]  = useState(null)
+  const [listening,    setListening]    = useState(false)
+  const [interim,      setInterim]      = useState('')
   const threadRef    = useRef(null)
   const textareaRef  = useRef(null)
   const fileInputRef = useRef(null)
+  const recognitionRef = useRef(null)
 
   const clearAttachment = () => {
     setAttachment(prev => {
@@ -229,6 +253,98 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
       previewUrl: isImage ? URL.createObjectURL(file) : null,
     })
   }
+
+  // Shared accept path for drag/drop + clipboard paste — same validation and
+  // attachment state/preview chip as the file picker. `imageOnly` for paste.
+  const acceptFile = (file, imageOnly = false) => {
+    if (!file) return
+    const isImage = IMAGE_TYPES.includes(file.type)
+    const ok = imageOnly ? isImage : (isImage || file.type === 'application/pdf')
+    if (!ok) {
+      setAttachError(imageOnly ? 'Only images can be pasted' : 'Unsupported file type')
+      return
+    }
+    if (file.size > MAX_ATTACH_BYTES) {
+      setAttachError('File too large (max 5MB)')
+      return
+    }
+    setAttachError(null)
+    setAttachment({
+      file,
+      name: file.name || (isImage ? 'pasted-image.png' : 'pasted-file'),
+      type: file.type,
+      isImage,
+      previewUrl: isImage ? URL.createObjectURL(file) : null,
+    })
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]
+    if (f) acceptFile(f, false)
+  }
+
+  const handlePaste = (e) => {
+    const f =
+      e.clipboardData && e.clipboardData.files && e.clipboardData.files[0]
+    if (f) {
+      e.preventDefault()
+      acceptFile(f, true)
+    }
+    // No file in clipboard → let the default text paste proceed.
+  }
+
+  const startVoice = () => {
+    if (listening) {
+      try { recognitionRef.current && recognitionRef.current.stop() } catch { /* ignore */ }
+      return
+    }
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      setAttachError('Voice not supported in this browser')
+      return
+    }
+    const recognition = new SpeechRecognition()
+    recognition.continuous = false
+    recognition.interimResults = true
+    recognition.lang = '' // browser uses system language
+    recognitionRef.current = recognition
+    setAttachError(null)
+    setInterim('')
+    setListening(true)
+    recognition.onresult = (event) => {
+      let finalText = ''
+      let interimText = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript
+        if (event.results[i].isFinal) finalText += t
+        else interimText += t
+      }
+      if (finalText) {
+        setInput(finalText.trim())
+        setInterim('')
+        try { recognition.stop() } catch { /* ignore */ }
+      } else {
+        setInterim(interimText)
+      }
+    }
+    recognition.onerror = () => {
+      setListening(false)
+      setInterim('')
+    }
+    recognition.onend = () => {
+      setListening(false)
+      setInterim('')
+    }
+    try { recognition.start() } catch { setListening(false) }
+  }
+
+  // Stop any active recognition if the component unmounts.
+  useEffect(() => () => {
+    try { recognitionRef.current && recognitionRef.current.stop() } catch { /* ignore */ }
+  }, [])
 
   const pills = suggestionPills && suggestionPills.length ? suggestionPills : DEFAULT_PILLS
 
@@ -361,6 +477,8 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 32, stiffness: 320 }}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
+              onDrop={handleDrop}
               style={{
                 position:      'fixed',
                 top:           0,
@@ -646,7 +764,12 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Ask Intel anything..."
+                    onPaste={handlePaste}
+                    placeholder={
+                      listening
+                        ? (interim || 'Listening…')
+                        : 'Ask Intel anything...'
+                    }
                     style={{
                       flex:        1,
                       background:  'rgba(255,255,255,0.04)',
@@ -691,6 +814,28 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                     <PaperclipIcon />
                   </button>
                   <button
+                    onClick={startVoice}
+                    className={listening ? 'intel-mic-active' : ''}
+                    title={listening ? 'Stop voice input' : 'Voice input'}
+                    aria-label="Voice input"
+                    style={{
+                      width:           36,
+                      height:          36,
+                      borderRadius:    8,
+                      background:      'rgba(255,255,255,0.04)',
+                      border:          '1px solid rgba(255,255,255,0.08)',
+                      color:           '#ffffff',
+                      cursor:          'pointer',
+                      display:         'flex',
+                      alignItems:      'center',
+                      justifyContent:  'center',
+                      flexShrink:      0,
+                      transition:      'color 0.15s, border-color 0.15s',
+                    }}
+                  >
+                    <MicIcon />
+                  </button>
+                  <button
                     onClick={() => handleSend()}
                     disabled={(!input.trim() && !attachment) || loading}
                     style={{
@@ -717,6 +862,15 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                 @keyframes intelDot {
                   0%, 80%, 100% { opacity: 0.3; }
                   40%           { opacity: 1;   }
+                }
+                @keyframes intelMicPulse {
+                  0%, 100% { box-shadow: 0 0 0 0 rgba(255,77,109,0.5); }
+                  50%      { box-shadow: 0 0 0 6px rgba(255,77,109,0); }
+                }
+                .intel-mic-active {
+                  animation: intelMicPulse 1.2s ease-in-out infinite;
+                  border-color: #ff4d6d !important;
+                  color: #ff4d6d !important;
                 }
                 .intel-input::placeholder { color: #8892a4; }
               `}</style>
