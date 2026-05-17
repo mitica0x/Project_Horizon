@@ -9,7 +9,7 @@ function buildOutreachMailto(gap) {
   return `mailto:${gap.contactEmail || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
-// ─── Design tokens (Horizon War Room) ─────────────────────────────────────────
+// ─── Design tokens (Horizon N0va) ─────────────────────────────────────────────
 const HZ = {
   bg:        '#060a10',
   surface:   '#0a0e1a',

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { fetchDecisions } from '../lib/horizonStore'
 import { assessCompetitors } from '../utils/horizonData'
-import { Card, Badge, PanelHeader, EmptyState, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
+import { Card, Badge, PanelHeader, EmptyState, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 
 // P5 — Decision Ledger. Timeline of every activate / skip / defer, newest
 // first. Skipped events that the field has since contested are flagged
@@ -189,7 +189,7 @@ function Field({ label, children }) {
   )
 }
 
-export default function LedgerPanel() {
+export default function LedgerPanel({ onAskIntel }) {
   const [rows, setRows] = useState(null)
   const [filter, setFilter] = useState('all')
   const [query, setQuery] = useState('')
@@ -208,6 +208,12 @@ export default function LedgerPanel() {
         (d.event_name || '').toLowerCase().includes(query.toLowerCase())),
   )
 
+  const intelContext = () =>
+    `You are reviewing the decision ledger. ${list.length} decision(s). Recent: ${list
+      .slice(0, 5)
+      .map(d => `${(d.decision || '').toUpperCase()} ${d.event_name || '—'}`)
+      .join('; ') || 'none yet'}.`
+
   return (
     <>
       <PanelHeader
@@ -215,6 +221,7 @@ export default function LedgerPanel() {
         accent="#00d4e8"
         count={list.length}
         sub="Every activate / skip / defer — the audit trail behind the moves"
+        right={onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
       />
 
       {/* Controls */}

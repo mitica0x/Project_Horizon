@@ -1,49 +1,52 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useOrg } from '../context/OrgContext'
-import { getDayStatus, getWindows, assessCompetitors } from '../utils/horizonData'
+import { getWindows } from '../utils/horizonData'
 import { fetchActivations, fetchDecisions } from '../lib/horizonStore'
 import { fmtDate } from '../../lib/radar/scoring'
-import { Card, Badge, PanelHeader, Btn, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
+import {
+  Card,
+  Badge,
+  PanelHeader,
+  AskIntelButton,
+  FONT_HEAD,
+  FONT_BODY,
+  FONT_MONO,
+} from './horizonUI'
 
-// P7 — CEO Brief. Auto-assembles from live suite data. Internal mode shows
-// raw scores; Client Delivery mode keeps narrative language only. Exports a
-// clean white PDF (jsPDF, dynamically imported on click).
+// P7 — CEO Brief, narrative-first. Opening line is outcome-aware. Client
+// Delivery mode strips field commentary + pattern read.
 
-const ACTION_NARRATIVE = {
-  'MOVE NOW': 'act now',
-  PREPARE: 'prepare',
-  MONITOR: 'monitor',
-}
+const DAY = 86400000
 
-function thisMonth(ts) {
-  if (!ts) return false
-  const d = new Date(ts)
-  const n = new Date()
-  return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear()
-}
+// Static seeded field commentary (competitor read).
+const FIELD_DID = [
+  'Binance activated on ETF narrative — third consecutive week of deployment.',
+  'OKX expanded comparison-site footprint across DE / NL placements.',
+  'Bitget stayed quiet — no new tracked placements detected this cycle.',
+]
 
-function buildModel(org) {
-  const status = getDayStatus()
-  const { rows } = getWindows(90)
-  const field = assessCompetitors()
-  const top3 = rows.slice(0, 3)
-  const nextAction =
-    rows.find(w => w.action === 'MOVE NOW') ||
-    rows.find(w => w.action === 'PREPARE') ||
-    rows[0] ||
-    null
-  return {
-    orgName: org?.name || 'Organisation',
-    date: new Date().toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    }),
-    status,
-    top3,
-    field,
-    nextAction,
+function readPosture() {
+  try {
+    const p = JSON.parse(localStorage.getItem('horizon_signal_posture') || 'null')
+    if (p && p.signal) {
+      const days = Math.max(
+        0,
+        Math.round((Date.now() - new Date(p.since).getTime()) / DAY),
+      )
+      return { signal: p.signal, days }
+    }
+  } catch {
+    /* ignore */
   }
+  return { signal: 'PREPARE', days: 0 }
+}
+
+function openingLine(lastOutcome) {
+  if (lastOutcome === 'win')
+    return 'Strong close. Your last activation performed above pattern — the field is watching.'
+  if (lastOutcome === 'miss')
+    return 'Consolidation week. You held while others moved — your next activation window carries elevated stakes.'
+  return 'Pattern building. Every decision logged from here sharpens the intelligence.'
 }
 
 function SectionTitle({ children }) {
@@ -56,7 +59,7 @@ function SectionTitle({ children }) {
         letterSpacing: '0.12em',
         textTransform: 'uppercase',
         color: 'var(--cyan)',
-        margin: '22px 0 10px',
+        margin: '24px 0 10px',
       }}
     >
       {children}
@@ -64,13 +67,13 @@ function SectionTitle({ children }) {
   )
 }
 
-function Line({ children }) {
+function Line({ children, dim }) {
   return (
     <div
       style={{
-        fontFamily: FONT_BODY,
-        fontSize: 14,
-        color: '#c8d0dc',
+        fontFamily: dim ? FONT_MONO : FONT_BODY,
+        fontSize: dim ? 12 : 14,
+        color: dim ? 'var(--text-muted)' : '#c8d0dc',
         lineHeight: 1.7,
         padding: '3px 0',
       }}
@@ -80,14 +83,14 @@ function Line({ children }) {
   )
 }
 
-export default function BriefPanel() {
+export default function BriefPanel({ onAskIntel }) {
   const { org } = useOrg()
-  const [mode, setMode] = useState('internal') // 'internal' | 'client'
+  const [mode, setMode] = useState('internal')
   const [activations, setActivations] = useState([])
   const [decisions, setDecisions] = useState([])
   const [exporting, setExporting] = useState(false)
-
-  const model = useMemo(() => buildModel(org), [org])
+  const { rows } = useMemo(() => getWindows(90), [])
+  const posture = useMemo(() => readPosture(), [])
   const client = mode === 'client'
 
   useEffect(() => {
@@ -95,23 +98,52 @@ export default function BriefPanel() {
     fetchDecisions().then(({ data }) => setDecisions(data || []))
   }, [])
 
-  const monthDecisions = decisions.filter(d => thisMonth(d.decided_at))
-  const recentActs = activations.slice(0, 5)
+  const model = useMemo(() => {
+    const withOutcome = activations.filter(a => a.outcome)
+    const wins = withOutcome.filter(a => a.outcome === 'win').length
+    const winRate = withOutcome.length
+      ? Math.round((wins / withOutcome.length) * 100)
+      : null
+    const lastOutcome = activations.find(a => a.outcome)?.outcome || null
+    const skips = decisions.filter(d => d.decision === 'skip').length
+    const acts = activations.length
+    const forward = rows
+      .filter(w => w.daysOut <= 14)
+      .sort((a, b) => b.opportunity - a.opportunity)
+      .slice(0, 3)
+    const forwardFallback = forward.length
+      ? forward
+      : rows.slice(0, 3)
 
-  const windowLine = w =>
-    client
-      ? `${w.event.name} (${fmtDate(w.event.date)}) — ${ACTION_NARRATIVE[w.action]}, in ${w.daysOut} days`
-      : `${w.event.name} (${fmtDate(w.event.date)}) — opp ${w.opportunity}, ${w.action}, pressure ${w.pressurePct}%, in ${w.daysOut}d`
+    let patternRead
+    if (winRate == null || withOutcome.length < 5)
+      patternRead = 'Insufficient history — pattern read available after 5 logged outcomes.'
+    else if (winRate > 60)
+      patternRead = 'You are operating above your baseline. Posture is strong.'
+    else if (winRate < 40)
+      patternRead = 'Below-baseline period. Review LEDGER for pattern drift.'
+    else
+      patternRead = 'Holding near baseline — no decisive drift either direction.'
 
-  const fieldLine = client
-    ? `${model.field.top} is leading the field; competitive pressure is ${model.field.level}.`
-    : `Field pressure ${model.field.pressure}/100 (${model.field.level}). ${model.field.top} leads · ${model.field.activeCount} competitors active.`
+    return {
+      orgName: org?.name || 'Organisation',
+      date: new Date().toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      }),
+      opening: openingLine(lastOutcome),
+      winRate,
+      acts,
+      skips,
+      patternRead,
+      forward: forwardFallback,
+      hasForward: forward.length > 0,
+    }
+  }, [activations, decisions, rows, org])
 
-  const nextLine = model.nextAction
-    ? client
-      ? `${model.nextAction.event.name} — ${ACTION_NARRATIVE[model.nextAction.action]} (window ${fmtDate(model.nextAction.event.date)}).`
-      : `${model.nextAction.event.name} — ${model.nextAction.action}, opportunity ${model.nextAction.opportunity}, ${model.nextAction.daysOut}d out.`
-    : 'No actionable window inside the horizon.'
+  const intelContext = () =>
+    `You are reviewing the weekly intelligence brief. Opening: "${model.opening}" Activity: ${model.acts} activations, ${model.skips} skips, posture ${posture.signal} (${posture.days}d). Pattern: ${model.patternRead}`
 
   // ---- PDF export -----------------------------------------------------------
   const exportPdf = async () => {
@@ -138,18 +170,20 @@ export default function BriefPanel() {
       doc.line(M, y + 10, W - M, y + 10)
       y += 20
 
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(18)
-      doc.setTextColor(20, 24, 34)
-      doc.text('Horiz0n Brief', M, y)
+      doc.setFont('helvetica', 'bolditalic')
+      doc.setFontSize(14)
+      doc.setTextColor(0, 150, 170)
+      doc.splitTextToSize(model.opening, W - M * 2).forEach(ln => {
+        doc.text(ln, M, y)
+        y += 7
+      })
       y += 6
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(10)
-      doc.setTextColor(120, 128, 140)
-      doc.text(client ? 'Client Delivery' : 'Internal', M, y)
-      y += 12
 
       const section = title => {
+        if (y > 265) {
+          doc.addPage()
+          y = 20
+        }
         doc.setFont('helvetica', 'bold')
         doc.setFontSize(11)
         doc.setTextColor(0, 150, 170)
@@ -160,9 +194,8 @@ export default function BriefPanel() {
         doc.setTextColor(40, 46, 58)
       }
       const para = txt => {
-        const lines = doc.splitTextToSize(txt, W - M * 2)
-        lines.forEach(ln => {
-          if (y > 270) {
+        doc.splitTextToSize(txt, W - M * 2).forEach(ln => {
+          if (y > 275) {
             doc.addPage()
             y = 20
           }
@@ -171,34 +204,28 @@ export default function BriefPanel() {
         })
       }
 
-      section("Today's status")
-      para(`The day reads ${model.status.overall}.`)
-      model.status.signals.forEach(s =>
-        para(`• ${s.label}: ${s.rag.toUpperCase()} — ${s.note}`),
+      if (!client) {
+        section('What the field did')
+        FIELD_DID.forEach(b => para(`• ${b}`))
+      }
+      section('What you did')
+      para(
+        model.acts || model.skips
+          ? `${model.acts} activation(s), ${model.skips} skip(s). Posture ${posture.signal} for ${posture.days} day(s).`
+          : 'No activations logged this period.',
       )
-
-      section('Top upcoming windows')
-      model.top3.forEach(w => para(`• ${windowLine(w)}`))
-
-      section('Recent activations & outcomes')
-      if (recentActs.length === 0) para('• No activations recorded yet.')
-      recentActs.forEach(a =>
-        para(
-          `• ${a.event_name || 'Activation'} — ${a.outcome ? a.outcome.toUpperCase() : a.outcome_status || 'pending'}`,
-        ),
-      )
-
-      section('Key decisions this month')
-      if (monthDecisions.length === 0) para('• No decisions logged this month.')
-      monthDecisions
-        .slice(0, 8)
-        .forEach(d => para(`• ${d.decision.toUpperCase()} — ${d.event_name || '—'}`))
-
-      section('Competitor landscape')
-      para(fieldLine)
-
-      section('Recommended next action')
-      para(nextLine)
+      if (!client) {
+        section('Pattern read')
+        para(model.patternRead)
+      }
+      section('Forward 14 days')
+      if (model.hasForward) {
+        model.forward.forEach(w =>
+          para(`• ${w.event.name} (${fmtDate(w.event.date)}) — ${w.action}`),
+        )
+      } else {
+        para('No high-priority windows flagged in next 14 days.')
+      }
 
       doc.setDrawColor(210, 214, 220)
       doc.line(M, 285, W - M, 285)
@@ -207,8 +234,7 @@ export default function BriefPanel() {
       doc.text('Prepared by COINsiglieri', M, 290)
 
       const safe = model.orgName.replace(/[^a-z0-9]+/gi, '_')
-      const dstr = new Date().toISOString().slice(0, 10)
-      doc.save(`Horiz0n_Brief_${safe}_${dstr}.pdf`)
+      doc.save(`Horiz0n_Brief_${safe}_${new Date().toISOString().slice(0, 10)}.pdf`)
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('[brief] pdf export failed', e)
@@ -222,10 +248,10 @@ export default function BriefPanel() {
       <PanelHeader
         title="CEO Brief"
         accent="#00d4e8"
-        sub="Auto-assembled from live suite data — leadership or client delivery"
+        sub="Narrative-first — auto-assembled from live suite data"
+        right={onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
       />
 
-      {/* Controls */}
       <div
         style={{
           display: 'flex',
@@ -264,13 +290,26 @@ export default function BriefPanel() {
           })}
         </div>
         <div style={{ flex: 1 }} />
-        <Btn tone="#94c864" onClick={exportPdf} disabled={exporting}>
+        <button
+          onClick={exportPdf}
+          disabled={exporting}
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 12,
+            letterSpacing: '0.04em',
+            color: exporting ? 'var(--text-muted)' : '#94c864',
+            background: '#131929',
+            border: '1px solid rgba(148,200,100,0.3)',
+            borderRadius: 6,
+            padding: '9px 16px',
+            cursor: exporting ? 'default' : 'pointer',
+          }}
+        >
           {exporting ? 'Generating…' : '↧ Export PDF'}
-        </Btn>
+        </button>
       </div>
 
-      {/* In-app brief */}
-      <Card style={{ padding: '28px 32px' }}>
+      <Card style={{ padding: '30px 34px' }}>
         <div
           style={{
             display: 'flex',
@@ -278,7 +317,7 @@ export default function BriefPanel() {
             alignItems: 'flex-start',
             flexWrap: 'wrap',
             gap: 12,
-            paddingBottom: 16,
+            paddingBottom: 18,
             borderBottom: '1px solid rgba(255,255,255,0.06)',
           }}
         >
@@ -299,64 +338,63 @@ export default function BriefPanel() {
           </Badge>
         </div>
 
-        <SectionTitle>Today’s status</SectionTitle>
-        <Line>
-          The day reads{' '}
-          <span
-            style={{
-              color:
-                model.status.overall === 'RED'
-                  ? '#ff4d6d'
-                  : model.status.overall === 'AMBER'
-                  ? '#D4A853'
-                  : '#94c864',
-              fontFamily: FONT_HEAD,
-              fontWeight: 700,
-            }}
-          >
-            {model.status.overall}
-          </span>
-          .
-        </Line>
-        {model.status.signals.map(s => (
-          <Line key={s.label}>
-            • {s.label}: {s.rag.toUpperCase()} — {s.note}
+        {/* Opening line — large, cyan, italic */}
+        <div
+          style={{
+            fontFamily: FONT_HEAD,
+            fontStyle: 'italic',
+            fontSize: 22,
+            lineHeight: 1.45,
+            color: '#00d4e8',
+            margin: '22px 0 6px',
+          }}
+        >
+          {model.opening}
+        </div>
+
+        {!client && (
+          <>
+            <SectionTitle>What the field did</SectionTitle>
+            {FIELD_DID.map((b, i) => (
+              <Line key={i} dim>
+                • {b}
+              </Line>
+            ))}
+          </>
+        )}
+
+        <SectionTitle>What you did</SectionTitle>
+        {model.acts || model.skips ? (
+          <Line>
+            {model.acts} activation{model.acts === 1 ? '' : 's'}, {model.skips} skip
+            {model.skips === 1 ? '' : 's'}. Posture{' '}
+            <span style={{ color: 'var(--cyan)', fontFamily: FONT_HEAD, fontWeight: 700 }}>
+              {posture.signal}
+            </span>{' '}
+            for {posture.days} day{posture.days === 1 ? '' : 's'}.
           </Line>
-        ))}
-
-        <SectionTitle>Top upcoming windows</SectionTitle>
-        {model.top3.map(w => (
-          <Line key={w.event.id}>• {windowLine(w)}</Line>
-        ))}
-
-        <SectionTitle>Recent activations &amp; outcomes</SectionTitle>
-        {recentActs.length === 0 ? (
-          <Line>• No activations recorded yet.</Line>
         ) : (
-          recentActs.map(a => (
-            <Line key={a.id}>
-              • {a.event_name || 'Activation'} —{' '}
-              {a.outcome ? a.outcome.toUpperCase() : a.outcome_status || 'pending'}
-            </Line>
-          ))
+          <Line>No activations logged this period.</Line>
         )}
 
-        <SectionTitle>Key decisions this month</SectionTitle>
-        {monthDecisions.length === 0 ? (
-          <Line>• No decisions logged this month.</Line>
-        ) : (
-          monthDecisions.slice(0, 8).map(d => (
-            <Line key={d.id}>
-              • {d.decision.toUpperCase()} — {d.event_name || '—'}
-            </Line>
-          ))
+        {!client && (
+          <>
+            <SectionTitle>Pattern read</SectionTitle>
+            <Line>{model.patternRead}</Line>
+          </>
         )}
 
-        <SectionTitle>Competitor landscape</SectionTitle>
-        <Line>{fieldLine}</Line>
-
-        <SectionTitle>Recommended next action</SectionTitle>
-        <Line>{nextLine}</Line>
+        <SectionTitle>Forward 14 days</SectionTitle>
+        {model.hasForward ? (
+          model.forward.map(w => (
+            <Line key={w.event.id}>
+              • {w.event.name} ({fmtDate(w.event.date)}) —{' '}
+              <span style={{ color: 'var(--cyan)' }}>{w.action}</span>
+            </Line>
+          ))
+        ) : (
+          <Line>No high-priority windows flagged in next 14 days.</Line>
+        )}
 
         <div
           style={{

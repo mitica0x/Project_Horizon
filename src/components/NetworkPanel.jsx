@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useOrg } from '../context/OrgContext'
 import { getWindows } from '../utils/horizonData'
 import { fetchActivations } from '../lib/horizonStore'
-import { Card, Badge, PanelHeader, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
+import { Card, Badge, PanelHeader, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 
 // P9 — Network Intelligence. Org metrics vs anonymized network benchmarks.
 // Network averages are seeded synthetic constants (replace with real
@@ -113,7 +113,7 @@ function ComparisonRow({ m }) {
   )
 }
 
-export default function NetworkPanel() {
+export default function NetworkPanel({ onAskIntel }) {
   const { org } = useOrg()
   const [acts, setActs] = useState([])
   const { rows } = useMemo(() => getWindows(90), [])
@@ -238,12 +238,18 @@ export default function NetworkPanel() {
     }
   }
 
+  const intelContext = () =>
+    `You are reviewing network benchmarks. Your metrics vs peers — ${metrics
+      .map(m => `${m.label}: you ${m.fmt(m.org)} vs network ${m.fmt(m.net)}`)
+      .join('; ')}.`
+
   return (
     <>
       <PanelHeader
         title="Network Intelligence"
         accent="#00d4e8"
         sub="Anonymized benchmarks across MID-budget EU operators"
+        right={onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

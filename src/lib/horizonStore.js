@@ -169,10 +169,10 @@ export async function startNova(triggerType = 'manual') {
       })
       .select()
       .single()
-    if (error) return soft('startWarRoom', error)
+    if (error) return soft('startNova', error)
     return { data, error: null }
   } catch (e) {
-    return soft('startWarRoom', e)
+    return soft('startNova', e)
   }
 }
 
@@ -185,9 +185,9 @@ export async function endNova(id, notes = null) {
       .eq('id', id)
       .select()
       .single()
-    if (error) return soft('endWarRoom', error)
+    if (error) return soft('endNova', error)
     return { data, error: null }
   } catch (e) {
-    return soft('endWarRoom', e)
+    return soft('endNova', e)
   }
 }

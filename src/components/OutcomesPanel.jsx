@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchActivations, updateActivationOutcome } from '../lib/horizonStore'
-import { Card, Badge, PanelHeader, EmptyState, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
+import { Card, Badge, PanelHeader, EmptyState, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 
 // P4 — Campaign Outcome Tracking. Reads org-scoped rows from the activations
 // table (written by P3). Field reads are defensive so a slightly different
@@ -215,7 +215,7 @@ function OutcomeRow({ a, onSaved }) {
   )
 }
 
-export default function OutcomesPanel() {
+export default function OutcomesPanel({ onAskIntel }) {
   const [rows, setRows] = useState(null)
   const [error, setError] = useState(null)
 
@@ -237,6 +237,11 @@ export default function OutcomesPanel() {
   const reviewDue = list.filter(a => displayStatus(a) === 'REVIEW DUE').length
   const wins = list.filter(a => val(a, 'outcome') === 'win').length
   const winRate = activated ? Math.round((wins / activated) * 100) : 0
+  const neutral = list.filter(a => val(a, 'outcome') === 'neutral').length
+  const miss = list.filter(a => val(a, 'outcome') === 'miss').length
+
+  const intelContext = () =>
+    `You are reviewing campaign outcomes. Record: ${activated} activated, ${wins} WIN, ${neutral} NEUTRAL, ${miss} MISS, ${reviewDue} review due (win rate ${winRate}%).`
 
   return (
     <>
@@ -245,6 +250,7 @@ export default function OutcomesPanel() {
         accent="#94c864"
         count={activated}
         sub="Every activated window — track what the move actually returned"
+        right={onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
       />
 
       {/* Summary bar */}
