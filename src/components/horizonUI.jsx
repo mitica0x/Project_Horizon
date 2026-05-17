@@ -33,37 +33,85 @@ export function Card({ children, style }) {
   )
 }
 
-export function PanelHeader({ title, count, accent = 'var(--cyan)', sub }) {
+// Section-aware INTEL trigger — same look on every surface (S8).
+export function AskIntelButton({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      title="Ask Intel about this section"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 7,
+        fontFamily: FONT_MONO,
+        fontSize: 11,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        color: '#94c864',
+        background: 'transparent',
+        border: '1px solid rgba(148,200,100,0.3)',
+        borderRadius: 6,
+        padding: '7px 13px',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        transition: 'background 0.15s, border-color 0.15s',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.background = 'rgba(148,200,100,0.08)'
+        e.currentTarget.style.borderColor = '#94c864'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.background = 'transparent'
+        e.currentTarget.style.borderColor = 'rgba(148,200,100,0.3)'
+      }}
+    >
+      <span style={{ fontSize: 12 }}>⬡</span> Ask Intel
+    </button>
+  )
+}
+
+export function PanelHeader({ title, count, accent = 'var(--cyan)', sub, right }) {
   return (
     <div style={{ marginBottom: sub ? 20 : 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: sub ? 8 : 0 }}>
-        <span
-          style={{
-            fontFamily: FONT_HEAD,
-            fontWeight: 700,
-            fontSize: 16,
-            letterSpacing: '.1em',
-            textTransform: 'uppercase',
-            color: accent,
-          }}
-        >
-          {title}
-        </span>
-        {count != null && (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          marginBottom: sub ? 8 : 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <span
             style={{
-              fontFamily: FONT_MONO,
-              fontSize: 11,
-              padding: '1px 8px',
-              borderRadius: 99,
-              background: 'rgba(255,255,255,.05)',
-              color: 'var(--text-muted)',
-              border: '1px solid var(--border)',
+              fontFamily: FONT_HEAD,
+              fontWeight: 700,
+              fontSize: 16,
+              letterSpacing: '.1em',
+              textTransform: 'uppercase',
+              color: accent,
             }}
           >
-            {count}
+            {title}
           </span>
-        )}
+          {count != null && (
+            <span
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                padding: '1px 8px',
+                borderRadius: 99,
+                background: 'rgba(255,255,255,.05)',
+                color: 'var(--text-muted)',
+                border: '1px solid var(--border)',
+              }}
+            >
+              {count}
+            </span>
+          )}
+        </div>
+        {right}
       </div>
       {sub && (
         <p style={{ fontFamily: FONT_BODY, fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>

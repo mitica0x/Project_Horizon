@@ -1,15 +1,18 @@
 import { useMemo } from 'react'
-import { getDayStatus, fmtClock } from '../utils/horizonData'
-import { Card, RagDot, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
+import { getDayStatus, statusVerdict, fmtClock } from '../utils/horizonData'
+import { Card, RagDot, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 
-// P2 — Morning Status Board. 90-second daily briefing. Full-width card at
-// the top of the dashboard. Overall = worst of five RAG signal rows.
+// P2 — Morning Status Board. 90-second daily briefing. Verdict reframed:
+// HIGH PRESSURE / ELEVATED WATCH (cyan) · ALL CLEAR (lime). No crisis red.
 
-const STATUS_COLOR = { GREEN: '#94c864', AMBER: '#D4A853', RED: '#ff4d6d' }
-
-export default function StatusBoard({ onDismiss }) {
+export default function StatusBoard({ onDismiss, onAskIntel }) {
   const { signals, overall, updatedAt } = useMemo(() => getDayStatus(), [])
-  const color = STATUS_COLOR[overall]
+  const verdict = statusVerdict(overall)
+
+  const intelContext = () =>
+    `You are reviewing the morning status board. Verdict: ${verdict.label}. Signals — ${signals
+      .map(s => `${s.label}: ${s.rag.toUpperCase()} (${s.note})`)
+      .join('; ')}.`
 
   return (
     <Card style={{ padding: '22px 28px' }}>
@@ -26,7 +29,16 @@ export default function StatusBoard({ onDismiss }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <RagDot rag={overall.toLowerCase()} size={12} />
+          <span
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: '50%',
+              background: verdict.color,
+              boxShadow: `0 0 8px ${verdict.color}`,
+              flexShrink: 0,
+            }}
+          />
           <div>
             <div
               style={{
@@ -34,10 +46,10 @@ export default function StatusBoard({ onDismiss }) {
                 fontWeight: 800,
                 fontSize: 24,
                 letterSpacing: '0.06em',
-                color,
+                color: verdict.color,
               }}
             >
-              TODAY IS {overall}
+              {verdict.label}
             </div>
             <div
               style={{
@@ -51,10 +63,11 @@ export default function StatusBoard({ onDismiss }) {
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: 'var(--text-muted)' }}>
             Last updated {fmtClock(updatedAt)}
           </span>
+          {onAskIntel && <AskIntelButton onClick={() => onAskIntel(intelContext())} />}
           <button
             onClick={onDismiss}
             style={{
@@ -66,7 +79,7 @@ export default function StatusBoard({ onDismiss }) {
               background: 'transparent',
               border: '1px solid var(--border)',
               borderRadius: 5,
-              padding: '5px 10px',
+              padding: '7px 12px',
               cursor: 'pointer',
               transition: 'color 0.15s, border-color 0.15s',
             }}

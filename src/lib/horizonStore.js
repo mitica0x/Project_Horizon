@@ -153,9 +153,11 @@ export async function updateActivationOutcome(id, patch) {
   }
 }
 
-// ── War Room sessions (P6) ─────────────────────────────────────────────────
-export async function startWarRoom(triggerType = 'manual') {
-  const orgId = requireOrg('startWarRoom')
+// ── N0va sessions (P6) ─────────────────────────────────────────────────────
+// DB table name (war_room_sessions) is a created schema object — left intact
+// so existing migration 004 / persisted rows keep working.
+export async function startNova(triggerType = 'manual') {
+  const orgId = requireOrg('startNova')
   if (!orgId) return { data: null, error: 'no-org' }
   try {
     const { data, error } = await supabase
@@ -174,7 +176,7 @@ export async function startWarRoom(triggerType = 'manual') {
   }
 }
 
-export async function endWarRoom(id, notes = null) {
+export async function endNova(id, notes = null) {
   if (!id) return { data: null, error: 'no-session' }
   try {
     const { data, error } = await supabase

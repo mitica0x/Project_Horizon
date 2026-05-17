@@ -80,6 +80,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
   const [messages, setMessages] = useState([])
   const [input,    setInput]    = useState('')
   const [loading,  setLoading]  = useState(false)
+  const [sysContext, setSysContext] = useState(null)
   const threadRef    = useRef(null)
   const textareaRef  = useRef(null)
 
@@ -122,7 +123,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
         body: JSON.stringify({
           model:      'claude-sonnet-4-6',
           max_tokens: 1024,
-          system:     SYSTEM,
+          system:     sysContext ? `${SYSTEM}\n\n${sysContext}` : SYSTEM,
           messages:   newMessages.map(m => ({ role: m.role, content: m.content })),
         }),
       })
@@ -142,9 +143,15 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
 
   useImperativeHandle(ref, () => ({
     openWithQuestion: (question) => {
+      setSysContext(null)
       setOpen(true)
       setInput(question)
       handleSend(question)
+    },
+    // S8 — open the same chat primed with a section-specific system context.
+    openWithContext: (ctx) => {
+      setSysContext(ctx || null)
+      setOpen(true)
     },
   }))
 
@@ -157,31 +164,6 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
 
   return (
     <>
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          style={{
-            position:    'fixed',
-            bottom:      80,
-            right:       24,
-            zIndex:      50,
-            fontFamily:  "'IBM Plex Mono', monospace",
-            fontSize:    13,
-            color:       '#94c864',
-            background:  '#131929',
-            border:      '1px solid rgba(148,200,100,0.3)',
-            borderRadius: 8,
-            padding:     '12px 20px',
-            cursor:      'pointer',
-            transition:  'box-shadow 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 16px rgba(148,200,100,0.25)' }}
-          onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
-        >
-          ⬡ Intel
-        </button>
-      )}
-
       <AnimatePresence>
         {open && (
           <>
@@ -208,7 +190,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                 position:      'fixed',
                 top:           0,
                 right:         0,
-                width:         500,
+                width:         'min(600px, 100vw)',
                 height:        '100vh',
                 background:    '#131929',
                 borderLeft:    '1px solid rgba(148,200,100,0.15)',

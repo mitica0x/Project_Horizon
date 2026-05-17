@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { assessCompetitors, fmtClock } from '../utils/horizonData'
-import { startWarRoom, endWarRoom } from '../lib/horizonStore'
-import { FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
+import { startNova, endNova } from '../lib/horizonStore'
+import { FONT_HEAD, FONT_BODY, FONT_MONO, AskIntelButton } from './horizonUI'
 
-// P6 — War Room Mode. Full-screen red-tinted takeover. Four response
-// playbooks with tickable steps (persisted per browser), live competitor
-// pressure, session logged to Supabase (soft-fails if table absent).
+// P6 — N0VA Mode. Full-screen lime-tinted takeover. Four response playbooks
+// with tickable steps (persisted per browser), live competitor pressure,
+// session logged to Supabase (soft-fails if table absent).
 
 const PLAYBOOKS = [
   {
@@ -50,7 +50,7 @@ const PLAYBOOKS = [
   },
 ]
 
-const STEPS_KEY = 'horizon_warroom_steps'
+const STEPS_KEY = 'horizon_nova_steps'
 
 function loadSteps() {
   try {
@@ -66,9 +66,9 @@ function PlaybookCard({ pb, ticked, onToggle }) {
   return (
     <div
       style={{
-        border: '1px solid rgba(255,77,109,0.25)',
+        border: '1px solid rgba(148,200,100,0.25)',
         borderRadius: 8,
-        background: 'rgba(255,77,109,0.04)',
+        background: 'rgba(148,200,100,0.04)',
         overflow: 'hidden',
       }}
     >
@@ -92,7 +92,7 @@ function PlaybookCard({ pb, ticked, onToggle }) {
             fontWeight: 700,
             fontSize: 14,
             letterSpacing: '0.1em',
-            color: '#ff4d6d',
+            color: '#94c864',
           }}
         >
           {pb.name}
@@ -101,7 +101,7 @@ function PlaybookCard({ pb, ticked, onToggle }) {
           <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: 'var(--text-muted)' }}>
             {done}/{pb.steps.length}
           </span>
-          <span style={{ color: '#ff4d6d', fontSize: 12 }}>{open ? '▾' : '▸'}</span>
+          <span style={{ color: '#94c864', fontSize: 12 }}>{open ? '▾' : '▸'}</span>
         </span>
       </button>
       {open && (
@@ -162,7 +162,7 @@ function PlaybookCard({ pb, ticked, onToggle }) {
   )
 }
 
-export default function WarRoom({ onExit }) {
+export default function Nova({ onExit, onAskIntel }) {
   const [ticked, setTicked] = useState(loadSteps)
   const startedAt = useMemo(() => new Date(), [])
   const sessionId = useRef(null)
@@ -170,7 +170,7 @@ export default function WarRoom({ onExit }) {
 
   useEffect(() => {
     let active = true
-    startWarRoom('manual').then(({ data }) => {
+    startNova('manual').then(({ data }) => {
       if (active && data?.id) sessionId.current = data.id
     })
     return () => {
@@ -189,12 +189,19 @@ export default function WarRoom({ onExit }) {
   const toggle = key => setTicked(t => ({ ...t, [key]: !t[key] }))
 
   const exit = () => {
-    endWarRoom(sessionId.current)
+    endNova(sessionId.current)
     onExit()
   }
 
   const pressureColor =
-    field.level === 'high' ? '#ff4d6d' : field.level === 'moderate' ? '#D4A853' : '#94c864'
+    field.level === 'high' ? '#00d4e8' : field.level === 'moderate' ? '#D4A853' : '#94c864'
+
+  const novaContext = () => {
+    const ticks = Object.values(ticked).filter(Boolean).length
+    return `You are in N0VA crisis mode. Active playbooks: ${PLAYBOOKS.map(
+      p => p.name,
+    ).join(', ')}. ${ticks} response steps checked off. Competitor pressure ${field.pressure}/100 (${field.level}), ${field.top} leading, ${field.activeCount} active.`
+  }
 
   return (
     <div
@@ -203,7 +210,7 @@ export default function WarRoom({ onExit }) {
         inset: 0,
         zIndex: 3000,
         background:
-          'radial-gradient(circle at 50% 0%, rgba(158,27,27,0.35), transparent 60%), rgba(8,5,7,0.97)',
+          'radial-gradient(circle at 50% 0%, rgba(94,168,80,0.30), transparent 60%), rgba(7,9,6,0.97)',
         backdropFilter: 'blur(3px)',
         WebkitBackdropFilter: 'blur(3px)',
         overflowY: 'auto',
@@ -219,7 +226,7 @@ export default function WarRoom({ onExit }) {
             gap: 16,
             flexWrap: 'wrap',
             paddingBottom: 20,
-            borderBottom: '1px solid rgba(255,77,109,0.3)',
+            borderBottom: '1px solid rgba(148,200,100,0.3)',
           }}
         >
           <div
@@ -228,10 +235,10 @@ export default function WarRoom({ onExit }) {
               fontWeight: 800,
               fontSize: 22,
               letterSpacing: '0.08em',
-              color: '#ff4d6d',
+              color: '#94c864',
             }}
           >
-            ⚠ WAR ROOM ACTIVE
+            ◆ N0VA ACTIVE
             <span
               style={{
                 fontFamily: FONT_MONO,
@@ -245,30 +252,33 @@ export default function WarRoom({ onExit }) {
               {startedAt.toLocaleDateString('en-GB')} · {fmtClock(startedAt)}
             </span>
           </div>
-          <button
-            onClick={exit}
-            style={{
-              fontFamily: FONT_MONO,
-              fontSize: 12,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: '#ff4d6d',
-              background: 'transparent',
-              border: '1px solid rgba(255,77,109,0.4)',
-              borderRadius: 6,
-              padding: '9px 16px',
-              cursor: 'pointer',
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(255,77,109,0.12)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent'
-            }}
-          >
-            Exit War Room
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {onAskIntel && <AskIntelButton onClick={() => onAskIntel(novaContext())} />}
+            <button
+              onClick={exit}
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 12,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: '#94c864',
+                background: 'transparent',
+                border: '1px solid rgba(148,200,100,0.4)',
+                borderRadius: 6,
+                padding: '9px 16px',
+                cursor: 'pointer',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(148,200,100,0.12)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+              }}
+            >
+              Exit N0va
+            </button>
+          </div>
         </div>
 
         {/* Live competitor pressure */}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { TABLE_DATA as SITE_TABLE_DATA, PAGES_TRACKED, ALL_SITES } from '../data/staticData'
+import { AskIntelButton } from './horizonUI'
 
 const CANDIDATES = [
   { domain: 'finder.com',           tier: 'Tier 1', reason: 'Global comparison giant, EU traffic' },
@@ -346,9 +347,12 @@ function AddNewTab() {
   )
 }
 
-export default function ScopePanel({ open, onClose }) {
+export default function ScopePanel({ open, onClose, onAskIntel }) {
   const [mounted, setMounted] = useState(false)
   const [tab,     setTab]     = useState('tracked')
+
+  const traceContext = () =>
+    `You are reviewing TRACE — tracked sources and feed suggestions. Currently tracking ${PAGES_TRACKED} sources across ${ALL_SITES.length} unique domains; ${FILTERED_CANDIDATES.length} candidate sources awaiting review.`
 
   useEffect(() => {
     if (!open) {
@@ -413,7 +417,9 @@ export default function ScopePanel({ open, onClose }) {
             letterSpacing:  '0.1em',
             textTransform:  'uppercase',
             color:          '#ffffff',
-          }}>◎ Scope</div>
+          }}>◷ TRACE</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {onAskIntel && <AskIntelButton onClick={() => onAskIntel(traceContext())} />}
           <button
             onClick={onClose}
             style={{
@@ -429,6 +435,7 @@ export default function ScopePanel({ open, onClose }) {
             onMouseEnter={e => { e.currentTarget.style.color = '#ffffff' }}
             onMouseLeave={e => { e.currentTarget.style.color = '#8892a4' }}
           >×</button>
+          </div>
         </div>
 
         {/* tabs */}

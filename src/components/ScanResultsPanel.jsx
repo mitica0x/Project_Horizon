@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { CONTACT_EMAIL } from '../config'
 
 function buildOutreachMailto(gap) {
@@ -66,6 +66,156 @@ function useCountUp(target, isActive, duration = 800) {
     return () => raf && cancelAnimationFrame(raf)
   }, [isActive, target, duration])
   return val
+}
+
+// ─── "vs last scan" diff — snapshot + comparison ───────────────────────────────
+//
+// On each scan completion the current results are persisted to localStorage so
+// the *next* scan can diff against them. The expandable bar diffs the current
+// scan against the snapshot that was stored *before* this scan overwrote it
+// (captured into prevSnapshot), so the comparison is always current-vs-previous
+// rather than current-vs-itself.
+const SNAPSHOT_KEY = 'horizon_last_scan_snapshot'
+
+// Diff arrow colours — no red anywhere (per design spec).
+const DIFF_LIME = '#94c864'   // positive / good change
+const DIFF_AMBER = '#f59e0b'  // neutral / non-positive change
+// informational (zero delta) uses HZ.teal (#00d4e8)
+
+const gapKey = (g) => `${g.domain || ''}${g.path || ''}`
+
+function buildSnapshot(scanData) {
+  return {
+    score: scanData.score ?? 0,
+    tier1Gaps: scanData.tier1Gaps ?? 0,
+    brandAlerts: scanData.brandAlerts ?? 0,
+    wins: scanData.wins ?? 0,
+    gaps: (scanData.gaps || []).map((g) => ({
+      domain: g.domain,
+      path: g.path,
+      tier: g.tier,
+      severity: g.severity,
+    })),
+    scannedAt: scanData.scannedAt || null,
+  }
+}
+
+// (e) If no snapshot exists yet, synthesise a slightly-worse prior scan so the
+// diff is never blank for the demo: score down 4, two extra (now-resolved)
+// T1 gaps, one fewer win, alerts unchanged.
+function seedPriorSnapshot(scanData) {
+  const cs = buildSnapshot(scanData)
+  return {
+    ...cs,
+    score: Math.max(0, cs.score - 4),
+    tier1Gaps: cs.tier1Gaps + 2,
+    wins: Math.max(0, cs.wins - 1),
+    gaps: [
+      ...cs.gaps,
+      { domain: 'finder.com', path: '/uk/crypto', tier: 'T1', severity: 'high' },
+      { domain: 'cryptoradar.de', path: '/best-exchanges-2024', tier: 'T1', severity: 'high' },
+    ],
+    scannedAt: null,
+    __seeded: true,
+  }
+}
+
+function pluralise(n, word) {
+  return `${n} ${word}${Math.abs(n) === 1 ? '' : 's'}`
+}
+
+function computeScanDiff(scanData, prev) {
+  if (!prev) return { hasPrevious: false, rows: [] }
+
+  const curr = buildSnapshot(scanData)
+  const prevKeys = new Set((prev.gaps || []).map(gapKey))
+  const currKeys = new Set(curr.gaps.map(gapKey))
+  const resolved = (prev.gaps || []).filter((g) => !currKeys.has(gapKey(g)))
+  const opened = curr.gaps.filter((g) => !prevKeys.has(gapKey(g)))
+
+  const scoreDelta = curr.score - prev.score
+  const gapsDelta = curr.tier1Gaps - prev.tier1Gaps
+  const winsDelta = curr.wins - prev.wins
+  const alertsDelta = curr.brandAlerts - prev.brandAlerts
+
+  // SCORE summary line
+  const scoreBits = []
+  if (resolved.length) scoreBits.push(pluralise(resolved.length, 'gap') + ' resolved')
+  if (winsDelta > 0) scoreBits.push(pluralise(winsDelta, 'new win'))
+  scoreBits.push(
+    scoreDelta > 0 ? 'field pressure down' : scoreDelta < 0 ? 'field pressure up' : 'field pressure flat'
+  )
+
+  // GAPS lines
+  const gapLines = []
+  resolved.forEach((g) => {
+    const url = `${g.domain}${g.path || ''}`
+    gapLines.push(g.tier === 'T1' ? `${url} — T1 gap closed` : `${url} — resolved, Bybit now listed`)
+  })
+  opened.forEach((g) => {
+    const url = `${g.domain}${g.path || ''}`
+    gapLines.push(`${url} — new ${g.tier || 'T2'} gap detected`)
+  })
+  if (gapLines.length === 0) gapLines.push('No gap changes since last scan')
+
+  // WINS lines — surface confirmed listings from resolved gaps
+  const winLines = []
+  if (winsDelta > 0) {
+    const fromResolved = resolved.slice(0, winsDelta).map((g) => `${g.domain}${g.path || ''} — Bybit added`)
+    winLines.push(...fromResolved)
+    const remaining = winsDelta - fromResolved.length
+    if (remaining > 0) winLines.push(`${pluralise(remaining, 'new listing')} confirmed`)
+  } else if (winsDelta < 0) {
+    winLines.push(`${pluralise(Math.abs(winsDelta), 'listing')} lost`)
+  } else {
+    winLines.push('No new wins since last scan')
+  }
+
+  // ALERTS line
+  const alertLines = []
+  if (alertsDelta === 0) alertLines.push('No new alerts since last scan')
+  else if (alertsDelta > 0) alertLines.push(`${pluralise(alertsDelta, 'new alert')} raised`)
+  else alertLines.push(`${pluralise(Math.abs(alertsDelta), 'alert')} cleared`)
+
+  return {
+    hasPrevious: true,
+    rows: [
+      { label: 'SCORE', delta: scoreDelta, good: scoreDelta > 0, lines: [scoreBits.join(', ')] },
+      { label: 'GAPS', delta: gapsDelta, good: gapsDelta < 0, lines: gapLines },
+      { label: 'WINS', delta: winsDelta, good: winsDelta > 0, lines: winLines },
+      { label: 'ALERTS', delta: alertsDelta, good: alertsDelta < 0, lines: alertLines },
+    ],
+  }
+}
+
+function diffArrowColor(delta, good) {
+  if (delta === 0) return HZ.teal // informational — cyan
+  return good ? DIFF_LIME : DIFF_AMBER
+}
+
+function ChevronIcon({ open }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      style={{
+        display: 'block',
+        transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+        transition: 'transform 0.25s ease',
+      }}
+    >
+      <path
+        d="M6 9l6 6 6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
@@ -410,16 +560,50 @@ const closeBtnStyle = {
 
 const ScanResultsPanel = forwardRef(function ScanResultsPanel({ visible, scanData, onClose }, ref) {
   const [expanded, setExpanded] = useState(false)
+  // "vs last scan" expandable diff row.
+  const [diffOpen, setDiffOpen] = useState(false)
+  const [barHover, setBarHover] = useState(false)
+  const [prevSnapshot, setPrevSnapshot] = useState(null)
   // Bumped each time the panel transitions visible:false → true. Used as a key
   // on row containers so CSS row-fade animations re-run on every reopen.
   const [openCount, setOpenCount] = useState(0)
   const wasVisibleRef = useRef(false)
 
   useEffect(() => {
-    if (visible && !wasVisibleRef.current) setOpenCount((c) => c + 1)
-    if (!visible) setExpanded(false)
+    if (visible && !wasVisibleRef.current) {
+      setOpenCount((c) => c + 1)
+      setDiffOpen(false)
+      // Scan completion: capture the previously-stored snapshot to diff against,
+      // then persist the current results for the next scan. Seed a synthetic
+      // prior scan if none exists so the diff is never blank (req e).
+      if (scanData) {
+        let prev = null
+        try {
+          const raw = localStorage.getItem(SNAPSHOT_KEY)
+          if (raw) prev = JSON.parse(raw)
+        } catch {
+          prev = null
+        }
+        if (!prev) prev = seedPriorSnapshot(scanData)
+        setPrevSnapshot(prev)
+        try {
+          localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(buildSnapshot(scanData)))
+        } catch {
+          /* localStorage unavailable — diff still works in-memory this session */
+        }
+      }
+    }
+    if (!visible) {
+      setExpanded(false)
+      setDiffOpen(false)
+    }
     wasVisibleRef.current = visible
-  }, [visible])
+  }, [visible, scanData])
+
+  const scanDiff = useMemo(
+    () => (scanData ? computeScanDiff(scanData, prevSnapshot) : { hasPrevious: false, rows: [] }),
+    [scanData, prevSnapshot]
+  )
 
   const errorState = visible && !scanData
 
@@ -724,42 +908,133 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel({ visible, scanDat
         </div>
       </div>
 
-      {/* ─── Section 4 — delta summary row ─────────────────────────────── */}
-      <div
-        style={{
-          borderTop: `1px solid ${HZ.border}`,
-          padding: '14px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-          flexWrap: 'wrap',
-        }}
-      >
-        <span
+      {/* ─── Section 4 — "vs last scan" expandable diff row ────────────── */}
+      <div>
+        {/* Inline diff panel — slides up directly above the bar */}
+        <div
           style={{
-            fontFamily: FONT_BODY,
-            fontSize: 10,
-            color: HZ.muted,
-            textTransform: 'uppercase',
-            letterSpacing: '0.12em',
+            maxHeight: diffOpen ? 640 : 0,
+            opacity: diffOpen ? 1 : 0,
+            overflow: 'hidden',
+            borderTop: diffOpen ? `1px solid ${HZ.border}` : '1px solid transparent',
+            transition:
+              'max-height 0.4s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease, border-color 0.3s ease',
+          }}
+          aria-hidden={!diffOpen}
+        >
+          <div style={{ padding: '16px 24px' }}>
+            <div
+              style={{
+                background: HZ.surface,
+                border: `1px solid ${HZ.border}`,
+                borderRadius: 6,
+                padding: '16px 18px',
+                fontFamily: FONT_MONO,
+                fontSize: 12,
+                lineHeight: 1.5,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14,
+              }}
+            >
+              {scanDiff.hasPrevious ? (
+                scanDiff.rows.map((row) => {
+                  const arrow = row.delta > 0 ? '↑' : row.delta < 0 ? '↓' : '→'
+                  const color = diffArrowColor(row.delta, row.good)
+                  return (
+                    <div key={row.label}>
+                      <div style={{ letterSpacing: '0.06em' }}>
+                        <span style={{ color: '#ffffff', fontWeight: 700 }}>{row.label}</span>{' '}
+                        <span style={{ color, fontWeight: 700 }}>
+                          {arrow}
+                          {Math.abs(row.delta)}
+                        </span>
+                      </div>
+                      {row.lines.map((line, i) => (
+                        <div
+                          key={i}
+                          style={{ color: HZ.muted, paddingLeft: 2, marginTop: 4 }}
+                        >
+                          └ {line}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })
+              ) : (
+                <div style={{ color: HZ.muted }}>
+                  First scan — no previous data to compare.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Clickable summary bar */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={diffOpen}
+          aria-label="Toggle diff vs last scan"
+          onClick={() => setDiffOpen((o) => !o)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setDiffOpen((o) => !o)
+            }
+          }}
+          onMouseEnter={() => setBarHover(true)}
+          onMouseLeave={() => setBarHover(false)}
+          style={{
+            borderTop: `1px solid ${HZ.border}`,
+            padding: '14px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+            cursor: 'pointer',
+            background: barHover ? HZ.elevated : 'transparent',
+            transition: 'background 0.15s',
+            userSelect: 'none',
           }}
         >
-          vs last scan
-        </span>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {scanData.scoreDelta != null && (
-            <DeltaChip label="SCORE" delta={scanData.scoreDelta} positiveIsGood />
-          )}
-          {scanData.tier1GapsDelta != null && (
-            <DeltaChip label="GAPS" delta={scanData.tier1GapsDelta} positiveIsGood={false} />
-          )}
-          {scanData.winsDelta != null && (
-            <DeltaChip label="WINS" delta={scanData.winsDelta} positiveIsGood />
-          )}
-          {scanData.alertsDelta != null && (
-            <DeltaChip label="ALERTS" delta={scanData.alertsDelta} positiveIsGood={false} />
-          )}
+          <span
+            style={{
+              fontFamily: FONT_BODY,
+              fontSize: 10,
+              color: HZ.muted,
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+            }}
+          >
+            vs last scan
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {scanData.scoreDelta != null && (
+              <DeltaChip label="SCORE" delta={scanData.scoreDelta} positiveIsGood />
+            )}
+            {scanData.tier1GapsDelta != null && (
+              <DeltaChip label="GAPS" delta={scanData.tier1GapsDelta} positiveIsGood={false} />
+            )}
+            {scanData.winsDelta != null && (
+              <DeltaChip label="WINS" delta={scanData.winsDelta} positiveIsGood />
+            )}
+            {scanData.alertsDelta != null && (
+              <DeltaChip label="ALERTS" delta={scanData.alertsDelta} positiveIsGood={false} />
+            )}
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginLeft: 4,
+                color: HZ.muted,
+              }}
+            >
+              <ChevronIcon open={diffOpen} />
+            </span>
+          </div>
         </div>
       </div>
 

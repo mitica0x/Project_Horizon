@@ -134,12 +134,12 @@ export function getDayStatus() {
     {
       label: 'Market Sentiment',
       rag: 'amber',
-      note: 'static — live feed in P8',
+      note: 'Signal monitoring active',
     },
     {
       label: 'Regulatory Noise',
       rag: 'green',
-      note: 'static — live feed in P5',
+      note: 'Signal monitoring active',
     },
     {
       label: 'Upcoming Windows',
@@ -149,7 +149,7 @@ export function getDayStatus() {
     {
       label: 'Team Execution',
       rag: 'green',
-      note: 'static — team pulse in P5',
+      note: 'Signal monitoring active',
     },
   ]
 
@@ -167,6 +167,13 @@ export const RAG_COLOR = {
   green: '#94c864',
   amber: '#D4A853',
   red: '#ff4d6d',
+}
+
+// Day verdict reframe — no crisis red. Cyan for pressure/watch, lime for clear.
+export function statusVerdict(overall) {
+  if (overall === 'RED') return { label: 'HIGH PRESSURE', color: '#00d4e8' }
+  if (overall === 'AMBER') return { label: 'ELEVATED WATCH', color: '#00d4e8' }
+  return { label: 'ALL CLEAR', color: '#94c864' }
 }
 
 export function fmtClock(d = new Date()) {

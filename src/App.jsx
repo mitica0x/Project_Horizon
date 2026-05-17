@@ -19,7 +19,7 @@ import { computeThreatScore } from './utils/threatScore'
 import HorizonSidebar from './components/HorizonSidebar'
 import StatusBoard from './components/StatusBoard'
 import HorizonView from './components/HorizonView'
-import WarRoom from './components/WarRoom'
+import Nova from './components/Nova'
 import { getDayStatus } from './utils/horizonData'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -83,8 +83,15 @@ export default function App() {
   // Horiz0n suite navigation. 'dashboard' = the untouched P1 tree.
   const [view, setView] = useState('dashboard')
   const [statusOpen, setStatusOpen] = useState(false)
-  const [warRoomOpen, setWarRoomOpen] = useState(false)
+  const [novaOpen, setNovaOpen] = useState(false)
   const dayStatus = useState(() => getDayStatus().overall)[0]
+
+  // S8 — single section-aware INTEL entry point.
+  const openIntel = (ctx) => askBriefRef.current?.openWithContext(ctx)
+  const onScanFromNav = () => {
+    setView('dashboard')
+    requestAnimationFrame(() => runScan())
+  }
 
   // Auto-open the Morning Status board once per day (first visit).
   useEffect(() => {
@@ -333,7 +340,15 @@ export default function App() {
       <HorizonSidebar
         view={view}
         onNav={handleNav}
-        onWarRoom={() => setWarRoomOpen(true)}
+        onNova={() => setNovaOpen(true)}
+        onTrace={() => setScopeOpen(true)}
+        onIntel={() =>
+          openIntel(
+            'You are the Horiz0n operations assistant. The operator opened you from the sidebar — answer across the full intelligence suite (status, windows, outcomes, ledger, signal, brief, network).',
+          )
+        }
+        onScan={onScanFromNav}
+        scanState={scanState}
         compactStatus={statusOpen ? null : dayStatus}
       />
 
@@ -350,7 +365,7 @@ export default function App() {
 
         {statusOpen && (
           <div id="hz-status" className="container" style={{ paddingTop: 24 }}>
-            <StatusBoard onDismiss={() => setStatusOpen(false)} />
+            <StatusBoard onDismiss={() => setStatusOpen(false)} onAskIntel={openIntel} />
           </div>
         )}
 
@@ -445,58 +460,13 @@ export default function App() {
       </div>
       ) : (
       <div className="hz-shell">
-        <HorizonView view={view} onNav={handleNav} />
+        <HorizonView view={view} onNav={handleNav} onAskIntel={openIntel} />
       </div>
       )}
 
       {view === 'dashboard' && (
       <>
       {activeSite && <OutreachPanel site={activeSite} onClose={() => setActiveSite(null)} />}
-
-      {/* Scan Now — floating button */}
-      <button
-        onClick={runScan}
-        disabled={scanState !== 'idle'}
-        style={{
-          position: 'fixed', bottom: 24, right: 24, zIndex: 50,
-          fontFamily: "'IBM Plex Mono', monospace", fontSize: 13,
-          color: scanState === 'error' ? '#ff4d6d' : scanState === 'complete' ? '#94c864' : '#00d4e8',
-          background: '#131929',
-          border: '1px solid rgba(0,212,232,0.3)',
-          borderRadius: 8, padding: '12px 20px',
-          cursor: scanState === 'idle' ? 'pointer' : 'default',
-          transition: 'box-shadow 0.2s, color 0.2s',
-          boxShadow: 'none',
-        }}
-        onMouseEnter={e => { if (scanState === 'idle') e.currentTarget.style.boxShadow = '0 0 16px rgba(0,212,232,0.25)' }}
-        onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
-      >
-        {SCAN_LABELS[scanState]}
-      </button>
-
-      {/* Scope — floating button, above Intel */}
-      {!scopeOpen && (
-        <button
-          onClick={() => setScopeOpen(true)}
-          style={{
-            position: 'fixed', bottom: 136, right: 24, zIndex: 50,
-            fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 600,
-            letterSpacing: '0.04em',
-            color: '#94c864',
-            background: '#131929',
-            border: '1px solid rgba(148,200,100,0.3)',
-            borderRadius: 8, padding: '12px 20px',
-            cursor: 'pointer',
-            transition: 'box-shadow 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 16px rgba(148,200,100,0.25)' }}
-          onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
-        >
-          ⊞ Scope
-        </button>
-      )}
-
-      <AskTheBrief ref={askBriefRef} onSortStrategy={handleSortStrategy} />
       {competitorPanel && (
         <CompetitorPanel
           competitor={competitorPanel}
@@ -504,11 +474,18 @@ export default function App() {
           onAskIntel={handleAskIntel}
         />
       )}
-      <ScopePanel open={scopeOpen} onClose={() => setScopeOpen(false)} />
       </>
       )}
 
-      {warRoomOpen && <WarRoom onExit={() => setWarRoomOpen(false)} />}
+      {/* Global panels — reachable from every view (S4/S8) */}
+      <ScopePanel
+        open={scopeOpen}
+        onClose={() => setScopeOpen(false)}
+        onAskIntel={openIntel}
+      />
+      <AskTheBrief ref={askBriefRef} onSortStrategy={handleSortStrategy} />
+
+      {novaOpen && <Nova onExit={() => setNovaOpen(false)} onAskIntel={openIntel} />}
     </>
   )
 }

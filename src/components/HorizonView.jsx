@@ -18,7 +18,7 @@ const PANELS = {
   network: NetworkPanel,
 }
 
-export default function HorizonView({ view, onNav }) {
+export default function HorizonView({ view, onNav, onAskIntel }) {
   const Panel = PANELS[view]
   return (
     <main
@@ -29,7 +29,7 @@ export default function HorizonView({ view, onNav }) {
       }}
     >
       <div className="container" style={{ padding: '36px 40px 72px' }}>
-        {Panel ? <Panel onNav={onNav} /> : null}
+        {Panel ? <Panel onNav={onNav} onAskIntel={onAskIntel} /> : null}
       </div>
     </main>
   )
