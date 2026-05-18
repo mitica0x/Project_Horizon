@@ -47,7 +47,7 @@ KEY METRICS:
 - T1/T2/T3 Tiers: Site quality tiers. T1 = highest traffic/authority comparison sites
   (finder.com, investopedia, moneysavingexpert). T2 = mid-tier. T3 = niche/emerging.
 - Bybit Present: Site where Bybit is already listed. Green in Field Map.
-- Brand Alerts: Sites where brand-threat competitors (Revolut, N26) appear and Bybit
+- Brand Alerts: Sites where brand-threat competitors (Revolut) appear and Bybit
   is absent. High priority gaps.
 - Competitor Momentum: How many tracked sites each competitor appears on. Longer bar =
   wider presence = stronger competitor.

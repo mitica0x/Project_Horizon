@@ -184,7 +184,7 @@ function geoLabel(g) {
   return (g.geo || normaliseGeo(g.country) || 'GLOBAL').toUpperCase()
 }
 
-const SEED_CLOSE_COMPS = ['Kraken', 'Coinbase', 'Bitpanda', 'OKX', 'Bitvavo']
+const SEED_CLOSE_COMPS = ['Kraken', 'Coinbase', 'Bitpanda', 'OKX', 'Bitget']
 const SEED_ALERT_SITES = ['trustpilot.com', 'reddit.com/r/crypto', 'x.com/search', 'producthunt.com']
 const SEED_COMP_SITES = [
   'cryptocompare.com/exchanges',
@@ -532,18 +532,20 @@ function closabilityFor(gap) {
 
 // Known competitors → stable abbreviation + identity colour, consistent
 // everywhere in the field map and breakdowns.
+// Locked default competitor set — canonical order, exactly the 12 defaults.
 const COMPETITOR_META = {
-  Revolut: { abbr: 'REV', color: '#a78bfa' },
   Binance: { abbr: 'BIN', color: '#f3ba2f' },
-  OKX: { abbr: 'OKX', color: '#cbd5e1' },
-  'Crypto.com': { abbr: 'CP', color: '#3b6ef5' },
-  Bitpanda: { abbr: 'BP', color: '#3ad29f' },
   Kraken: { abbr: 'KR', color: '#8a7cff' },
   Coinbase: { abbr: 'CB', color: '#4f87ff' },
-  Bitvavo: { abbr: 'BV', color: '#2bd1d1' },
+  Bitpanda: { abbr: 'BP', color: '#3ad29f' },
+  OKX: { abbr: 'OKX', color: '#cbd5e1' },
+  'Crypto.com': { abbr: 'CP', color: '#3b6ef5' },
+  Revolut: { abbr: 'REV', color: '#a78bfa' },
+  KuCoin: { abbr: 'KU', color: '#22c39a' },
   Bitget: { abbr: 'BG', color: '#00c2a8' },
-  Bitstamp: { abbr: 'BS', color: '#6aa0ff' },
-  N26: { abbr: 'N26', color: '#9aa0a6' },
+  WhiteBit: { abbr: 'WB', color: '#94a3b8' },
+  MEXC: { abbr: 'MX', color: '#5b8def' },
+  BingX: { abbr: 'BX', color: '#7c83ff' },
 }
 const COMPETITOR_NAMES = Object.keys(COMPETITOR_META)
 const PALETTE = ['#a78bfa', '#f3ba2f', '#3b6ef5', '#3ad29f', '#8a7cff', '#4f87ff', '#2bd1d1', '#6aa0ff']
