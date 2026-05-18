@@ -16,7 +16,7 @@ something means, or what they should do.
 
 SECTIONS:
 - SCAN: The core intelligence view. Shows EU Presence Score (% of tracked sites where
-  Bybit appears), Field Map (who owns what by tier and geography), Gap Cards (sites where
+  Bybit appears), Market Map (who owns what by tier and geography), Gap Cards (sites where
   Bybit is absent and competitors are present), Competitor Momentum (how often each
   competitor appears across all tracked sites), BUILD PLAN (30-day action sequence),
   CMO BRIEF (executive summary), VS LAST SCAN (what changed since previous scan).
@@ -46,7 +46,7 @@ KEY METRICS:
   by site tier, competitor density, and geographic priority.
 - T1/T2/T3 Tiers: Site quality tiers. T1 = highest traffic/authority comparison sites
   (finder.com, investopedia, moneysavingexpert). T2 = mid-tier. T3 = niche/emerging.
-- Bybit Present: Site where Bybit is already listed. Green in Field Map.
+- Bybit Present: Site where Bybit is already listed. Green in Market Map.
 - Brand Alerts: Sites where brand-threat competitors (Revolut) appear and Bybit
   is absent. High priority gaps.
 - Competitor Momentum: How many tracked sites each competitor appears on. Longer bar =

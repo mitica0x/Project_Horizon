@@ -518,7 +518,7 @@ function ChevronIcon({ open }) {
   )
 }
 
-// ─── Intelligence layer — OPP scoring · competitor parsing · field map ─────────
+// ─── Intelligence layer — OPP scoring · competitor parsing · market map ─────────
 
 const TIER_WEIGHT = { T1: 1.0, T2: 0.6, T3: 0.3 }
 const TIER_POINTS = { T1: 4, T2: 2, T3: 1 } // presence points per closed gap (§3a)
@@ -531,7 +531,7 @@ function closabilityFor(gap) {
 }
 
 // Known competitors → stable abbreviation + identity colour, consistent
-// everywhere in the field map and breakdowns.
+// everywhere in the market map and breakdowns.
 // Locked default competitor set — canonical order, exactly the 12 defaults.
 const COMPETITOR_META = {
   Binance: { abbr: 'BIN', color: '#f3ba2f' },
@@ -572,7 +572,7 @@ function normaliseGeo(country) {
 }
 
 // Competitors named in a gap's description; falls back to a tier/geo-consistent
-// seed so the field map / density is never empty (§2c).
+// seed so the market map / density is never empty (§2c).
 function competitorsForGap(gap) {
   const desc = (gap.description || '').toLowerCase()
   const found = COMPETITOR_NAMES.filter((n) => desc.includes(n.toLowerCase()))
@@ -1448,7 +1448,7 @@ function CompetitorRow({ comp, maxScore, isVisible, index, momentum, blockedGaps
   )
 }
 
-// ─── §2 Field map ──────────────────────────────────────────────────────────────
+// ─── §2 Market map ──────────────────────────────────────────────────────────────
 function FieldMap({ matrix, onGapCell }) {
   return (
     <div
@@ -1469,7 +1469,7 @@ function FieldMap({ matrix, onGapCell }) {
           fontWeight: 600,
         }}
       >
-        Field Map — Who Owns What
+        Market Map — Who Owns What
       </div>
       <div
         style={{
@@ -2492,7 +2492,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     .slice(0, 8)
   const maxThreatScore = sortedCompetitors[0]?.threatScore || 100
 
-  // §2 — tier×geo field map. §4 — gaps grouped per competitor.
+  // §2 — tier×geo market map. §4 — gaps grouped per competitor.
   const fieldMatrix = buildFieldMap(gapsWithOpp)
   const gapsByCompetitor = {}
   gapsWithOpp.forEach((g) =>
@@ -2752,7 +2752,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
       {/* ─── §3 — score projection dropdown (below the stat cards) ─────── */}
       {projOpen && <ScoreProjectionPanel projection={projection} />}
 
-      {/* ─── §2 — field map (full width, directly above the gaps card) ── */}
+      {/* ─── §2 — market map (full width, directly above the gaps card) ── */}
       <div style={{ padding: '0 24px 20px' }}>
         <FieldMap matrix={fieldMatrix} onGapCell={jumpToGap} />
       </div>
