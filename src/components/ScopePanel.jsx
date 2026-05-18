@@ -100,23 +100,6 @@ function TrackedTab() {
             {s.domain || s.url}
           </span>
           <TierBadge tier={s.tier} />
-          <button
-            onClick={() => console.log('remove', s.domain || s.url)}
-            title="Remove from scope (v2)"
-            style={{
-              background: 'none',
-              border:     'none',
-              color:      '#8892a4',
-              fontSize:   18,
-              cursor:     'pointer',
-              padding:    '0 4px',
-              lineHeight: 1,
-              transition: 'color 0.15s',
-              flexShrink: 0,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#ff4d6d' }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#8892a4' }}
-          >×</button>
         </div>
       ))}
     </div>
@@ -161,29 +144,17 @@ function CandidatesTab() {
               lineHeight: 1.4,
             }}>{c.reason}</div>
           </div>
-          <button
-            onClick={() => console.log('add', c.domain)}
+          <span
             style={{
-              background:   'transparent',
-              border:       '1px solid rgba(148,200,100,0.3)',
-              color:        '#94c864',
-              fontFamily:   "'Geist Mono', monospace",
-              fontSize:     11,
-              padding:      '6px 10px',
-              borderRadius: 4,
-              cursor:       'pointer',
-              flexShrink:   0,
-              transition:   'background 0.15s, border-color 0.15s',
+              fontFamily:    "'Geist Mono', monospace",
+              fontSize:      11,
+              letterSpacing: '0.06em',
+              color:         '#00d4e8',
+              padding:       '6px 10px',
+              flexShrink:    0,
+              whiteSpace:    'nowrap',
             }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background   = 'rgba(148,200,100,0.08)'
-              e.currentTarget.style.borderColor  = '#94c864'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background   = 'transparent'
-              e.currentTarget.style.borderColor  = 'rgba(148,200,100,0.3)'
-            }}
-          >＋ Add</button>
+          >MONITORED SOON</span>
         </div>
       ))}
     </div>
