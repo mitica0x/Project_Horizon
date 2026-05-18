@@ -416,33 +416,6 @@ export default function App() {
     }
   }
 
-  // DEV ONLY — press 'T' anywhere (not in an input) to trigger a fake scan cycle.
-  // 0s → 'sentry' (active scan visuals), +3s → 'complete' (blue flash + count-up),
-  // +5s → 'idle'. Lets us preview the radar effects without hitting backend/Airtable.
-  // Remove this block before production.
-  useEffect(() => {
-    function onKey(e) {
-      if (e.key !== 't' && e.key !== 'T') return
-      const t = e.target
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
-      if (scanState !== 'idle') return
-      console.log('[DEV] T pressed — fake scan cycle')
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      setScanState('sentry')
-      setTimeout(() => {
-        setScanData({ ...MOCK_SCAN_DATA, scannedAt: new Date().toISOString() })
-        setScanResultsVisible(true)
-        setScanState('complete')
-        setTimeout(() => {
-          window.scrollBy({ top: 400, behavior: 'smooth' })
-        }, 600)
-      }, 3000)
-      setTimeout(() => setScanState('idle'), 5000)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [scanState])
-
   const SCAN_LABELS = {
     idle:     '⟳ Scan Now',
     sentry:   '⟳ Running Sentry...',
