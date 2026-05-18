@@ -125,15 +125,27 @@ function transformScan(payload) {
       tier: tierOf(r),
       _opp: r.opp_score,
     }))
-  // Competitor bars come from the backend competitorCounts tally. Empty or
-  // absent → []; CompetitorChart then keeps its seeded fallback.
-  const dCompetitorBars =
+  // Competitor bars: always the canonical 12 (locked order). Live counts from
+  // the backend competitorCounts tally overlay onto the canonical set; any
+  // competitor absent from the tally shows 0. Zero-count entries are pinned to
+  // the bottom; the rest sort by count descending (stable sort → canonical
+  // order preserved within ties and within the zero group).
+  const CANONICAL_COMPETITORS = [
+    'Binance', 'Kraken', 'Coinbase', 'Bitpanda', 'OKX', 'Crypto.com',
+    'Revolut', 'KuCoin', 'Bitget', 'WhiteBit', 'MEXC', 'BingX',
+  ]
+  const competitorCounts =
     payload.competitorCounts && typeof payload.competitorCounts === 'object'
-      ? Object.entries(payload.competitorCounts)
-          .filter(([, n]) => n > 0)
-          .map(([name, count]) => ({ name, count }))
-          .sort((a, b) => b.count - a.count)
-      : []
+      ? payload.competitorCounts
+      : {}
+  const dCompetitorBars = CANONICAL_COMPETITORS
+    .map((name) => ({ name, count: Number(competitorCounts[name]) || 0 }))
+    .sort((a, b) => {
+      const az = a.count === 0
+      const bz = b.count === 0
+      if (az !== bz) return az ? 1 : -1 // zero-count always at the bottom
+      return b.count - a.count // otherwise count descending
+    })
   const dashboard =
     dTotal > 0
       ? {
