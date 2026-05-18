@@ -14,6 +14,7 @@ import { GAPS_T1, GAPS_T2, WINS, SCORE, PAGES_PRESENT, PAGES_TRACKED, TABLE_DATA
 import { sortItems, CRITERIA } from './utils/sortEngine'
 import SortBar from './components/SortBar'
 import CompetitorPanel from './components/CompetitorPanel'
+import CustomCompetitors from './components/CustomCompetitors'
 import AccountMenu from './components/AccountMenu'
 import { computeThreatScore } from './utils/threatScore'
 import HorizonSidebar from './components/HorizonSidebar'
@@ -105,7 +106,7 @@ function transformScan(payload) {
   const dBrandAlerts = results.filter(
     (r) =>
       !r.bybit_present &&
-      (r.competitors_present || []).some((c) => c === 'Revolut' || c === 'N26'),
+      (r.competitors_present || []).some((c) => c === 'Revolut'),
   ).length
   const dGapCards = results
     .filter((r) => !r.bybit_present)
@@ -190,9 +191,9 @@ const MOCK_SCAN_DATA = {
     { domain: 'cryptoradar.de',     path: '/best-exchanges',        severity: 'high',   description: 'Bybit absent — Bitpanda Tier 1',             tier: 'T1', country: '🇩🇪 DE' },
     { domain: 'investopedia.com',   path: '/best-crypto-exchanges', severity: 'high',   description: 'Bybit absent — Coinbase first',              tier: 'T1', country: '🌍 Global' },
     { domain: 'cointelegraph.com',  path: '/exchanges',             severity: 'medium', description: 'Bybit absent — Binance + Kraken',            tier: 'T2', country: '🌍 Global' },
-    { domain: 'coingecko.com',      path: '/exchanges/europe',      severity: 'medium', description: 'Bybit absent — Bitvavo + OKX',               tier: 'T2', country: '🇪🇺 EU' },
-    { domain: 'cryptocompare.com',  path: '/exchanges',             severity: 'medium', description: 'Bybit absent — Bitget + Bitstamp',           tier: 'T2', country: '🌍 Global' },
-    { domain: 'forbes.com',         path: '/advisor/investing',     severity: 'low',    description: 'Bybit absent — N26 mentioned',               tier: 'T2', country: '🌍 Global' },
+    { domain: 'coingecko.com',      path: '/exchanges/europe',      severity: 'medium', description: 'Bybit absent — KuCoin + OKX',               tier: 'T2', country: '🇪🇺 EU' },
+    { domain: 'cryptocompare.com',  path: '/exchanges',             severity: 'medium', description: 'Bybit absent — Bitget + WhiteBit',           tier: 'T2', country: '🌍 Global' },
+    { domain: 'forbes.com',         path: '/advisor/investing',     severity: 'low',    description: 'Bybit absent — MEXC mentioned',               tier: 'T2', country: '🌍 Global' },
     { domain: 'bankrate.com',       path: '/crypto/exchanges',      severity: 'low',    description: 'Bybit absent — Coinbase listed',             tier: 'T2', country: '🇺🇸 US' },
     { domain: 'nerdwallet.com',     path: '/best/banking/crypto',   severity: 'low',    description: 'Bybit absent — Crypto.com primary',          tier: 'T2', country: '🇺🇸 US' },
   ],
@@ -698,6 +699,7 @@ export default function App() {
         <section className="scroll-reveal" style={{ padding: '0 0 48px' }}>
           <div className="container">
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px 28px' }}>
+              <CustomCompetitors />
               <CompetitorChart
                 competitors={COMPETITORS}
                 siteData={SITE_TABLE_DATA}
