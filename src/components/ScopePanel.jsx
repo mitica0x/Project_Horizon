@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { TABLE_DATA as SITE_TABLE_DATA, PAGES_TRACKED, ALL_SITES } from '../data/staticData'
-import { AskIntelButton } from './horizonUI'
+import { AskIntelButton, SiteLink } from './horizonUI'
 
 const CANDIDATES = [
   { domain: 'finder.com',           tier: 'Tier 1', reason: 'Global comparison giant, EU traffic' },
@@ -97,7 +97,7 @@ function TrackedTab() {
             textOverflow: 'ellipsis',
             whiteSpace:   'nowrap',
           }}>
-            {s.domain || s.url}
+            <SiteLink domain={s.domain || s.url}>{s.domain || s.url}</SiteLink>
           </span>
           <TierBadge tier={s.tier} />
         </div>
@@ -134,7 +134,7 @@ function CandidatesTab() {
                 overflow:     'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace:   'nowrap',
-              }}>{c.domain}</span>
+              }}><SiteLink domain={c.domain}>{c.domain}</SiteLink></span>
               <TierBadge tier={c.tier} />
             </div>
             <div style={{

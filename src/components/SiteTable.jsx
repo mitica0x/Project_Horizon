@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { TABLE_DATA } from '../data/staticData'
 import { fetchAllRecords } from '../services/airtable'
+import { SiteLink } from './horizonUI'
 
 const EU_FLAGS = { DE:'🇩🇪', FR:'🇫🇷', ES:'🇪🇸', PL:'🇵🇱', IT:'🇮🇹', NL:'🇳🇱', SE:'🇸🇪', EU:'🇪🇺', GB:'🇬🇧', UK:'🇬🇧' }
 
@@ -123,7 +124,7 @@ export default function SiteTable({ openWithQuestion }) {
                         animation: `statusPulse ${dotDuration} ease-in-out infinite`,
                       }} />
                     </td>
-                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-body)', fontWeight: 400, fontSize: 13, color: 'var(--white)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.domain}</td>
+                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-body)', fontWeight: 400, fontSize: 13, color: 'var(--white)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><SiteLink domain={row.domain}>{row.domain}</SiteLink></td>
                     <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
                       {(() => { const { flag, code, color, tooltip } = countryLabel(row.country); return <span title={tooltip || undefined} style={{ color }}>{flag} {code}</span> })()}
                     </td>

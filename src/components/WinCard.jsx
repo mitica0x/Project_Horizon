@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import ContactStatus from './ContactStatus'
 import { COMPETITOR_COLORS } from '../data/staticData'
+import { SiteLink } from './horizonUI'
 
 function urlPath(url) {
   const d = url.split('/')[0]
@@ -26,10 +27,10 @@ export default function WinCard({ win }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-body)', fontWeight: 500, fontSize: 17, color: 'var(--white)' }}>
-            {domain}
+            <SiteLink domain={domain} path={path}>{domain}</SiteLink>
             {card && <span style={{ fontSize: 10, background: 'var(--cyan-dim)', color: 'var(--cyan)', border: '1px solid rgba(0,212,232,.3)', padding: '1px 6px', borderRadius: 3, fontFamily: 'var(--font-head)', fontWeight: 700, letterSpacing: '.05em' }}>CARD</span>}
           </div>
-          {path && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{path}</div>}
+          {path && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}><SiteLink domain={domain} path={path}>{path}</SiteLink></div>}
         </div>
         <span style={{ fontSize: 11, fontFamily: 'var(--font-head)', fontWeight: 700, padding: '2px 7px', borderRadius: 3, flexShrink: 0, background: 'var(--green-dim)', color: 'var(--green)', border: '1px solid rgba(0,229,160,.4)' }}>WIN</span>
       </div>

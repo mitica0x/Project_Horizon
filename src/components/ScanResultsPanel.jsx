@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { CONTACT_EMAIL } from '../config'
 import { intelKit } from '../utils/intelKit'
-import { AskIntelButton } from './horizonUI'
+import { AskIntelButton, SiteLink } from './horizonUI'
 
 function buildOutreachMailto(gap) {
   const domain = gap.domain || ''
@@ -1237,7 +1237,7 @@ function BattlePlan({ comp, gaps, onDraft }) {
           <div key={i} style={{ marginBottom: 10 }}>
             <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: HZ.text }}>
               <span style={{ color: HZ.teal }}>&rarr; </span>
-              {gapUrl(g)} <span style={{ color: HZ.muted }}>&mdash; {geo} {g.tier}</span>{' '}
+              <SiteLink domain={g.domain} path={g.path}>{gapUrl(g)}</SiteLink> <span style={{ color: HZ.muted }}>&mdash; {geo} {g.tier}</span>{' '}
               <span style={{ color: oppColor(opp), fontWeight: 700 }}>&mdash; OPP {opp}</span>
             </div>
             <div
@@ -1422,7 +1422,7 @@ function CompetitorRow({ comp, maxScore, isVisible, index, momentum, blockedGaps
           ) : (
             blockedGaps.slice(0, 6).map((g, i) => (
               <div key={i} style={{ color: HZ.muted, paddingLeft: 2, marginTop: 3 }}>
-                └ {gapUrl(g)} — {g.tier}, {normaliseGeo(g.country)}, {intentFor(g)}
+                └ <SiteLink domain={g.domain} path={g.path}>{gapUrl(g)}</SiteLink> — {g.tier}, {normaliseGeo(g.country)}, {intentFor(g)}
               </div>
             ))
           )}
@@ -1714,7 +1714,7 @@ function ScoreProjectionPanel({ projection }) {
       {projection.top3.map((g, i) => (
         <div key={i} style={{ color: HZ.text, marginBottom: 4 }}>
           <span style={{ color: HZ.muted }}>GAP {i + 1} — </span>
-          {gapUrl(g)}{' '}
+          <SiteLink domain={g.domain} path={g.path}>{gapUrl(g)}</SiteLink>{' '}
           <span style={{ color: oppColor(g._opp ?? oppScore(g)) }}>
             (OPP {g._opp ?? oppScore(g)})
           </span>{' '}
@@ -1738,7 +1738,7 @@ function PlanItem({ gap, onDraft }) {
     <div style={{ marginBottom: 10 }}>
       <div style={{ color: HZ.text }}>
         <span style={{ color: HZ.teal }}>→ </span>
-        {gapUrl(gap)} <span style={{ color: HZ.muted }}>— {whyLine(gap)}</span>{' '}
+        <SiteLink domain={gap.domain} path={gap.path}>{gapUrl(gap)}</SiteLink> <span style={{ color: HZ.muted }}>— {whyLine(gap)}</span>{' '}
         <span style={{ color: oppColor(opp), fontWeight: 700 }}>(OPP {opp})</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, paddingLeft: 14 }}>
@@ -2101,8 +2101,7 @@ function GapRow({ gap, index, highlighted, isOpen, onToggle, onAskIntel }) {
                 ⚠
               </span>
             )}
-            {gap.domain}
-            <span style={{ color: HZ.muted }}>{gap.path}</span>
+            <SiteLink domain={gap.domain} path={gap.path}>{gap.domain}<span style={{ color: HZ.muted }}>{gap.path}</span></SiteLink>
           </div>
           {gap.description && (
             <div

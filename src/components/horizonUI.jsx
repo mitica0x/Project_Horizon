@@ -209,6 +209,35 @@ export function MeterBar({ pct, color = '#00d4e8', track = 'rgba(255,255,255,0.0
   )
 }
 
+// Clickable site domain/URL. Wraps the displayed domain (and optional path)
+// text and opens it in a new tab. Appearance is fully inherited from the
+// parent — colour/font/size unchanged; the only added affordances are a
+// pointer cursor and an underline on hover. No logic, data, or layout.
+// href: explicit `href`, else `https://domain+path` (domain already carrying
+// a scheme is used as-is). If nothing resolvable, renders plain text.
+export function SiteLink({ domain, path, href, style, children }) {
+  const raw = href || String(domain ?? '')
+  const url = href
+    ? href
+    : raw
+      ? (/^https?:\/\//i.test(raw) ? raw : `https://${raw}${path || ''}`)
+      : null
+  const text = children != null ? children : (path ? `${domain}${path}` : domain)
+  if (!url) return <>{text}</>
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ color: 'inherit', textDecoration: 'none', cursor: 'pointer', ...style }}
+      onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }}
+      onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}
+    >
+      {text}
+    </a>
+  )
+}
+
 // Empty / not-yet-data state, matching the muted mono idiom used app-wide.
 export function EmptyState({ children }) {
   return (

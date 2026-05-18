@@ -13,6 +13,7 @@ import {
   FONT_HEAD,
   FONT_BODY,
   FONT_MONO,
+  SiteLink,
 } from './horizonUI'
 
 // P8 — Budget Deployment Signal. One dominant verdict + posture intelligence
@@ -224,8 +225,7 @@ function WhatToDoNow({ verdict, onAskIntel, onNav }) {
     return (
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontFamily: FONT_MONO, fontSize: 12, color: '#c8d0dc' }}>
-          {g.domain}
-          <span style={{ color: 'var(--text-muted)' }}>{pathOf(g.url)}</span> —{' '}
+          <SiteLink domain={g.domain} path={pathOf(g.url)}>{g.domain}<span style={{ color: 'var(--text-muted)' }}>{pathOf(g.url)}</span></SiteLink> —{' '}
           <span style={{ color: 'var(--cyan)' }}>{geoOf(g.country)} T1</span> —{' '}
           <span style={{ color: opp >= 80 ? '#94c864' : '#D4A853', fontWeight: 700 }}>
             OPP {opp}

@@ -9,6 +9,7 @@ import {
   AskIntelButton,
   FONT_BODY,
   FONT_MONO,
+  SiteLink,
 } from './horizonUI'
 
 // P9 — Network Intelligence, rebuilt as contact intelligence mapped to the
@@ -305,8 +306,10 @@ function GapContactRow({ gap, contact, expanded, editing, onToggle, onAdd, onSav
       >
         <div style={{ minWidth: 0, flex: 1 }}>
           <span style={{ fontFamily: FONT_BODY, fontSize: 14, fontWeight: 500, color: 'var(--white)' }}>
-            {gap.domain}
-            <span style={{ color: 'var(--text-muted)' }}>{path}</span>
+            <SiteLink domain={gap.domain} path={path}>
+              {gap.domain}
+              <span style={{ color: 'var(--text-muted)' }}>{path}</span>
+            </SiteLink>
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
             <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: 'var(--cyan)' }}>{geo}</span>

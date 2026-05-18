@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CONTACT_EMAIL } from '../config'
 import { supabase } from '../lib/supabase'
+import { SiteLink } from './horizonUI'
 
 const SYSTEM_PROMPT = 'You are an outreach strategist for Bybit, Europe\'s leading crypto exchange. Draft professional, concise outreach for fintech comparison sites. Always lead with value for the site, not Bybit\'s needs. Keep responses under 250 words.'
 
@@ -93,7 +94,7 @@ export default function OutreachPanel({ site, onClose }) {
         <div style={{ flexShrink: 0, padding: '18px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 13, color: 'var(--white)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Draft Outreach</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--cyan)', marginTop: 3 }}>{site.domain}</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--cyan)', marginTop: 3 }}><SiteLink domain={site.domain}>{site.domain}</SiteLink></div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <a
@@ -119,7 +120,7 @@ export default function OutreachPanel({ site, onClose }) {
             {[['Site', site.domain],['Country', site.country],['Competitors', (site.competitors || []).join(', ') || '-'],['Tier', site.tier]].map(([k,v]) => (
               <div key={k} style={{ display: 'flex', gap: 8 }}>
                 <span style={{ color: 'var(--text-muted)', minWidth: 100 }}>{k}:</span>
-                <span style={{ color: 'var(--white)' }}>{v}</span>
+                <span style={{ color: 'var(--white)' }}>{k === 'Site' ? <SiteLink domain={v}>{v}</SiteLink> : v}</span>
               </div>
             ))}
           </div>

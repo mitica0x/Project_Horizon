@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import ContactStatus from './ContactStatus'
 import { COMPETITOR_COLORS } from '../data/staticData'
+import { SiteLink } from './horizonUI'
 
 function urlPath(url) {
   const d = url.split('/')[0]
@@ -36,10 +37,10 @@ export default function GapCard({ gap, onDraftOutreach }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-body)', fontWeight: 500, fontSize: 17, color: 'var(--white)' }}>
-            {domain}
+            <SiteLink domain={domain} path={path}>{domain}</SiteLink>
             {review && <span style={{ fontSize: 10, background: 'rgba(212,168,83,0.15)', color: 'var(--amber)', border: '1px solid rgba(212,168,83,0.4)', padding: '1px 6px', borderRadius: 3, fontFamily: 'var(--font-head)', fontWeight: 700, letterSpacing: '.05em' }}>REVIEW</span>}
           </div>
-          {path && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{path}</div>}
+          {path && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}><SiteLink domain={domain} path={path}>{path}</SiteLink></div>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           {(() => { const { flag, code, color, tooltip } = countryLabel(country); return <span title={tooltip || undefined} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color }}>{flag} {code}</span> })()}
