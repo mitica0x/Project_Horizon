@@ -4,7 +4,7 @@ import { statusVerdict, getDayStatus } from '../utils/horizonData'
 
 // S6 — sidebar micro-line under the STATUS label, derived from the day verdict.
 const STATUS_MICRO = {
-  'HIGH PRESSURE': '3 actions · field moving',
+  'HIGH PRESSURE': '3 actions · market moving',
   'ELEVATED WATCH': '1 action · monitor field',
   'ALL CLEAR': 'Field clear',
 }

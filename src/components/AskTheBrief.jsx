@@ -579,7 +579,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                     fontSize:   12,
                     color:      '#8892a4',
                   }}>
-                    Intel is standing by.
+                    What do you need? Type 'report' for a full briefing, or ask me anything about Bybit EU's market position.
                   </div>
                 )}
 
