@@ -213,6 +213,24 @@ function PatternCard({ title, body, confidence, accent = '#00d4e8' }) {
   )
 }
 
+// Display-only macro/holiday suppression. The static event list mixes
+// macro/holiday noise (ECB rate decisions, public/national holidays) into
+// the 'business'/'cultural' categories, so a category filter can't isolate
+// them — match the same signal vocabulary the backend cleanup uses instead.
+// Nothing is deleted; the toggle below reveals these on demand.
+const WINDOWS_MACRO_SIGNALS = [
+  'rate decision', 'monetary policy', 'interest rate', 'central bank',
+  'inflation data', 'gdp', 'employment report', 'public holiday',
+  'bank holiday', 'national holiday', 'assumption day', 'bastille day',
+  'religious observance', 'ecb',
+]
+const WINDOWS_SHOW_ALL_KEY = 'horiz0n_windows_show_all_types'
+
+function isMacroHolidayEvent(ev) {
+  const hay = `${ev?.name || ''} ${ev?.sub || ''}`.toLowerCase()
+  return WINDOWS_MACRO_SIGNALS.some(sig => hay.includes(sig))
+}
+
 export default function WindowsPanel({ onAskIntel }) {
   const { rows, moveNowCount, field } = useMemo(() => getWindows(90), [])
   const [acted, setActed] = useState({})
@@ -220,6 +238,31 @@ export default function WindowsPanel({ onAskIntel }) {
   const [toast, setToast] = useState(null)
   const [activations, setActivations] = useState([])
   const [decisions, setDecisions] = useState([])
+  const [showAllTypes, setShowAllTypes] = useState(() => {
+    try {
+      return localStorage.getItem(WINDOWS_SHOW_ALL_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  function toggleShowAllTypes() {
+    setShowAllTypes(prev => {
+      const next = !prev
+      try {
+        localStorage.setItem(WINDOWS_SHOW_ALL_KEY, next ? '1' : '0')
+      } catch {
+        /* storage unavailable — toggle still works for this session */
+      }
+      return next
+    })
+  }
+
+  // Default view hides macro/holiday noise; full list one toggle away.
+  const visibleRows = showAllTypes
+    ? rows
+    : rows.filter(w => !isMacroHolidayEvent(w.event))
+  const hiddenCount = rows.length - visibleRows.length
 
   useEffect(() => {
     fetchActivations().then(({ data }) => setActivations(data || []))
@@ -413,17 +456,19 @@ export default function WindowsPanel({ onAskIntel }) {
         </span>
         <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: 'var(--text-muted)' }}>
-          {rows.length} · {moveNowCount} actionable
+          {visibleRows.length} · {moveNowCount} actionable
         </span>
       </div>
 
-      {rows.length === 0 ? (
+      {visibleRows.length === 0 ? (
         <div style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', padding: '24px 0' }}>
-          No events inside the 90-day horizon.
+          {hiddenCount > 0
+            ? `No activation-relevant events inside the 90-day horizon (${hiddenCount} macro/holiday hidden).`
+            : 'No events inside the 90-day horizon.'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {rows.map(w => (
+          {visibleRows.map(w => (
             <WindowCard
               key={w.event.id}
               w={w}
@@ -432,6 +477,39 @@ export default function WindowsPanel({ onAskIntel }) {
               onDismiss={() => onDismiss(w)}
             />
           ))}
+        </div>
+      )}
+
+      {(hiddenCount > 0 || showAllTypes) && (
+        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}>
+          <button
+            type="button"
+            onClick={toggleShowAllTypes}
+            aria-expanded={showAllTypes}
+            style={{
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: '#00d4e8',
+              background: 'transparent',
+              border: '1px solid rgba(0,212,232,0.35)',
+              borderRadius: 5,
+              padding: '7px 14px',
+              cursor: 'pointer',
+              transition: 'background 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(0,212,232,0.08)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+            }}
+          >
+            {showAllTypes
+              ? '− hide regulatory / other events'
+              : '+ show regulatory / other events'}
+          </button>
         </div>
       )}
 
