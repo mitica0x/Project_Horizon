@@ -18,6 +18,7 @@ import {
 
 const CONTACTS_KEY = 'horizon_network_contacts'
 const DEMO_ORG_SLUG = 'bybit-eu'
+const GMAIL_CONNECTED_KEY = 'gmail_connected'
 
 const WARMTH = ['DIRECT', 'WARM PATH', 'COLD']
 
@@ -375,6 +376,29 @@ export default function NetworkPanel({ onAskIntel }) {
   // gap.url → 'form' (add/edit form open) | 'card' (contact card open) | null
   const [openState, setOpenState] = useState({})
 
+  // Gmail sync (UI placeholder — real token validation is V2).
+  const [gmailConnected, setGmailConnected] = useState(() => {
+    try { return localStorage.getItem(GMAIL_CONNECTED_KEY) === 'true' } catch { return false }
+  })
+  const [gmailError, setGmailError] = useState(false)
+
+  const connectGmail = () => {
+    const CLIENT_ID = import.meta.env.VITE_GMAIL_CLIENT_ID || ''
+    if (!CLIENT_ID) {
+      setGmailError(true)
+      return
+    }
+    const REDIRECT_URI = encodeURIComponent(window.location.origin + '/auth/gmail/callback')
+    const SCOPE = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly')
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${SCOPE}&access_type=offline&prompt=consent`
+    window.location.href = url
+  }
+
+  const disconnectGmail = () => {
+    try { localStorage.setItem(GMAIL_CONNECTED_KEY, 'false') } catch { /* ignore */ }
+    setGmailConnected(false)
+  }
+
   const t1Gaps = GAPS_T1
 
   // Seed one DIRECT contact for the Bybit EU demo org (finder.com), once.
@@ -517,16 +541,82 @@ export default function NetworkPanel({ onAskIntel }) {
         })}
       </div>
 
-      <div
-        style={{
-          marginTop: 18,
-          fontFamily: FONT_MONO,
-          fontSize: 11,
-          color: 'var(--text-muted)',
-          lineHeight: 1.6,
-        }}
-      >
-        Gmail sync will automatically detect contacts across your gap list. Coming soon.
+      <div style={{ marginTop: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <span
+            style={{
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              color: 'var(--text-muted)',
+              lineHeight: 1.6,
+            }}
+          >
+            Gmail sync will automatically detect contacts across your gap list. Coming soon.
+          </span>
+
+          {gmailConnected ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+              <span
+                style={{
+                  fontFamily: FONT_MONO,
+                  fontSize: 11,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  color: '#94c864',
+                }}
+              >
+                Gmail Connected ✓
+              </span>
+              <button
+                onClick={disconnectGmail}
+                style={{
+                  fontFamily: FONT_MONO,
+                  fontSize: 11,
+                  color: 'var(--text-muted)',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Disconnect
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={connectGmail}
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: 'var(--cyan)',
+                background: 'transparent',
+                border: '1px solid rgba(0,212,232,0.4)',
+                borderRadius: 5,
+                padding: '7px 14px',
+                cursor: 'pointer',
+              }}
+            >
+              Connect Gmail
+            </button>
+          )}
+        </div>
+
+        {gmailError && !gmailConnected && (
+          <div
+            style={{
+              marginTop: 8,
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              color: 'var(--amber)',
+              lineHeight: 1.6,
+            }}
+          >
+            Gmail sync not configured — contact admin
+          </div>
+        )}
       </div>
     </>
   )
