@@ -175,37 +175,6 @@ function transformScan(payload) {
   }
 }
 
-// DEV mock used by the T-key fake scan and as a fallback if /api/dashboard
-// is missing on the backend. Mirrors the hero stat-card numbers (52 / 25 / 9 / 1)
-// so the panel demos against familiar values.
-const MOCK_SCAN_DATA = {
-  score: 52, scoreDelta: 4,
-  sitesMonitored: 25, sitesChecked: 25,
-  tier1Gaps: 9, tier1GapsDelta: -2,
-  brandAlerts: 1, alertsDelta: 0,
-  wins: 13, winsDelta: 1,
-  coverage: 52,
-  scannedAt: new Date().toISOString(),
-  gaps: [
-    { domain: 'finder.com',         path: '/uk/crypto/exchanges',   severity: 'high',   description: 'Bybit absent — Revolut + Crypto.com listed', tier: 'T1', country: '🇬🇧 UK' },
-    { domain: 'cryptoradar.de',     path: '/best-exchanges',        severity: 'high',   description: 'Bybit absent — Bitpanda Tier 1',             tier: 'T1', country: '🇩🇪 DE' },
-    { domain: 'investopedia.com',   path: '/best-crypto-exchanges', severity: 'high',   description: 'Bybit absent — Coinbase first',              tier: 'T1', country: '🌍 Global' },
-    { domain: 'cointelegraph.com',  path: '/exchanges',             severity: 'medium', description: 'Bybit absent — Binance + Kraken',            tier: 'T2', country: '🌍 Global' },
-    { domain: 'coingecko.com',      path: '/exchanges/europe',      severity: 'medium', description: 'Bybit absent — KuCoin + OKX',               tier: 'T2', country: '🇪🇺 EU' },
-    { domain: 'cryptocompare.com',  path: '/exchanges',             severity: 'medium', description: 'Bybit absent — Bitget + WhiteBit',           tier: 'T2', country: '🌍 Global' },
-    { domain: 'forbes.com',         path: '/advisor/investing',     severity: 'low',    description: 'Bybit absent — MEXC mentioned',               tier: 'T2', country: '🌍 Global' },
-    { domain: 'bankrate.com',       path: '/crypto/exchanges',      severity: 'low',    description: 'Bybit absent — Coinbase listed',             tier: 'T2', country: '🇺🇸 US' },
-    { domain: 'nerdwallet.com',     path: '/best/banking/crypto',   severity: 'low',    description: 'Bybit absent — Crypto.com primary',          tier: 'T2', country: '🇺🇸 US' },
-  ],
-  competitors: [
-    { name: 'Revolut',     threatScore: 87, blocksOnGaps: 6 },
-    { name: 'Crypto.com',  threatScore: 74, blocksOnGaps: 5 },
-    { name: 'Binance',     threatScore: 68, blocksOnGaps: 4 },
-    { name: 'Bitpanda',    threatScore: 52, blocksOnGaps: 3 },
-    { name: 'Kraken',      threatScore: 41, blocksOnGaps: 2 },
-  ],
-}
-
 export default function App() {
   const [activeSite, setActiveSite] = useState(null)
   const [scanState, setScanState] = useState('idle')
