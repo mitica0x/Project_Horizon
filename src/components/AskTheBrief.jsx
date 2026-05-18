@@ -130,6 +130,14 @@ function SendIcon() {
   )
 }
 
+function StopIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="3" y="3" width="10" height="10" rx="1" fill="currentColor" />
+    </svg>
+  )
+}
+
 function MicIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -214,10 +222,12 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
   const [attachError,  setAttachError]  = useState(null)
   const [listening,    setListening]    = useState(false)
   const [interim,      setInterim]      = useState('')
+  const [isStreaming,  setIsStreaming]  = useState(false)
   const threadRef    = useRef(null)
   const textareaRef  = useRef(null)
   const fileInputRef = useRef(null)
   const recognitionRef = useRef(null)
+  const abortControllerRef = useRef(null)
 
   const clearAttachment = () => {
     setAttachment(prev => {
@@ -398,10 +408,15 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
       }
       clearAttachment()
 
+      const ctrl = new AbortController()
+      abortControllerRef.current = ctrl
+      setIsStreaming(true)
+
       const { data: sess } = await supabase.auth.getSession()
       const token = sess?.session?.access_token
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/intel/chat`, {
         method: 'POST',
+        signal: ctrl.signal,
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -416,12 +431,21 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
       const reply = data.content?.[0]?.text || 'No response received.'
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
-      setMessages(prev => [...prev, {
-        role:    'assistant',
-        content: 'Intel offline. Check API key in config.js.',
-      }])
+      const aborted =
+        (abortControllerRef.current && abortControllerRef.current.signal.aborted) ||
+        (err && err.name === 'AbortError')
+      // Stopped by the user — keep the thread as-is, no error bubble; any
+      // partial response stays visible.
+      if (!aborted) {
+        setMessages(prev => [...prev, {
+          role:    'assistant',
+          content: 'Intel offline. Check API key in config.js.',
+        }])
+      }
     } finally {
       setLoading(false)
+      setIsStreaming(false)
+      abortControllerRef.current = null
     }
   }
 
@@ -835,6 +859,31 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                   >
                     <MicIcon />
                   </button>
+                  {isStreaming ? (
+                    <button
+                      onClick={() => abortControllerRef.current && abortControllerRef.current.abort()}
+                      title="Stop"
+                      aria-label="Stop response"
+                      style={{
+                        width:           36,
+                        height:          36,
+                        borderRadius:    8,
+                        background:      'rgba(255,255,255,0.04)',
+                        border:          '1px solid rgba(255,255,255,0.12)',
+                        color:           '#c8d0dc',
+                        cursor:          'pointer',
+                        display:         'flex',
+                        alignItems:      'center',
+                        justifyContent:  'center',
+                        flexShrink:      0,
+                        transition:      'border-color 0.15s, color 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,212,232,0.4)'; e.currentTarget.style.color = '#00d4e8' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#c8d0dc' }}
+                    >
+                      <StopIcon />
+                    </button>
+                  ) : (
                   <button
                     onClick={() => handleSend()}
                     disabled={(!input.trim() && !attachment) || loading}
@@ -855,6 +904,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                   >
                     <SendIcon />
                   </button>
+                  )}
                 </div>
               </div>
 
