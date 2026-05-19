@@ -15,6 +15,7 @@ import { sortItems, CRITERIA } from './utils/sortEngine'
 import SortBar from './components/SortBar'
 import CompetitorPanel from './components/CompetitorPanel'
 import CustomCompetitors from './components/CustomCompetitors'
+import AccountMenu from './components/AccountMenu'
 import { computeThreatScore } from './utils/threatScore'
 import HorizonSidebar from './components/HorizonSidebar'
 import StatusBoard from './components/StatusBoard'
@@ -479,7 +480,49 @@ export default function App() {
 
   return (
     <>
-      {/* Top header removed — sidebar is now full-height (y=0); LIVE + account live in the sidebar. */}
+      {/* No header bar. LIVE + account float top-right as a transparent fixed
+          overlay over the content. Wrapper is pointer-events:none so its
+          padded dead-zone doesn't eat clicks on the content beneath; only the
+          pill and AccountMenu themselves are interactive. */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          zIndex: 250,
+          padding: '14px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          pointerEvents: 'none',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'auto' }}>
+          <span
+            style={{
+              display: 'inline-block',
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: '#94c864',
+              animation: 'livePulse 2s ease-in-out infinite',
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "'Geist Mono', monospace",
+              fontSize: 10,
+              color: '#94c864',
+              letterSpacing: '0.15em',
+            }}
+          >
+            LIVE
+          </span>
+        </div>
+        <div style={{ pointerEvents: 'auto' }}>
+          <AccountMenu />
+        </div>
+      </div>
 
       <HorizonSidebar
         view={view}

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { FONT_HEAD, FONT_MONO } from './horizonUI'
 import { statusVerdict, getDayStatus } from '../utils/horizonData'
-import AccountMenu from './AccountMenu'
 
 // S6 — sidebar micro-line under the STATUS label, derived from the day verdict.
 const STATUS_MICRO = {
@@ -259,51 +258,6 @@ export default function HorizonSidebar({
           onClick={onScan}
           active={scanState !== 'idle'}
         />
-      </div>
-
-      {/* Session — LIVE status + account, pinned above N0VA */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          padding: collapsed ? '12px 0' : '12px 16px',
-          borderTop: '1px solid var(--border)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            gap: 8,
-          }}
-        >
-          <span
-            style={{
-              display: 'inline-block',
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: '#94c864',
-              animation: 'livePulse 2s ease-in-out infinite',
-              flexShrink: 0,
-            }}
-          />
-          {!collapsed && (
-            <span
-              style={{
-                fontFamily: FONT_MONO,
-                fontSize: 10,
-                color: '#94c864',
-                letterSpacing: '0.15em',
-              }}
-            >
-              LIVE
-            </span>
-          )}
-        </div>
-        {!collapsed && <AccountMenu />}
       </div>
 
       {/* N0VA — always visible, lime */}
