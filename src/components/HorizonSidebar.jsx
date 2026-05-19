@@ -15,6 +15,7 @@ const STATUS_MICRO = {
 
 const NAV = [
   { id: 'status',   label: 'STATUS',   glyph: '◴' },
+  { id: 'events',   label: 'EVENTS',   glyph: '◇' },
   { id: 'ledger',   label: 'LEDGER',   glyph: '▤' },
 ]
 

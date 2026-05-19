@@ -19,6 +19,7 @@ import AccountMenu from './components/AccountMenu'
 import { computeThreatScore } from './utils/threatScore'
 import HorizonSidebar from './components/HorizonSidebar'
 import StatusBoard from './components/StatusBoard'
+import EventsSection from './components/EventsSection'
 import HorizonView from './components/HorizonView'
 import Nova from './components/Nova'
 import { getDayStatus } from './utils/horizonData'
@@ -212,6 +213,7 @@ export default function App() {
   // Horiz0n suite navigation. 'dashboard' = the untouched P1 tree.
   const [view, setView] = useState('dashboard')
   const [statusOpen, setStatusOpen] = useState(false)
+  const [eventsOpen, setEventsOpen] = useState(false)
   const [novaOpen, setNovaOpen] = useState(false)
   const dayStatus = useState(() => getDayStatus().overall)[0]
   const [scanProgress, setScanProgress] = useState(null)
@@ -291,6 +293,7 @@ export default function App() {
     }
     if (id === 'status') {
       setView('dashboard')
+      setEventsOpen(false)
       setStatusOpen(true)
       requestAnimationFrame(() =>
         setTimeout(() => {
@@ -300,6 +303,13 @@ export default function App() {
           })
         }, 60),
       )
+      return
+    }
+    if (id === 'events') {
+      setView('dashboard')
+      setStatusOpen(false)
+      setEventsOpen(true)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
     setView(id)
@@ -615,6 +625,12 @@ export default function App() {
         {statusOpen && (
           <div id="hz-status" className="container" style={{ paddingTop: 24 }}>
             <StatusBoard onDismiss={() => setStatusOpen(false)} onAskIntel={openIntel} onNav={handleNav} />
+          </div>
+        )}
+
+        {eventsOpen && (
+          <div id="hz-events">
+            <EventsSection orgId={getActiveOrgId()} />
           </div>
         )}
 
