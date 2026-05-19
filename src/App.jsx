@@ -480,24 +480,27 @@ export default function App() {
 
   return (
     <>
-      {/* No header bar. LIVE + account float top-right as a transparent fixed
-          overlay over the content. Wrapper is pointer-events:none so its
-          padded dead-zone doesn't eat clicks on the content beneath; only the
-          pill and AccountMenu themselves are interactive. */}
+      {/* Fixed top bar — starts at the sidebar's right edge (left:200px),
+          spans to right:0. Solid var(--bg-primary) 48px strip; LIVE + account
+          right-aligned. Both content roots add paddingTop:48 to clear it. */}
       <div
         style={{
           position: 'fixed',
           top: 0,
+          left: 200,
           right: 0,
-          zIndex: 250,
-          padding: '14px 20px',
+          height: 48,
+          zIndex: 200,
+          background: 'var(--bg-primary)',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'flex-end',
           gap: 14,
-          pointerEvents: 'none',
+          padding: '0 24px',
+          boxSizing: 'border-box',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span
             style={{
               display: 'inline-block',
@@ -519,9 +522,7 @@ export default function App() {
             LIVE
           </span>
         </div>
-        <div style={{ pointerEvents: 'auto' }}>
-          <AccountMenu />
-        </div>
+        <AccountMenu />
       </div>
 
       <HorizonSidebar
@@ -562,7 +563,7 @@ export default function App() {
         onDraftOutreach={(q) => askBriefRef.current?.openWithQuestion(q)}
         onAskIntel={openIntel}
       />
-      <main ref={mainRef} style={{ background: 'var(--bg-primary)' }}>
+      <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 48 }}>
 
         {scanEmpty && !scanResultsVisible && (
           <div className="container" style={{ paddingTop: 24 }}>

@@ -9,9 +9,9 @@ const STATUS_MICRO = {
   'ALL CLEAR': 'Market clear',
 }
 
-// Left nav for the Horiz0n suite. Collapsible (persisted). Sits below the
-// unchanged 48px header. C0INSIGLIERI (intel) and SCAN NOW sit below the
-// divider as nav items. N0VA pinned at the bottom in lime.
+// Left nav for the Horiz0n suite. Collapsible (persisted), full-height (top:0).
+// "Ask C0insiglieri" (intel) and SCAN NOW sit below the divider as nav items.
+// N0VA pinned at the bottom in lime.
 
 const NAV = [
   { id: 'status',   label: 'STATUS',   glyph: '◴' },
@@ -250,7 +250,7 @@ export default function HorizonSidebar({
 
         <Divider />
 
-        <NavRow glyph="⬡" label="C0INSIGLIERI" collapsed={collapsed} onClick={onIntel} />
+        <NavRow glyph="⬡" label="Ask C0insiglieri" collapsed={collapsed} onClick={onIntel} />
         <NavRow
           glyph="⟳"
           label={scanLabel}

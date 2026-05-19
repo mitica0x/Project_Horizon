@@ -25,6 +25,7 @@ export default function HorizonView({ view, onNav, onAskIntel }) {
       style={{
         background: 'var(--bg-primary)',
         minHeight: '100vh',
+        paddingTop: 48,
       }}
     >
       <div className="container" style={{ padding: '36px 40px 72px' }}>
