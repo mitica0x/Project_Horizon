@@ -197,11 +197,11 @@ export default function HorizonSidebar({
       >
         {collapsed ? (
           <>
-            H<span style={{ color: 'var(--cyan)', fontFamily: 'inherit', fontWeight: 'inherit', fontSize: 'inherit', lineHeight: 1, display: 'inline-block', fontVariantNumeric: 'lining-nums tabular-nums' }}>0</span>
+            <span style={{color:'#00d4e8'}}>C</span><span style={{color:'#94c864', position:'relative', top:'-2px', fontSize:'0.85em'}}>0</span>
           </>
         ) : (
           <>
-            <span style={{ color: '#ffffff' }}>C</span><span style={{ color: '#94c864', fontFamily: 'inherit', fontWeight: 'inherit', fontSize: 'inherit', lineHeight: 1, display: 'inline-block', fontVariantNumeric: 'lining-nums tabular-nums' }}>0</span><span style={{ color: '#ffffff' }}>INSIGLIERI</span>
+            <span style={{color:'#00d4e8'}}>C</span><span style={{color:'#94c864', position:'relative', top:'-3px', fontSize:'0.85em'}}>0</span><span style={{color:'#ffffff'}}>INSIGLIERI</span>
           </>
         )}
       </button>
