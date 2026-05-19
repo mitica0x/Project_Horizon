@@ -15,7 +15,6 @@ import { sortItems, CRITERIA } from './utils/sortEngine'
 import SortBar from './components/SortBar'
 import CompetitorPanel from './components/CompetitorPanel'
 import CustomCompetitors from './components/CustomCompetitors'
-import AccountMenu from './components/AccountMenu'
 import { computeThreatScore } from './utils/threatScore'
 import HorizonSidebar from './components/HorizonSidebar'
 import StatusBoard from './components/StatusBoard'
@@ -480,51 +479,7 @@ export default function App() {
 
   return (
     <>
-      {/* Fixed top header bar */}
-      <header style={{
-        position:       'fixed',
-        top:            0,
-        left:           0,
-        width:          '100%',
-        height:         48,
-        zIndex:         200,
-        // Same token the sidebar nav uses — header + sidebar read as one
-        // continuous surface (no dividing border, no tonal seam at y=48).
-        background:     'var(--bg-panel)',
-        display:        'flex',
-        alignItems:     'center',
-        justifyContent: 'flex-end',
-        padding:        '0 32px',
-        boxSizing:      'border-box',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
-              display:      'inline-block',
-              width:        6,
-              height:       6,
-              borderRadius: '50%',
-              background:   '#94c864',
-              animation:    'livePulse 2s ease-in-out infinite',
-            }} />
-            <span style={{
-              fontFamily:    "'Geist Mono', monospace",
-              fontSize:      10,
-              color:         '#94c864',
-              letterSpacing: '0.15em',
-            }}>
-              LIVE
-            </span>
-          </div>
-          <AccountMenu />
-        </div>
-        <style>{`
-          @keyframes livePulse {
-            0%, 100% { transform: scale(1);   opacity: 1;   }
-            50%      { transform: scale(1.4); opacity: 0.4; }
-          }
-        `}</style>
-      </header>
+      {/* Top header removed — sidebar is now full-height (y=0); LIVE + account live in the sidebar. */}
 
       <HorizonSidebar
         view={view}
@@ -564,7 +519,7 @@ export default function App() {
         onDraftOutreach={(q) => askBriefRef.current?.openWithQuestion(q)}
         onAskIntel={openIntel}
       />
-      <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 48 }}>
+      <main ref={mainRef} style={{ background: 'var(--bg-primary)' }}>
 
         {scanEmpty && !scanResultsVisible && (
           <div className="container" style={{ paddingTop: 24 }}>

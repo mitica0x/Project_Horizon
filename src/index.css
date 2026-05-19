@@ -102,3 +102,10 @@ body {
 
 /* Radix Select portal override */
 [data-radix-popper-content-wrapper] { z-index: 9000 !important; }
+
+/* LIVE pill pulse — relocated from the removed top-header inline <style>;
+   used by the LIVE dot now living in the sidebar (HorizonSidebar.jsx). */
+@keyframes livePulse {
+  0%, 100% { transform: scale(1);   opacity: 1;   }
+  50%      { transform: scale(1.4); opacity: 0.4; }
+}
