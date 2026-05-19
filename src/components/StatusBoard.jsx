@@ -7,7 +7,7 @@ import {
   getWindows,
   computeSignal,
 } from '../utils/horizonData'
-import { GAPS_T1 } from '../data/staticData'
+import { GAPS_T1, COMPETITORS, TABLE_DATA } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
 import { Card, RagDot, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 import SignalPanel, { VERDICT } from './SignalPanel'
@@ -467,7 +467,7 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
           COMPETITORS
         </span>
         <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-          12
+          {COMPETITORS.length}
         </span>
         <span style={{ flex: 1 }} />
         <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
@@ -511,7 +511,7 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
           ALL URLs
         </span>
         <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-          25
+          {TABLE_DATA.length}
         </span>
         <span style={{ flex: 1 }} />
         <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
@@ -520,7 +520,7 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
       </button>
       {urlsOpen && (
         <div style={{ marginTop: 16 }}>
-          <SiteTable openWithQuestion={onAskIntel} />
+          <SiteTable openWithQuestion={q => onAskIntel(q, { chips: [q] })} />
         </div>
       )}
     </Card>
