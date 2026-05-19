@@ -480,18 +480,19 @@ export default function App() {
 
   return (
     <>
-      {/* Fixed top bar — starts at the sidebar's right edge (left:200px),
-          spans to right:0. Solid var(--bg-primary) 48px strip; LIVE + account
-          right-aligned. Both content roots add paddingTop:48 to clear it. */}
+      {/* Fixed top bar — tracks the sidebar's right edge via
+          left:var(--hz-sidebar) (210 expanded / 52 collapsed). Transparent:
+          no background strip, just LIVE + account right-aligned floating over
+          the content. Both content roots add paddingTop:48 to clear it. */}
       <div
         style={{
           position: 'fixed',
           top: 0,
-          left: 200,
+          left: 'var(--hz-sidebar)',
           right: 0,
           height: 48,
           zIndex: 200,
-          background: 'var(--bg-primary)',
+          background: 'transparent',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',

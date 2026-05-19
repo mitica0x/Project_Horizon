@@ -158,10 +158,6 @@ export default function HorizonSidebar({
           background: 'none',
           border: 'none',
           padding: '6px 14px',
-          // Toggle is a static flex child, so a raw `top` is a no-op here.
-          // marginTop pushes it (and the column below) clear of the fixed
-          // 48px top bar so it sits flush beneath and never overlaps.
-          marginTop: 48,
           cursor: 'pointer',
           color: 'var(--text-muted)',
           fontSize: 14,
