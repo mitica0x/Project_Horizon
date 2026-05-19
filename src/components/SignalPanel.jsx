@@ -19,7 +19,7 @@ import {
 // P8 — Budget Deployment Signal. One dominant verdict + posture intelligence
 // (duration, what flips it, track record, 90-day rhythm, field posture).
 
-const VERDICT = {
+export const VERDICT = {
   DEPLOY:  { color: '#00d4e8', budget: 'HIGH',    blurb: 'Conditions align — put budget behind the open window now.' },
   PREPARE: { color: '#94c864', budget: 'MEDIUM',  blurb: 'Signals are mixed — stage assets, hold spend until the window firms up.' },
   HOLD:    { color: '#D4A853', budget: 'MINIMAL', blurb: 'No open window and the field is hot — preserve budget.' },
@@ -28,7 +28,7 @@ const VERDICT = {
 const FLIP_LINE = {
   DEPLOY: 'Sustained activation performance above 60% WIN rate would extend this posture.',
   HOLD: 'Two consecutive high-WIN activations or a DEPLOY-grade event would move this to DEPLOY.',
-  PREPARE: 'No action needed yet — monitor WINDOWS for emerging opportunities.',
+  PREPARE: 'No action needed yet — monitor EVENTS for emerging opportunities.',
 }
 
 // 90-day rhythm colours are spec-pinned for this chart.
@@ -315,8 +315,8 @@ function WhatToDoNow({ verdict, onAskIntel, onNav }) {
         <NavLine label="Log any unrecorded outcomes in HISTORY" nav="history" tab="outcomes" />
         <NavLine label="Capture recent decisions in HISTORY" nav="history" tab="decisions" />
         <NavLine
-          label="Let competitors over-extend — your next window is projected in WINDOWS"
-          nav="windows"
+          label="Let competitors over-extend — your next event is projected in EVENTS"
+          nav="events"
         />
       </>
     )

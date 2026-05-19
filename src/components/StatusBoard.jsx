@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import {
   getDayStatus,
   statusVerdict,
@@ -9,6 +9,7 @@ import {
 import { GAPS_T1 } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
 import { Card, RagDot, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
+import SignalPanel, { VERDICT } from './SignalPanel'
 
 // P2 — Morning Status Board. 90-second daily briefing. Verdict reframed:
 // HIGH PRESSURE / ELEVATED WATCH (cyan) · ALL CLEAR (lime). No crisis red.
@@ -17,8 +18,34 @@ const VERDICT_KEY = 'horizon_status_verdict'
 const DAY = 86400000
 
 export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
+  const [signalOpen, setSignalOpen] = useState(false)
   const { signals, overall, updatedAt } = useMemo(() => getDayStatus(), [])
   const verdict = statusVerdict(overall)
+
+  // SIGNAL bar — derive verdict + confidence inline. Mirrors the logic in
+  // SignalPanel.computeSignal (not exported there; consider hoisting later).
+  const sig = useMemo(() => {
+    const { rows } = getWindows(90)
+    const field = assessCompetitors()
+    const sentiment = signals.find(s => s.label === 'Market Sentiment')?.rag || 'amber'
+    const moveIn14 = rows.filter(w => w.action === 'MOVE NOW' && w.daysOut <= 14)
+    const anyMoveNow = rows.some(w => w.action === 'MOVE NOW')
+    const pressureLow = field.level === 'low'
+    const pressureHigh = field.level === 'high'
+    const gapsOpen = GAPS_T1.length > 0
+    let v, c
+    if (moveIn14.length > 0 && pressureLow && sentiment !== 'red') {
+      v = 'DEPLOY'
+      c = 60 + Math.min(moveIn14.length * 8, 16) + 15 + (sentiment === 'green' ? 10 : 5)
+    } else if (!anyMoveNow && pressureHigh) {
+      v = 'HOLD'
+      c = 62 + 18 + (sentiment === 'red' ? 8 : 4)
+    } else {
+      v = 'PREPARE'
+      c = 50 + (anyMoveNow ? 10 : 0) + (field.level === 'moderate' ? 10 : 0) + (gapsOpen ? 8 : 0)
+    }
+    return { verdict: v, confidence: Math.max(0, Math.min(100, Math.round(c))) }
+  }, [signals])
 
   // ── Intelligence layer (S6) — drivers / actions / since-yesterday, derived
   // from the live field + windows + gap list, with seeded fallbacks that keep
@@ -26,7 +53,6 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
   const intel = useMemo(() => {
     const field = assessCompetitors()
     const { rows, moveNowCount } = getWindows(90)
-    const moveIn14 = rows.filter(w => w.action === 'MOVE NOW' && w.daysOut <= 14).length
     const t1 = GAPS_T1 || []
     const g1 = t1[0]
     const g2 = t1[1]
@@ -48,10 +74,6 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
       {
         text: 'Review investopedia.com outreach — sent, no response logged',
         nav: 'outcomes',
-      },
-      {
-        text: `Check SIGNAL — ${moveIn14 ? 'MOVE-rated window opening in 14d' : 'posture window may be forming'}`,
-        nav: 'signal',
       },
     ]
 
@@ -133,6 +155,62 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
 
   return (
     <Card style={{ padding: '22px 28px' }}>
+      {/* SIGNAL — collapsible inline panel header */}
+      <button
+        onClick={() => setSignalOpen(o => !o)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          width: '100%',
+          textAlign: 'left',
+          background: `${VERDICT[sig.verdict].color}14`,
+          border: 'none',
+          borderBottom: `1px solid ${VERDICT[sig.verdict].color}33`,
+          padding: '14px 0',
+          marginBottom: 18,
+          cursor: 'pointer',
+        }}
+      >
+        <span
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            padding: '4px 10px',
+            borderRadius: 4,
+            color: VERDICT[sig.verdict].color,
+            border: `1px solid ${VERDICT[sig.verdict].color}66`,
+            background: `${VERDICT[sig.verdict].color}10`,
+            flexShrink: 0,
+          }}
+        >
+          {sig.verdict}
+        </span>
+        <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: VERDICT[sig.verdict].color, flexShrink: 0 }}>
+          {sig.confidence}%
+        </span>
+        <span
+          style={{
+            flex: 1,
+            fontFamily: FONT_BODY,
+            fontSize: 13,
+            color: '#c8d0dc',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            minWidth: 0,
+          }}
+        >
+          {VERDICT[sig.verdict].blurb}
+        </span>
+        <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+          {signalOpen ? '▲' : '▼'}
+        </span>
+      </button>
+      {signalOpen && <SignalPanel onAskIntel={onAskIntel} onNav={onNav} />}
+
       {/* Executive summary bar — live, top of the STATUS view */}
       {execSummary.length > 0 && (
         <div
