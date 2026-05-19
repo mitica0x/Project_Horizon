@@ -147,26 +147,6 @@ export default function HorizonSidebar({
         boxSizing: 'border-box',
       }}
     >
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(c => !c)}
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'flex-end',
-          background: 'none',
-          border: 'none',
-          padding: '6px 14px',
-          cursor: 'pointer',
-          color: 'var(--text-muted)',
-          fontSize: 14,
-          fontFamily: FONT_MONO,
-        }}
-      >
-        {collapsed ? '»' : '«'}
-      </button>
-
       {/* Wordmark → P1 dashboard */}
       <button
         onClick={() => onNav('dashboard')}
@@ -198,6 +178,26 @@ export default function HorizonSidebar({
             <span style={{color:'#ffffff'}}>C</span><span style={{color:'#94c864'}}>0</span><span style={{color:'#ffffff'}}>IN</span><span style={{color:'#00d4e8'}}>SIGLIERI</span>
           </>
         )}
+      </button>
+
+      {/* Collapse toggle */}
+      <button
+        onClick={() => setCollapsed(c => !c)}
+        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'flex-end',
+          background: 'none',
+          border: 'none',
+          padding: '6px 14px',
+          cursor: 'pointer',
+          color: 'var(--text-muted)',
+          fontSize: 14,
+          fontFamily: FONT_MONO,
+        }}
+      >
+        {collapsed ? '»' : '«'}
       </button>
 
       {/* Compact day verdict — shown when the STATUS board is dismissed */}
