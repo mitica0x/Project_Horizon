@@ -36,7 +36,7 @@ function stripMarkdown(text) {
 
 const SYSTEM = `You are Intel, an AI analyst embedded in C0insiglieri — a competitive intelligence system monitoring Bybit's EU market presence across 25 fintech comparison sites. You help C0insiglieri Team (Bybit Lead Marketing Europe) identify gaps, threats, and outreach opportunities. Be direct, concise, and actionable. No filler. Intelligence-grade tone. Output plain text only. Never use Markdown or any formatting syntax: no hashtags, no asterisks, no underscores, no backticks, no bold or italics, no headers, no bullet points or dashes, no numbered lists. Write in plain sentences and paragraphs; separate ideas with blank lines or single line breaks.`
 
-const HORIZ0N_GUIDE = `
+const C0INSIGLIERI_GUIDE = `
 C0INSIGLIERI PRODUCT GUIDE — use this when the user asks how to use the product, what
 something means, or what they should do.
 
@@ -109,7 +109,7 @@ const isProductQuestion = (userMessage) => {
     'explain', 'what means', 'opp score', 'eu presence', 'tier',
     'signal', 'windows', 'outcomes', 'ledger', 'brief', 'network',
     'trace', 'nova', 'n0va', 'scan now', 'build plan', 'cmo brief',
-    'how does', 'what are', 'tell me about horiz0n', 'help', 'guide',
+    'how does', 'what are', 'tell me about c0insiglieri', 'help', 'guide',
     'workflow', 'how should i', 'what do i do', 'getting started'
   ];
   const lower = (userMessage || '').toLowerCase();
@@ -407,7 +407,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
     // Product/how-to questions get the Horiz0n guide appended; market questions
     // keep the existing market-intel system prompt only.
     const guideSection = isProductQuestion(text)
-      ? `\n\nPRODUCT GUIDE:\n${HORIZ0N_GUIDE}`
+      ? `\n\nPRODUCT GUIDE:\n${C0INSIGLIERI_GUIDE}`
       : ''
 
     // History + thread render stay string-content (unchanged). The attachment
@@ -629,7 +629,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                         lineHeight: 1.5,
                         color:      '#00d4e8',
                       }}>
-                        {intelInsight}
+                        {stripMarkdown(intelInsight)}
                       </div>
                     </div>
                     {intelChips && intelChips.length > 0 && (
