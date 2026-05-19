@@ -498,15 +498,6 @@ export default function App() {
         padding:              '0 32px',
         boxSizing:            'border-box',
       }}>
-        <div style={{
-          fontFamily:    "'Geist', sans-serif",
-          fontSize:      12,
-          fontWeight:    700,
-          letterSpacing: '0.2em',
-          color:         '#94c864',
-        }}>
-          C0INSIGLIERI
-        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
