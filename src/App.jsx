@@ -482,23 +482,22 @@ export default function App() {
     <>
       {/* Fixed top header bar */}
       <header style={{
-        position:             'fixed',
-        top:                  0,
-        left:                 0,
-        width:                '100%',
-        height:               48,
-        zIndex:               200,
-        background:           'rgba(10,14,26,0.85)',
-        backdropFilter:       'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderBottom:         '1px solid rgba(0,212,232,0.15)',
-        display:              'flex',
-        alignItems:           'center',
-        justifyContent:       'space-between',
-        padding:              '0 32px',
-        boxSizing:            'border-box',
+        position:       'fixed',
+        top:            0,
+        left:           0,
+        width:          '100%',
+        height:         48,
+        zIndex:         200,
+        // Same token the sidebar nav uses — header + sidebar read as one
+        // continuous surface (no dividing border, no tonal seam at y=48).
+        background:     'var(--bg-panel)',
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'flex-end',
+        padding:        '0 32px',
+        boxSizing:      'border-box',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
               display:      'inline-block',
@@ -517,8 +516,8 @@ export default function App() {
               LIVE
             </span>
           </div>
+          <AccountMenu />
         </div>
-        <AccountMenu />
         <style>{`
           @keyframes livePulse {
             0%, 100% { transform: scale(1);   opacity: 1;   }
