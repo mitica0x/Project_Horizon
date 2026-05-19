@@ -38,7 +38,7 @@ export function AskIntelButton({ onClick }) {
   return (
     <button
       onClick={onClick}
-      title="Ask Intel about this section"
+      title="Ask C0insiglieri about this section"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -65,7 +65,7 @@ export function AskIntelButton({ onClick }) {
         e.currentTarget.style.borderColor = 'rgba(148,200,100,0.3)'
       }}
     >
-      <span style={{ fontSize: 12 }}>⬡</span> Ask Intel
+      <span style={{ fontSize: 12 }}>⬡</span> Ask C0insiglieri
     </button>
   )
 }

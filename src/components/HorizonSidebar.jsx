@@ -176,7 +176,7 @@ export default function HorizonSidebar({
       {/* Wordmark → P1 dashboard */}
       <button
         onClick={() => onNav('dashboard')}
-        title="Project Horizon — dashboard"
+        title="C0insiglieri — dashboard"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -257,7 +257,7 @@ export default function HorizonSidebar({
         <Divider />
 
         <NavRow glyph="◷" label="TRACE" collapsed={collapsed} onClick={onTrace} />
-        <NavRow glyph="⬡" label="INTEL" collapsed={collapsed} onClick={onIntel} />
+        <NavRow glyph="⬡" label="C0INSIGLIERI" collapsed={collapsed} onClick={onIntel} />
         <NavRow
           glyph="⟳"
           label={scanLabel}

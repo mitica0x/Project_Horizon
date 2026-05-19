@@ -505,7 +505,7 @@ export default function App() {
           letterSpacing: '0.2em',
           color:         '#94c864',
         }}>
-          PROJECT HORIZON
+          C0INSIGLIERI
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -2095,7 +2095,7 @@ function GapRow({ gap, index, highlighted, isOpen, onToggle, onAskIntel }) {
           >
             {gap.unverified && (
               <span
-                title="Automated check unavailable — verify manually or ask Intel"
+                title="Automated check unavailable — verify manually or ask C0insiglieri"
                 style={{ color: HZ.amber, marginRight: 6, cursor: 'help' }}
               >
                 ⚠

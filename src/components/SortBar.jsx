@@ -66,7 +66,7 @@ export default function SortBar({ activeCriteria, onToggle, onReset, sectionId, 
           alignItems: 'center',
         }}>
           <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#94c864' }}>
-            ⬡ Intel suggests: {strategyBanner.label}
+            ⬡ C0INSIGLIERI suggests: {strategyBanner.label}
           </span>
           <button
             onClick={() => onApplyStrategy(strategyBanner.criteria)}

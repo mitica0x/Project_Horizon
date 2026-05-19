@@ -154,7 +154,7 @@ export default function SiteTable({ openWithQuestion }) {
                           padding: '4px 8px',
                         }}
                       >
-                        Ask Intel →
+                        Ask C0insiglieri →
                       </button>
                     </td>
                   </tr>

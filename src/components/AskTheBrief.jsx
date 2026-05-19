@@ -8,10 +8,10 @@ const DEFAULT_PILLS = [
   'Who is blocking us on T1 sites?',
 ]
 
-const SYSTEM = `You are Intel, an AI analyst embedded in Project Horizon — a competitive intelligence system monitoring Bybit's EU market presence across 25 fintech comparison sites. You help C0insiglieri Team (Bybit Lead Marketing Europe) identify gaps, threats, and outreach opportunities. Be direct, concise, and actionable. No filler. Intelligence-grade tone.`
+const SYSTEM = `You are Intel, an AI analyst embedded in C0insiglieri — a competitive intelligence system monitoring Bybit's EU market presence across 25 fintech comparison sites. You help C0insiglieri Team (Bybit Lead Marketing Europe) identify gaps, threats, and outreach opportunities. Be direct, concise, and actionable. No filler. Intelligence-grade tone.`
 
 const HORIZ0N_GUIDE = `
-HORIZ0N PRODUCT GUIDE — use this when the user asks how to use the product, what
+C0INSIGLIERI PRODUCT GUIDE — use this when the user asks how to use the product, what
 something means, or what they should do.
 
 SECTIONS:
@@ -518,7 +518,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
             >
               <button
                 onClick={() => setOpen(false)}
-                aria-label="Close Intel"
+                aria-label="Close C0INSIGLIERI"
                 title="Close"
                 style={{
                   position: 'fixed',
@@ -557,7 +557,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                   color:          '#94c864',
                   textTransform:  'uppercase',
                 }}>
-                  ⬡ Intel
+                  ⬡ C0INSIGLIERI
                 </div>
               </div>
 
@@ -594,7 +594,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                         color:         '#94c864',
                         marginBottom:  7,
                       }}>
-                        Intel reads →
+                        C0INSIGLIERI reads →
                       </div>
                       <div style={{
                         fontFamily: "'Geist', sans-serif",
@@ -792,7 +792,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                     placeholder={
                       listening
                         ? (interim || 'Listening…')
-                        : 'Ask Intel anything...'
+                        : 'Ask C0insiglieri anything...'
                     }
                     style={{
                       flex:        1,

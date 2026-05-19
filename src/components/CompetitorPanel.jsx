@@ -184,7 +184,7 @@ export default function CompetitorPanel({ competitor, onClose, onAskIntel }) {
             color: '#94c864', letterSpacing: '0.1em',
             textTransform: 'uppercase', marginBottom: 12,
           }}>
-            Ask Intel about {name}
+            Ask C0insiglieri about {name}
           </div>
           {intelQuestions.map((q, i) => (
             <IntelPill key={i} label={q} onClick={() => onAskIntel(q)} />
