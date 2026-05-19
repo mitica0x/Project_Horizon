@@ -481,9 +481,9 @@ export default function App() {
   return (
     <>
       {/* Fixed top bar — tracks the sidebar's right edge via
-          left:var(--hz-sidebar) (210 expanded / 52 collapsed). Transparent:
-          no background strip, just LIVE + account right-aligned floating over
-          the content. Both content roots add paddingTop:48 to clear it. */}
+          left:var(--hz-sidebar) (210 expanded / 52 collapsed). Frosted:
+          semi-transparent dark + blur keeps LIVE + account readable without
+          reading as a heavy header. Both content roots pad 48 to clear it. */}
       <div
         style={{
           position: 'fixed',
@@ -492,7 +492,9 @@ export default function App() {
           right: 0,
           height: 48,
           zIndex: 200,
-          background: 'transparent',
+          background: 'rgba(10, 14, 26, 0.85)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
