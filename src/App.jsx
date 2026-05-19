@@ -480,15 +480,15 @@ export default function App() {
 
   return (
     <>
-      {/* Fixed top bar — tracks the sidebar's right edge via
-          left:var(--hz-sidebar) (210 expanded / 52 collapsed). Frosted:
-          semi-transparent dark + blur keeps LIVE + account readable without
-          reading as a heavy header. Both content roots pad 48 to clear it. */}
+      {/* Fixed top bar — full width (left:0 → right:0), edge to edge. Frosted
+          semi-transparent dark + blur, LIVE + account right-aligned. NOTE:
+          zIndex 200 > sidebar's 150, so this bar paints OVER the sidebar's
+          top 48px (wordmark + collapse toggle). Content roots pad 48 to clear it. */}
       <div
         style={{
           position: 'fixed',
           top: 0,
-          left: 'var(--hz-sidebar)',
+          left: 0,
           right: 0,
           height: 48,
           zIndex: 200,

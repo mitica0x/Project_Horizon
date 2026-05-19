@@ -191,6 +191,7 @@ export default function HorizonSidebar({
           background: 'none',
           border: 'none',
           padding: '6px 14px',
+          marginTop: 8,
           cursor: 'pointer',
           color: 'var(--text-muted)',
           fontSize: 14,

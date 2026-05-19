@@ -66,46 +66,44 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
     return { why, actions, since }
   }, [])
 
-  // Executive summary — exactly 3 live points from the same sources the board
-  // already uses (GAPS_T1, assessCompetitors, getWindows). No static fallback:
-  // a point with no data is omitted; if none resolve the bar renders nothing.
+  // DIAGNOSTIC (per request): always returns 3 fixed slots so the bar
+  // container is confirmed to mount even with no data — each slot falls back
+  // to "loading...". NOTE: this intentionally reverses the original
+  // "no static placeholder / empty → render nothing" rule. Revert this memo
+  // (and restore the `execSummary.length > 0` guard's intent) once render is
+  // confirmed.
   const execSummary = useMemo(() => {
     const clamp12 = s => {
       const w = String(s).trim().split(/\s+/).filter(Boolean)
       return w.length <= 12 ? w.join(' ') : w.slice(0, 12).join(' ') + '…'
     }
-    const points = []
 
     const g = (GAPS_T1 || [])[0]
-    if (g) {
-      const rivals = (g.competitors || []).slice(0, 2).join(', ')
-      points.push({
-        label: 'GAP',
-        text: clamp12(
+    const rivals = g ? (g.competitors || []).slice(0, 2).join(', ') : ''
+    const gapText = g
+      ? clamp12(
           `${g.domain} (${g.country}) — ${rivals ? rivals + ' listed, ' : ''}Bybit absent`,
-        ),
-      })
-    }
+        )
+      : 'loading...'
 
     const field = assessCompetitors()
-    if (field?.top && field.top !== '—') {
-      points.push({
-        label: 'THREAT',
-        text: clamp12(
-          `${field.top} leads field — pressure ${field.pressure}/100 (${field.level})`,
-        ),
-      })
-    }
+    const threatText =
+      field?.top && field.top !== '—'
+        ? clamp12(
+            `${field.top} leads field — pressure ${field.pressure}/100 (${field.level})`,
+          )
+        : 'loading...'
 
     const win = getWindows(90).rows.find(w => w.action === 'MOVE NOW')
-    if (win) {
-      points.push({
-        label: 'WINDOW',
-        text: clamp12(`${win.event.name} — MOVE NOW in ${win.daysOut}d`),
-      })
-    }
+    const windowText = win
+      ? clamp12(`${win.event.name} — MOVE NOW in ${win.daysOut}d`)
+      : 'loading...'
 
-    return points
+    return [
+      { label: 'GAP', text: gapText },
+      { label: 'THREAT', text: threatText },
+      { label: 'WINDOW', text: windowText },
+    ]
   }, [])
 
   // How long the day verdict has held (seeded 3d baseline on first sight).
