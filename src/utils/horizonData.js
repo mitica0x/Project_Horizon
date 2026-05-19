@@ -4,7 +4,7 @@
 // every panel reads from here so numbers stay consistent across the suite.
 
 import { RADAR_EVENTS } from '../../lib/radar/events'
-import { daysUntil, getAlertInfo } from '../../lib/radar/scoring'
+import { daysUntil, getAlertInfo, fmtDate } from '../../lib/radar/scoring'
 import { COMPETITORS, TABLE_DATA, GAPS_T1, GAPS_T2 } from '../data/staticData'
 import { computeThreatScore } from './threatScore'
 
@@ -186,4 +186,66 @@ export function fmtDay(d = new Date()) {
     day: '2-digit',
     month: 'short',
   })
+}
+
+export function computeSignal() {
+  const DAY = 86400000
+  const { rows } = getWindows(90)
+  const field = assessCompetitors()
+  const status = getDayStatus()
+  const sentiment =
+    status.signals.find(s => s.label === 'Market Sentiment')?.rag || 'amber'
+
+  const moveIn14 = rows.filter(w => w.action === 'MOVE NOW' && w.daysOut <= 14)
+  const anyMoveNow = rows.some(w => w.action === 'MOVE NOW')
+  const pressureLow = field.level === 'low'
+  const pressureHigh = field.level === 'high'
+  const sentimentNotRed = sentiment !== 'red'
+  const gapsOpen = GAPS_T1.length > 0
+
+  let verdict
+  let confidence
+  if (moveIn14.length > 0 && pressureLow && sentimentNotRed) {
+    verdict = 'DEPLOY'
+    confidence = 60 + Math.min(moveIn14.length * 8, 16) + 15 + (sentiment === 'green' ? 10 : 5)
+  } else if (!anyMoveNow && pressureHigh) {
+    verdict = 'HOLD'
+    confidence = 62 + 18 + (sentiment === 'red' ? 8 : 4)
+  } else {
+    verdict = 'PREPARE'
+    confidence =
+      50 + (anyMoveNow ? 10 : 0) + (field.level === 'moderate' ? 10 : 0) + (gapsOpen ? 8 : 0)
+  }
+  confidence = Math.max(0, Math.min(100, Math.round(confidence)))
+
+  const nextMove = rows.find(w => w.action === 'MOVE NOW')
+  const reassess = nextMove
+    ? fmtDate(nextMove.event.date)
+    : new Date(Date.now() + 7 * DAY).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+      })
+
+  const inputs = [
+    {
+      label: 'Actionable windows',
+      rag: anyMoveNow ? 'green' : 'red',
+      detail: anyMoveNow
+        ? `${moveIn14.length} MOVE NOW in 14d · ${rows.filter(w => w.action === 'MOVE NOW').length} in 90d`
+        : 'No MOVE NOW windows on the horizon',
+    },
+    {
+      label: 'Competitor pressure',
+      rag: pressureLow ? 'green' : pressureHigh ? 'red' : 'amber',
+      detail: `${field.pressure}/100 (${field.level}) · ${field.top} leading`,
+    },
+    {
+      label: 'Market sentiment',
+      rag: sentiment,
+      detail:
+        sentiment === 'green' ? 'Favourable' : sentiment === 'red' ? 'Adverse — hold' : 'Neutral',
+    },
+  ]
+
+  return { verdict, confidence, inputs, reassess, nextMove, field }
 }

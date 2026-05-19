@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { getWindows, getDayStatus, assessCompetitors } from '../utils/horizonData'
+import { getWindows, getDayStatus, assessCompetitors, computeSignal } from '../utils/horizonData'
 import { intelKit } from '../utils/intelKit'
 import { GAPS_T1, GAPS_T2, SCORE } from '../data/staticData'
 import { fmtDate } from '../../lib/radar/scoring'
@@ -74,67 +74,6 @@ function pathOf(url) {
   const d = url.split('/')[0]
   const rest = url.slice(d.length)
   return rest && rest !== '/' ? rest : ''
-}
-
-function computeSignal() {
-  const { rows } = getWindows(90)
-  const field = assessCompetitors()
-  const status = getDayStatus()
-  const sentiment =
-    status.signals.find(s => s.label === 'Market Sentiment')?.rag || 'amber'
-
-  const moveIn14 = rows.filter(w => w.action === 'MOVE NOW' && w.daysOut <= 14)
-  const anyMoveNow = rows.some(w => w.action === 'MOVE NOW')
-  const pressureLow = field.level === 'low'
-  const pressureHigh = field.level === 'high'
-  const sentimentNotRed = sentiment !== 'red'
-  const gapsOpen = GAPS_T1.length > 0
-
-  let verdict
-  let confidence
-  if (moveIn14.length > 0 && pressureLow && sentimentNotRed) {
-    verdict = 'DEPLOY'
-    confidence = 60 + Math.min(moveIn14.length * 8, 16) + 15 + (sentiment === 'green' ? 10 : 5)
-  } else if (!anyMoveNow && pressureHigh) {
-    verdict = 'HOLD'
-    confidence = 62 + 18 + (sentiment === 'red' ? 8 : 4)
-  } else {
-    verdict = 'PREPARE'
-    confidence =
-      50 + (anyMoveNow ? 10 : 0) + (field.level === 'moderate' ? 10 : 0) + (gapsOpen ? 8 : 0)
-  }
-  confidence = Math.max(0, Math.min(100, Math.round(confidence)))
-
-  const nextMove = rows.find(w => w.action === 'MOVE NOW')
-  const reassess = nextMove
-    ? fmtDate(nextMove.event.date)
-    : new Date(Date.now() + 7 * DAY).toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-      })
-
-  const inputs = [
-    {
-      label: 'Actionable windows',
-      rag: anyMoveNow ? 'green' : 'red',
-      detail: anyMoveNow
-        ? `${moveIn14.length} MOVE NOW in 14d · ${rows.filter(w => w.action === 'MOVE NOW').length} in 90d`
-        : 'No MOVE NOW windows on the horizon',
-    },
-    {
-      label: 'Competitor pressure',
-      rag: pressureLow ? 'green' : pressureHigh ? 'red' : 'amber',
-      detail: `${field.pressure}/100 (${field.level}) · ${field.top} leading`,
-    },
-    {
-      label: 'Market sentiment',
-      rag: sentiment,
-      detail:
-        sentiment === 'green' ? 'Favourable' : sentiment === 'red' ? 'Adverse — hold' : 'Neutral',
-    },
-  ]
-
-  return { verdict, confidence, inputs, reassess, nextMove, field }
 }
 
 // Posture persistence: track current verdict + when it started; roll the
@@ -350,7 +289,7 @@ function WhatToDoNow({ verdict, onAskIntel, onNav }) {
   return <Section title="What to do now">{body}</Section>
 }
 
-export default function SignalPanel({ onAskIntel, onNav }) {
+export default function SignalPanel({ onAskIntel, onNav, hideHeader = false }) {
   const sig = useMemo(() => computeSignal(), [])
   const { posture, history } = useMemo(
     () => resolvePosture(sig.verdict),
@@ -385,7 +324,7 @@ export default function SignalPanel({ onAskIntel, onNav }) {
 
   return (
     <>
-      <PanelHeader
+      {!hideHeader && <PanelHeader
         title="Budget Deployment Signal"
         accent="#94c864"
         sub="One read on whether to spend — refreshed every load"
@@ -398,7 +337,7 @@ export default function SignalPanel({ onAskIntel, onNav }) {
             />
           )
         }
-      />
+      />}
 
       {/* Recommendation card (unchanged top) */}
       <Card style={{ padding: '34px 36px', borderColor: v.color + '40' }}>

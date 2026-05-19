@@ -5,6 +5,7 @@ import {
   fmtClock,
   assessCompetitors,
   getWindows,
+  computeSignal,
 } from '../utils/horizonData'
 import { GAPS_T1 } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
@@ -22,30 +23,8 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
   const { signals, overall, updatedAt } = useMemo(() => getDayStatus(), [])
   const verdict = statusVerdict(overall)
 
-  // SIGNAL bar — derive verdict + confidence inline. Mirrors the logic in
-  // SignalPanel.computeSignal (not exported there; consider hoisting later).
-  const sig = useMemo(() => {
-    const { rows } = getWindows(90)
-    const field = assessCompetitors()
-    const sentiment = signals.find(s => s.label === 'Market Sentiment')?.rag || 'amber'
-    const moveIn14 = rows.filter(w => w.action === 'MOVE NOW' && w.daysOut <= 14)
-    const anyMoveNow = rows.some(w => w.action === 'MOVE NOW')
-    const pressureLow = field.level === 'low'
-    const pressureHigh = field.level === 'high'
-    const gapsOpen = GAPS_T1.length > 0
-    let v, c
-    if (moveIn14.length > 0 && pressureLow && sentiment !== 'red') {
-      v = 'DEPLOY'
-      c = 60 + Math.min(moveIn14.length * 8, 16) + 15 + (sentiment === 'green' ? 10 : 5)
-    } else if (!anyMoveNow && pressureHigh) {
-      v = 'HOLD'
-      c = 62 + 18 + (sentiment === 'red' ? 8 : 4)
-    } else {
-      v = 'PREPARE'
-      c = 50 + (anyMoveNow ? 10 : 0) + (field.level === 'moderate' ? 10 : 0) + (gapsOpen ? 8 : 0)
-    }
-    return { verdict: v, confidence: Math.max(0, Math.min(100, Math.round(c))) }
-  }, [signals])
+  // SIGNAL bar — uses the hoisted computeSignal() from horizonData.
+  const sig = useMemo(() => computeSignal(), [])
 
   // ── Intelligence layer (S6) — drivers / actions / since-yesterday, derived
   // from the live field + windows + gap list, with seeded fallbacks that keep
@@ -209,7 +188,7 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
           {signalOpen ? '▲' : '▼'}
         </span>
       </button>
-      {signalOpen && <SignalPanel onAskIntel={onAskIntel} onNav={onNav} />}
+      {signalOpen && <SignalPanel onAskIntel={onAskIntel} onNav={onNav} hideHeader />}
 
       {/* Executive summary bar — live, top of the STATUS view */}
       {execSummary.length > 0 && (
