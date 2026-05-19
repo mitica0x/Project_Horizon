@@ -8,7 +8,33 @@ const DEFAULT_PILLS = [
   'Who is blocking us on T1 sites?',
 ]
 
-const SYSTEM = `You are Intel, an AI analyst embedded in C0insiglieri — a competitive intelligence system monitoring Bybit's EU market presence across 25 fintech comparison sites. You help C0insiglieri Team (Bybit Lead Marketing Europe) identify gaps, threats, and outreach opportunities. Be direct, concise, and actionable. No filler. Intelligence-grade tone.`
+// Safety net for the plain-text rule in SYSTEM: models still occasionally emit
+// Markdown despite the instruction. Strip the common tokens before display so
+// the thread never shows raw **/##/- syntax. Conservative on purpose (paired
+// emphasis only, line-leading markers only) to avoid mangling prose or URLs.
+function stripMarkdown(text) {
+  if (!text) return text
+  return String(text)
+    .replace(/```[^\n]*\n?/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/_([^_\n]+)_/g, '$1')
+    .split('\n')
+    .map(line =>
+      line
+        .replace(/^\s{0,3}#{1,6}\s+/, '')
+        .replace(/^\s{0,3}>\s?/, '')
+        .replace(/^\s{0,3}[-*+]\s+/, '')
+        .replace(/^\s{0,3}([-*_])\1{2,}\s*$/, ''),
+    )
+    .join('\n')
+}
+
+const SYSTEM = `You are Intel, an AI analyst embedded in C0insiglieri — a competitive intelligence system monitoring Bybit's EU market presence across 25 fintech comparison sites. You help C0insiglieri Team (Bybit Lead Marketing Europe) identify gaps, threats, and outreach opportunities. Be direct, concise, and actionable. No filler. Intelligence-grade tone. Output plain text only. Never use Markdown or any formatting syntax: no hashtags, no asterisks, no underscores, no backticks, no bold or italics, no headers, no bullet points or dashes, no numbered lists. Write in plain sentences and paragraphs; separate ideas with blank lines or single line breaks.`
 
 const HORIZ0N_GUIDE = `
 C0INSIGLIERI PRODUCT GUIDE — use this when the user asks how to use the product, what
@@ -672,7 +698,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
                           }
                     }
                   >
-                    {m.content}
+                    {m.role === 'assistant' ? stripMarkdown(m.content) : m.content}
                   </div>
                 ))}
 
