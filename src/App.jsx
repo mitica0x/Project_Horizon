@@ -524,8 +524,8 @@ export default function App() {
           }}>
             C<span style={{ color: '#5BA8B5' }}>0</span>insiglieri
           </div>
-          <AccountMenu />
         </div>
+        <AccountMenu />
         <style>{`
           @keyframes livePulse {
             0%, 100% { transform: scale(1);   opacity: 1;   }

@@ -1,44 +1,21 @@
 import { useAuth } from '../context/AuthContext'
-import { useOrg } from '../context/OrgContext'
 
-// Lives in the fixed top header (right side). Matches the existing
-// dark-nav language — no new design tokens, monospace, muted text.
+// Lives in the fixed top header (far right). Single row: email + sign out.
+// Matches the existing dark-nav language — monospace, muted text.
 export default function AccountMenu() {
   const { email, signOut } = useAuth()
-  const { org } = useOrg()
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-      <div
+      <span
         style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          lineHeight: 1.3,
+          fontFamily: "'Geist Mono', monospace",
+          fontSize: 10,
+          color: 'var(--text-muted)',
         }}
       >
-        {org?.name && (
-          <span
-            style={{
-              fontFamily: "'Geist Mono', monospace",
-              fontSize: 11,
-              color: '#94c864',
-              letterSpacing: '0.06em',
-            }}
-          >
-            {org.name}
-          </span>
-        )}
-        <span
-          style={{
-            fontFamily: "'Geist Mono', monospace",
-            fontSize: 10,
-            color: 'var(--text-muted)',
-          }}
-        >
-          {email}
-        </span>
-      </div>
+        {email}
+      </span>
       <button
         onClick={signOut}
         style={{

@@ -10,17 +10,12 @@ const STATUS_MICRO = {
 }
 
 // Left nav for the Horiz0n suite. Collapsible (persisted). Sits below the
-// unchanged 48px header. Floating buttons are now nav items (TRACE / INTEL /
-// SCAN NOW). N0VA pinned at the bottom in lime.
+// unchanged 48px header. C0INSIGLIERI (intel) and SCAN NOW sit below the
+// divider as nav items. N0VA pinned at the bottom in lime.
 
 const NAV = [
   { id: 'status',   label: 'STATUS',   glyph: '◴' },
-  { id: 'windows',  label: 'WINDOWS',  glyph: '◇' },
-  { id: 'outcomes', label: 'OUTCOMES', glyph: '◎' },
   { id: 'ledger',   label: 'LEDGER',   glyph: '▤' },
-  { id: 'signal',   label: 'SIGNAL',   glyph: '◉' },
-  { id: 'brief',    label: 'BRIEF',    glyph: '▦' },
-  { id: 'network',  label: 'NETWORK',  glyph: '⧉' },
 ]
 
 const COLLAPSE_KEY = 'horizon_sidebar_collapsed'
@@ -256,7 +251,6 @@ export default function HorizonSidebar({
 
         <Divider />
 
-        <NavRow glyph="◷" label="TRACE" collapsed={collapsed} onClick={onTrace} />
         <NavRow glyph="⬡" label="C0INSIGLIERI" collapsed={collapsed} onClick={onIntel} />
         <NavRow
           glyph="⟳"
