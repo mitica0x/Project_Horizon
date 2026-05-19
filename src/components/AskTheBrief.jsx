@@ -404,7 +404,7 @@ const AskTheBrief = forwardRef(function AskTheBrief({ suggestionPills }, ref) {
     const att = attachment
     if ((!text && !att) || loading) return
 
-    // Product/how-to questions get the Horiz0n guide appended; market questions
+    // Product/how-to questions get the C0INSIGLIERI_GUIDE appended; market questions
     // keep the existing market-intel system prompt only.
     const guideSection = isProductQuestion(text)
       ? `\n\nPRODUCT GUIDE:\n${C0INSIGLIERI_GUIDE}`
