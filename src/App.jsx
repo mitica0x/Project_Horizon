@@ -517,13 +517,6 @@ export default function App() {
               LIVE
             </span>
           </div>
-          <div style={{
-            fontFamily: "'Geist', sans-serif",
-            fontSize:   11,
-            color:      '#8892a4',
-          }}>
-            C<span style={{ color: '#5BA8B5' }}>0</span>insiglieri
-          </div>
         </div>
         <AccountMenu />
         <style>{`
