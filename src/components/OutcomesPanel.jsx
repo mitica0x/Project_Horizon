@@ -216,7 +216,7 @@ function OutcomeRow({ a, onSaved }) {
   )
 }
 
-export default function OutcomesPanel({ onAskIntel }) {
+export default function OutcomesPanel({ onAskIntel, hideHeader = false }) {
   const [rows, setRows] = useState(null)
   const [error, setError] = useState(null)
 
@@ -262,13 +262,13 @@ export default function OutcomesPanel({ onAskIntel }) {
 
   return (
     <>
-      <PanelHeader
+      {!hideHeader && <PanelHeader
         title="Campaign Outcomes"
         accent="#94c864"
         count={activated}
         sub="Every activated window — track what the move actually returned"
         right={onAskIntel && <AskIntelButton onClick={askIntel} />}
-      />
+      />}
 
       {/* Summary bar */}
       <div

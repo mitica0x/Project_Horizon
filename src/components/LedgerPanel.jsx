@@ -190,7 +190,7 @@ function Field({ label, children }) {
   )
 }
 
-export default function LedgerPanel({ onAskIntel }) {
+export default function LedgerPanel({ onAskIntel, hideHeader = false }) {
   const [rows, setRows] = useState(null)
   const [filter, setFilter] = useState('all')
   const [query, setQuery] = useState('')
@@ -233,13 +233,13 @@ export default function LedgerPanel({ onAskIntel }) {
 
   return (
     <>
-      <PanelHeader
+      {!hideHeader && <PanelHeader
         title="Decision Ledger"
         accent="#00d4e8"
         count={list.length}
         sub="Every activate / skip / defer — the audit trail behind the moves"
         right={onAskIntel && <AskIntelButton onClick={askIntel} />}
-      />
+      />}
 
       {/* Controls */}
       <div

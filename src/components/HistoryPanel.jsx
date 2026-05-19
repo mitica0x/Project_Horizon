@@ -15,7 +15,7 @@ export default function HistoryPanel({ onAskIntel }) {
         <button onClick={() => setTab('decisions')} style={tab === 'decisions' ? active : inactive}>Decisions</button>
         <button onClick={() => setTab('outcomes')} style={tab === 'outcomes' ? active : inactive}>Outcomes</button>
       </div>
-      {tab === 'decisions' ? <LedgerPanel onAskIntel={onAskIntel} /> : <OutcomesPanel onAskIntel={onAskIntel} />}
+      {tab === 'decisions' ? <LedgerPanel onAskIntel={onAskIntel} hideHeader /> : <OutcomesPanel onAskIntel={onAskIntel} hideHeader />}
     </div>
   )
 }

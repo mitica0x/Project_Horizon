@@ -312,8 +312,8 @@ function WhatToDoNow({ verdict, onAskIntel, onNav }) {
         <div style={{ fontFamily: FONT_BODY, fontSize: 14, color: '#c8d0dc', marginBottom: 8 }}>
           Field pressure is low. Use this period:
         </div>
-        <NavLine label="Log any unrecorded outcomes in OUTCOMES" nav="outcomes" />
-        <NavLine label="Capture recent decisions in LEDGER" nav="ledger" />
+        <NavLine label="Log any unrecorded outcomes in HISTORY" nav="outcomes" />
+        <NavLine label="Capture recent decisions in HISTORY" nav="ledger" />
         <NavLine
           label="Let competitors over-extend — your next window is projected in WINDOWS"
           nav="windows"
