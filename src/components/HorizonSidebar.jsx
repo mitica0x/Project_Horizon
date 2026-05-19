@@ -16,7 +16,7 @@ const STATUS_MICRO = {
 const NAV = [
   { id: 'status',   label: 'STATUS',   glyph: '◴' },
   { id: 'events',   label: 'EVENTS',   glyph: '◇' },
-  { id: 'ledger',   label: 'LEDGER',   glyph: '▤' },
+  { id: 'history', label: 'HISTORY', glyph: '◎' },
 ]
 
 const COLLAPSE_KEY = 'horizon_sidebar_collapsed'

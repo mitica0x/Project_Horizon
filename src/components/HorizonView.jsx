@@ -1,5 +1,6 @@
 import WindowsPanel from './WindowsPanel'
 import OutcomesPanel from './OutcomesPanel'
+import HistoryPanel from './HistoryPanel'
 import LedgerPanel from './LedgerPanel'
 import SignalPanel from './SignalPanel'
 import BriefPanel from './BriefPanel'
@@ -12,6 +13,7 @@ import NetworkPanel from './NetworkPanel'
 const PANELS = {
   windows: WindowsPanel,
   outcomes: OutcomesPanel,
+  history: HistoryPanel,
   ledger: LedgerPanel,
   signal: SignalPanel,
   brief: BriefPanel,

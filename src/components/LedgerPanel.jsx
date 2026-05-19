@@ -303,7 +303,7 @@ export default function LedgerPanel({ onAskIntel }) {
       ) : filtered.length === 0 ? (
         <EmptyState>
           {list.length === 0
-            ? 'No decisions yet. Activate or dismiss a window in WINDOWS.'
+            ? 'No decisions yet. Activate or dismiss an event in EVENTS.'
             : 'No decisions match this filter.'}
         </EmptyState>
       ) : (

@@ -325,7 +325,7 @@ export default function OutcomesPanel({ onAskIntel }) {
         </EmptyState>
       ) : list.length === 0 ? (
         <EmptyState>
-          No activations yet. Activate a window in WINDOWS to start tracking outcomes.
+          No activations yet. Activate an event in EVENTS to start tracking outcomes.
         </EmptyState>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
