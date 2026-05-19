@@ -37,7 +37,7 @@ SECTIONS:
   outreach status per gap.
 - TRACE: Source monitor. Tracks the URLs being monitored and their scan status.
 - N0VA: AI war room. Deep strategic session mode for complex decisions.
-- INTEL: This panel. Ask anything about the market or how to use Horiz0n.
+- INTEL: This panel. Ask anything about the market or how to use C0insiglieri.
 
 KEY METRICS:
 - EU Presence Score: % of tracked sites where Bybit appears. Higher = better field
