@@ -214,6 +214,7 @@ export default function App() {
   const [view, setView] = useState('dashboard')
   const [statusOpen, setStatusOpen] = useState(false)
   const [eventsOpen, setEventsOpen] = useState(false)
+  const [historyTab, setHistoryTab] = useState('decisions')
   const [novaOpen, setNovaOpen] = useState(false)
   const dayStatus = useState(() => getDayStatus().overall)[0]
   const [scanProgress, setScanProgress] = useState(null)
@@ -285,7 +286,7 @@ export default function App() {
     try { localStorage.setItem(STATUS_VIEWED_KEY, todayKey()) } catch { /* ignore */ }
   }, [statusOpen])
 
-  const handleNav = (id) => {
+  const handleNav = (id, params) => {
     if (id === 'dashboard') {
       setView('dashboard')
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -311,6 +312,9 @@ export default function App() {
       setEventsOpen(true)
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
+    }
+    if (id === 'history' && params?.tab) {
+      setHistoryTab(params.tab)
     }
     setView(id)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -734,7 +738,7 @@ export default function App() {
       </div>
       ) : (
       <div className="hz-shell">
-        <HorizonView view={view} onNav={handleNav} onAskIntel={openIntel} />
+        <HorizonView view={view} onNav={handleNav} onAskIntel={openIntel} historyTab={historyTab} />
       </div>
       )}
 

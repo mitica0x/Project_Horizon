@@ -253,9 +253,9 @@ function WhatToDoNow({ verdict, onAskIntel, onNav }) {
     )
   }
 
-  const NavLine = ({ label, nav }) => (
+  const NavLine = ({ label, nav, tab }) => (
     <button
-      onClick={() => onNav?.(nav)}
+      onClick={() => onNav?.(nav, tab ? { tab } : undefined)}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -312,8 +312,8 @@ function WhatToDoNow({ verdict, onAskIntel, onNav }) {
         <div style={{ fontFamily: FONT_BODY, fontSize: 14, color: '#c8d0dc', marginBottom: 8 }}>
           Field pressure is low. Use this period:
         </div>
-        <NavLine label="Log any unrecorded outcomes in HISTORY" nav="outcomes" />
-        <NavLine label="Capture recent decisions in HISTORY" nav="ledger" />
+        <NavLine label="Log any unrecorded outcomes in HISTORY" nav="history" tab="outcomes" />
+        <NavLine label="Capture recent decisions in HISTORY" nav="history" tab="decisions" />
         <NavLine
           label="Let competitors over-extend — your next window is projected in WINDOWS"
           nav="windows"
