@@ -11,6 +11,8 @@ import { GAPS_T1 } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
 import { Card, RagDot, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 import SignalPanel, { VERDICT } from './SignalPanel'
+import CompetitorChart from './CompetitorChart'
+import SiteTable from './SiteTable'
 
 // P2 — Morning Status Board. 90-second daily briefing. Verdict reframed:
 // HIGH PRESSURE / ELEVATED WATCH (cyan) · ALL CLEAR (lime). No crisis red.
@@ -20,6 +22,8 @@ const DAY = 86400000
 
 export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
   const [signalOpen, setSignalOpen] = useState(false)
+  const [competitorsOpen, setCompetitorsOpen] = useState(false)
+  const [urlsOpen, setUrlsOpen] = useState(false)
   const { signals, overall, updatedAt } = useMemo(() => getDayStatus(), [])
   const verdict = statusVerdict(overall)
 
@@ -431,6 +435,94 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
             ))}
         </div>
       ))}
+
+      {/* COMPETITORS — collapsible */}
+      <button
+        onClick={() => setCompetitorsOpen(o => !o)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          width: '100%',
+          textAlign: 'left',
+          background: 'rgba(0,212,232,0.06)',
+          border: 'none',
+          borderBottom: '1px solid rgba(0,212,232,0.15)',
+          padding: '14px 0',
+          marginTop: 28,
+          cursor: 'pointer',
+        }}
+      >
+        <span
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: 'var(--cyan)',
+            flexShrink: 0,
+          }}
+        >
+          COMPETITORS
+        </span>
+        <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+          12
+        </span>
+        <span style={{ flex: 1 }} />
+        <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+          {competitorsOpen ? '▲' : '▼'}
+        </span>
+      </button>
+      {competitorsOpen && (
+        <div style={{ marginTop: 16 }}>
+          <CompetitorChart liveCompetitors={undefined} liveCoverage={undefined} />
+        </div>
+      )}
+
+      {/* ALL URLs — collapsible */}
+      <button
+        onClick={() => setUrlsOpen(o => !o)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          width: '100%',
+          textAlign: 'left',
+          background: 'rgba(0,212,232,0.06)',
+          border: 'none',
+          borderBottom: '1px solid rgba(0,212,232,0.15)',
+          padding: '14px 0',
+          marginTop: 28,
+          cursor: 'pointer',
+        }}
+      >
+        <span
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: 'var(--cyan)',
+            flexShrink: 0,
+          }}
+        >
+          ALL URLs
+        </span>
+        <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+          25
+        </span>
+        <span style={{ flex: 1 }} />
+        <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+          {urlsOpen ? '▲' : '▼'}
+        </span>
+      </button>
+      {urlsOpen && (
+        <div style={{ marginTop: 16 }}>
+          <SiteTable openWithQuestion={onAskIntel} />
+        </div>
+      )}
     </Card>
   )
 }
