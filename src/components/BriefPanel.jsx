@@ -249,7 +249,7 @@ export default function BriefPanel({ onAskIntel }) {
       doc.line(M, 285, W - M, 285)
       doc.setFontSize(9)
       doc.setTextColor(120, 128, 140)
-      doc.text('Prepared by COINsiglieri', M, 290)
+      doc.text('Prepared by C0insiglieri', M, 290)
 
       const safe = model.orgName.replace(/[^a-z0-9]+/gi, '_')
       doc.save(`Horiz0n_Brief_${safe}_${new Date().toISOString().slice(0, 10)}.pdf`)
@@ -424,7 +424,7 @@ export default function BriefPanel({ onAskIntel }) {
             color: 'var(--text-muted)',
           }}
         >
-          Prepared by COINsiglieri
+          Prepared by C0insiglieri
         </div>
       </Card>
     </>
