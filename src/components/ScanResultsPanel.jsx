@@ -2428,18 +2428,11 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
   const [gapFilter, setGapFilter] = useState('country')
   // Which Priority Gap card is expanded inline (one at a time).
   const [expandedGap, setExpandedGap] = useState(null)
-  // "vs last scan" expandable diff row.
-  const [diffOpen, setDiffOpen] = useState(false)
-  // Per-section collapse state for the expanded diff panel. Empty map = every
-  // section open (DiffSection treats `!== false` as open), so clearing this
-  // re-expands all sections on each panel open.
+  // "vs last scan" tab selection. The panel itself is always open now.
+  const [vsTab, setVsTab] = useState('GAPS')
+  // Per-section collapse state for legacy DiffSection rendering — kept so the
+  // section component still works elsewhere; new VS LAST SCAN panel ignores it.
   const [sectionsOpen, setSectionsOpen] = useState({})
-  // Tabbed diff layout — pill strip across the top, one pane below. Default
-  // is picked by data presence (gaps → competitors → wins → alerts → score)
-  // on first open; user picks override.
-  const [diffTab, setDiffTab] = useState(null)
-  const diffTabInitedRef = useRef(false)
-  const [barHover, setBarHover] = useState(false)
   const [prevSnapshot, setPrevSnapshot] = useState(null)
   // Intelligence layer UI state.
   const [projOpen, setProjOpen] = useState(false)
@@ -2456,12 +2449,10 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
   useEffect(() => {
     if (visible && !wasVisibleRef.current) {
       setOpenCount((c) => c + 1)
-      setDiffOpen(false)
       setSectionsOpen({}) // all sections expanded by default on each open
-      // Re-pick the default diff tab from scratch on every panel reopen so a
-      // fresh scan that flips counts surfaces the right tab.
-      diffTabInitedRef.current = false
-      setDiffTab(null)
+      // VS LAST SCAN tab resets to GAPS on every reopen so the first thing the
+      // user sees is the most-actionable delta surface.
+      setVsTab('GAPS')
       // Scan completion: capture the previously-stored snapshot to diff against,
       // then persist the current results for the next scan. Seed a synthetic
       // prior scan if none exists so the diff is never blank (req e).
@@ -2485,7 +2476,6 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     if (!visible) {
       setExpanded(false)
       setCompetitorsExpanded(false)
-      setDiffOpen(false)
       setSectionsOpen({})
       setProjOpen(false)
       setPlanOpen(false)
@@ -2520,52 +2510,52 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     [scanData, prevSnapshot]
   )
 
-  // Lookup map (id → section) so the tabbed pane can pull specific sections
-  // without iterating.
-  const diffSectionsById = useMemo(
-    () =>
-      Object.fromEntries((scanDiff.sections || []).map((s) => [s.id, s])),
-    [scanDiff.sections],
-  )
+  // Structured diff data for the always-open VS LAST SCAN panel. Derived
+  // directly from prevSnapshot vs scanData so each tab renders concrete rows
+  // (newGaps / resolvedGaps / newWins / alerts / competitorMoves) rather than
+  // generic delta counters.
+  const diffData = useMemo(() => {
+    if (!prevSnapshot || !scanData) return null
+    const k = (g) => `${g?.domain || ''}|${g?.path || ''}`
+    const currList = scanData?.gaps || []
+    const prevList = prevSnapshot?.gaps || []
+    const currMap = Object.fromEntries(currList.map((g) => [k(g), g]))
+    const prevMap = Object.fromEntries(prevList.map((g) => [k(g), g]))
+    const newGaps = currList.filter((g) => !(k(g) in prevMap))
+    const resolvedGaps = prevList.filter((g) => !(k(g) in currMap))
+    const winsDelta = Math.max(
+      0,
+      (scanData?.wins ?? 0) - (prevSnapshot?.wins ?? 0),
+    )
+    const newWins = resolvedGaps.slice(0, winsDelta)
+    const alertsDelta = Math.max(
+      0,
+      (scanData?.brandAlerts ?? 0) - (prevSnapshot?.brandAlerts ?? 0),
+    )
+    const alerts = Array.from({ length: alertsDelta }, () => ({
+      message: 'New brand alert raised since last scan',
+    }))
+    const prevCompMap = Object.fromEntries(
+      (prevSnapshot?.competitors || []).map((c) => [c.name, c.blocksOnGaps ?? 0]),
+    )
+    const competitorMoves = (scanData?.competitors || [])
+      .map((c) => ({
+        name: c.name,
+        delta: (c.blocksOnGaps ?? 0) - (prevCompMap[c.name] ?? 0),
+      }))
+      .filter((m) => m.delta !== 0)
+      .map((m) => ({
+        message: `${m.name} ${m.delta > 0 ? '+' : ''}${m.delta} listing${
+          Math.abs(m.delta) === 1 ? '' : 's'
+        } since last scan`,
+      }))
+    return { newGaps, resolvedGaps, newWins, alerts, competitorMoves }
+  }, [prevSnapshot, scanData])
 
-  // Tab counts. 'gaps' tab unions 'opened' + 'resolved'. Competitors uses
-  // badge.value (moverCount — competitors that moved this scan), not total
-  // competitor count.
-  const diffTabCounts = useMemo(
-    () => ({
-      score: diffSectionsById.score?.rows?.length || 0,
-      gaps:
-        (diffSectionsById.opened?.rows?.length || 0) +
-        (diffSectionsById.resolved?.rows?.length || 0),
-      wins: diffSectionsById.wins?.rows?.length || 0,
-      alerts: diffSectionsById.alerts?.rows?.length || 0,
-      competitors: diffSectionsById.competitors?.badge?.value || 0,
-    }),
-    [diffSectionsById],
-  )
-
-  // Short summary string shown on the closed "vs last scan" bar so the user
-  // sees what's inside before clicking.
-  const diffSummaryBadge = useMemo(() => {
-    const parts = []
-    if (diffTabCounts.gaps > 0) parts.push(`+${diffTabCounts.gaps} gap${diffTabCounts.gaps === 1 ? '' : 's'}`)
-    if (diffTabCounts.wins > 0) parts.push(`${diffTabCounts.wins} win${diffTabCounts.wins === 1 ? '' : 's'}`)
-    if (diffTabCounts.alerts > 0) parts.push(`${diffTabCounts.alerts} alert${diffTabCounts.alerts === 1 ? '' : 's'}`)
-    if (diffTabCounts.competitors > 0)
-      parts.push(`${diffTabCounts.competitors} competitor move${diffTabCounts.competitors === 1 ? '' : 's'}`)
-    return parts.join(' · ')
-  }, [diffTabCounts])
-
-  // Default-tab init: when scan data first arrives, pick the highest-priority
-  // tab that has content. User selections override after that.
-  useEffect(() => {
-    if (diffTabInitedRef.current) return
-    if (!scanDiff.hasPrevious) return
-    diffTabInitedRef.current = true
-    const priority = ['gaps', 'competitors', 'wins', 'alerts', 'score']
-    const next = priority.find((t) => diffTabCounts[t] > 0) || 'gaps'
-    setDiffTab(next)
-  }, [scanDiff.hasPrevious, diffTabCounts])
+  const deltaGaps = diffData?.newGaps?.length || 0
+  const deltaWins = diffData?.newWins?.length || 0
+  const deltaAlerts = diffData?.alerts?.length || 0
+  const deltaCompetitors = diffData?.competitorMoves?.length || 0
 
   const errorState = visible && !scanData
 
@@ -3249,228 +3239,151 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           )}
         </div>
 
-        {/* ─── Section 4 — "vs last scan" expandable diff row ────────────── */}
-        <div>
-          {/* Inline diff panel — slides up directly above the bar */}
-          <div
-            style={{
-              maxHeight: diffOpen ? 2600 : 0,
-              opacity: diffOpen ? 1 : 0,
-              overflow: 'hidden',
-              borderTop: diffOpen ? `1px solid ${HZ.border}` : '1px solid transparent',
-              transition:
-                'max-height 0.45s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease, border-color 0.3s ease',
-            }}
-            aria-hidden={!diffOpen}
-          >
-            <div
-              style={{
-                fontFamily: FONT_MONO,
-                fontSize: 12,
-                lineHeight: 1.5,
-              }}
-            >
-              {scanDiff.hasPrevious ? (
-                (() => {
-                  const TABS = [
-                    { id: 'score', label: 'SCORE' },
-                    { id: 'gaps', label: 'GAPS' },
-                    { id: 'wins', label: 'WINS' },
-                    { id: 'alerts', label: 'ALERTS' },
-                    { id: 'competitors', label: 'COMPETITORS' },
-                  ]
-                  const activeTab = diffTab || 'gaps'
-                  const tabPillStyle = (isActive) => ({
-                    padding: '6px 14px',
-                    fontSize: 11,
-                    fontFamily: FONT_MONO,
-                    letterSpacing: '0.08em',
-                    fontWeight: isActive ? 600 : 400,
-                    color: isActive ? 'var(--cyan)' : 'var(--text-muted)',
-                    background: isActive ? 'rgba(0, 212, 232, 0.08)' : 'transparent',
-                    border: isActive
-                      ? '1px solid rgba(0,212,232,0.25)'
-                      : '1px solid transparent',
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  })
-                  const renderSection = (id) => {
-                    const sec = diffSectionsById[id]
-                    if (!sec) return null
-                    return (
-                      <DiffSection key={id} section={sec} staticOpen open onToggle={() => {}} />
-                    )
-                  }
-                  return (
-                    <>
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: 4,
-                          padding: '12px 16px 0',
-                          borderBottom: '1px solid rgba(255,255,255,0.06)',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        {TABS.map((tab) => {
-                          const isActive = activeTab === tab.id
-                          const count = diffTabCounts[tab.id] || 0
-                          return (
-                            <button
-                              key={tab.id}
-                              onClick={() => setDiffTab(tab.id)}
-                              style={tabPillStyle(isActive)}
-                            >
-                              {tab.label}
-                              {count > 0 && (
-                                <span
-                                  style={{
-                                    fontSize: 10,
-                                    background: isActive
-                                      ? 'var(--cyan)'
-                                      : 'rgba(255,255,255,0.15)',
-                                    color: isActive ? '#0a0e1a' : 'var(--text-muted)',
-                                    borderRadius: 10,
-                                    padding: '1px 6px',
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  {count}
-                                </span>
-                              )}
-                            </button>
-                          )
-                        })}
-                      </div>
-                      <div
-                        style={{
-                          padding: 16,
-                          minHeight: 120,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 18,
-                        }}
-                      >
-                        {activeTab === 'score' && renderSection('score')}
-                        {activeTab === 'gaps' && (
-                          <>
-                            {renderSection('opened')}
-                            {renderSection('resolved')}
-                          </>
-                        )}
-                        {activeTab === 'wins' && renderSection('wins')}
-                        {activeTab === 'alerts' && renderSection('alerts')}
-                        {activeTab === 'competitors' && renderSection('competitors')}
-                      </div>
-                    </>
-                  )
-                })()
-              ) : (
-                <div
+        {/* ─── VS LAST SCAN — always-open delta intelligence panel ───────── */}
+        {prevSnapshot && (
+          <div style={{
+            margin: '0 0 16px 0',
+            border: '1px solid rgba(255,255,255,0.09)',
+            borderRadius: '3px',
+            overflow: 'hidden',
+          }}>
+
+            {/* Header */}
+            <div style={{
+              padding: '14px 20px 12px 20px',
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              <div>
+                <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '6px' }}>
+                  Movement since last scan
+                </div>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                  {[
+                    { value: `+${deltaGaps}`, label: 'gaps', color: deltaGaps > 0 ? '#ff4d6d' : '#94c864' },
+                    { value: `+${deltaWins}`, label: 'wins', color: '#94c864' },
+                    { value: String(deltaAlerts), label: 'alerts', color: deltaAlerts > 0 ? '#d4a853' : '#8892a4' },
+                    { value: String(deltaCompetitors), label: 'competitor moves', color: deltaCompetitors > 0 ? '#d4a853' : '#8892a4' },
+                  ].map(({ value, label, color }) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color }}>{value}</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4' }}>
+                {prevSnapshot?.scannedAt
+                  ? new Date(prevSnapshot.scannedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                  : 'prev scan'}
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div style={{
+              display: 'flex',
+              gap: '0',
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+              padding: '0 20px',
+            }}>
+              {['GAPS', 'WINS', 'ALERTS', 'COMPETITORS'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setVsTab(tab)}
                   style={{
-                    background: 'var(--bg-card)',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: 10,
-                    padding: '14px 16px',
-                    margin: '16px 24px',
-                    color: HZ.muted,
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    padding: '10px 16px',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: vsTab === tab ? '2px solid #00d4e8' : '2px solid transparent',
+                    color: vsTab === tab ? '#00d4e8' : '#8892a4',
+                    cursor: 'pointer',
+                    marginBottom: '-1px',
                   }}
                 >
-                  First scan — no previous data to compare.
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            <div style={{ padding: '16px 20px', minHeight: '80px' }}>
+              {vsTab === 'GAPS' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {(diffData?.newGaps?.length > 0 ? diffData.newGaps : []).map((g, i) => (
+                    <div key={`new-${i}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', background: 'rgba(255,77,109,0.05)', border: '1px solid rgba(255,77,109,0.15)', borderRadius: '3px' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#ff4d6d', textTransform: 'uppercase', minWidth: '32px' }}>NEW</span>
+                      <a href={buildGapHref(g)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '12px', color: '#ffffff', textDecoration: 'none' }}>
+                        {g.domain}<span style={{ color: '#00d4e8' }}>{g.path || ''}</span>
+                      </a>
+                      {g.tier && <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4' }}>{g.tier}</span>}
+                    </div>
+                  ))}
+                  {(diffData?.resolvedGaps?.length > 0 ? diffData.resolvedGaps : []).map((g, i) => (
+                    <div key={`closed-${i}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', background: 'rgba(148,200,100,0.05)', border: '1px solid rgba(148,200,100,0.15)', borderRadius: '3px' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#94c864', textTransform: 'uppercase', minWidth: '32px' }}>CLOSED</span>
+                      <a href={buildGapHref(g)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '12px', color: '#ffffff', textDecoration: 'none' }}>
+                        {g.domain}<span style={{ color: '#00d4e8' }}>{g.path || ''}</span>
+                      </a>
+                    </div>
+                  ))}
+                  {(!diffData?.newGaps?.length && !diffData?.resolvedGaps?.length) && (
+                    <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No gap changes detected since last scan.</div>
+                  )}
+                </div>
+              )}
+
+              {vsTab === 'WINS' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {(diffData?.newWins?.length > 0 ? diffData.newWins : []).map((w, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', background: 'rgba(148,200,100,0.05)', border: '1px solid rgba(148,200,100,0.15)', borderRadius: '3px' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#94c864', textTransform: 'uppercase', minWidth: '32px' }}>WIN</span>
+                      <a href={buildGapHref(w)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '12px', color: '#ffffff', textDecoration: 'none' }}>
+                        {w.domain}<span style={{ color: '#00d4e8' }}>{w.path || ''}</span>
+                      </a>
+                    </div>
+                  ))}
+                  {!diffData?.newWins?.length && (
+                    <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No new wins since last scan.</div>
+                  )}
+                </div>
+              )}
+
+              {vsTab === 'ALERTS' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {(diffData?.alerts?.length > 0 ? diffData.alerts : []).map((a, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', background: 'rgba(212,168,83,0.05)', border: '1px solid rgba(212,168,83,0.15)', borderRadius: '3px' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#d4a853', textTransform: 'uppercase', minWidth: '40px' }}>ALERT</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#b8c4d4' }}>{a.message || a}</span>
+                    </div>
+                  ))}
+                  {!diffData?.alerts?.length && (
+                    <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No alerts since last scan.</div>
+                  )}
+                </div>
+              )}
+
+              {vsTab === 'COMPETITORS' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {(diffData?.competitorMoves?.length > 0 ? diffData.competitorMoves : []).map((c, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '3px' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#d4a853', textTransform: 'uppercase', minWidth: '40px' }}>MOVE</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#b8c4d4' }}>{c.message || c}</span>
+                    </div>
+                  ))}
+                  {!diffData?.competitorMoves?.length && (
+                    <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No competitor moves detected since last scan.</div>
+                  )}
                 </div>
               )}
             </div>
           </div>
-
-          {/* Clickable summary bar — bright section header with cyan accent.
-              Shows summary badge ("+3 gaps · 1 win") while collapsed so the
-              content inside is legible before clicking. */}
-          <div
-            role="button"
-            tabIndex={0}
-            aria-expanded={diffOpen}
-            aria-label="Toggle diff vs last scan"
-            onClick={() => setDiffOpen((o) => !o)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                setDiffOpen((o) => !o)
-              }
-            }}
-            onMouseEnter={() => setBarHover(true)}
-            onMouseLeave={() => setBarHover(false)}
-            style={{
-              borderTop: `1px solid ${HZ.border}`,
-              borderLeft: '3px solid var(--cyan)',
-              padding: '14px 24px 14px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 16,
-              flexWrap: 'wrap',
-              cursor: 'pointer',
-              background: barHover ? HZ.elevated : 'transparent',
-              transition: 'background 0.15s',
-              userSelect: 'none',
-            }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontFamily: FONT_MONO,
-                  letterSpacing: '0.12em',
-                  fontWeight: 600,
-                  color: '#c8d0dc',
-                  textTransform: 'uppercase',
-                }}
-              >
-                VS LAST SCAN
-              </span>
-              {!diffOpen && diffSummaryBadge && (
-                <span
-                  style={{
-                    fontSize: 10,
-                    color: 'var(--text-muted)',
-                    fontFamily: FONT_MONO,
-                    letterSpacing: '0.04em',
-                  }}
-                >
-                  {diffSummaryBadge}
-                </span>
-              )}
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {scanData.scoreDelta != null && (
-                <DeltaChip label="SCORE" delta={scanData.scoreDelta} positiveIsGood />
-              )}
-              {scanData.tier1GapsDelta != null && (
-                <DeltaChip label="GAPS" delta={scanData.tier1GapsDelta} positiveIsGood={false} />
-              )}
-              {scanData.winsDelta != null && (
-                <DeltaChip label="WINS" delta={scanData.winsDelta} positiveIsGood />
-              )}
-              {scanData.alertsDelta != null && (
-                <DeltaChip label="ALERTS" delta={scanData.alertsDelta} positiveIsGood={false} />
-              )}
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginLeft: 4,
-                  color: HZ.muted,
-                }}
-              >
-                <ChevronIcon open={diffOpen} />
-              </span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* COMPETITOR THREAT RANKING — full width, mt 16 */}
         <div
