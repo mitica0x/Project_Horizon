@@ -73,10 +73,6 @@ export default function StatusBoard({
       : '⟳ Scanning…'
   const { signals, overall, updatedAt } = useMemo(() => getDayStatus(), [])
   const verdict = statusVerdict(overall)
-  // Field pressure (0-100) and T1 gap count — surfaced for the hero stats bar
-  // at the top of the board so the four pills always show real numbers.
-  const fieldStatus = useMemo(() => assessCompetitors(), [])
-  const t1GapCount = (GAPS_T1 || []).length
 
   // SIGNAL bar — uses the hoisted computeSignal() from horizonData.
   const sig = useMemo(() => computeSignal(), [])
@@ -200,45 +196,6 @@ export default function StatusBoard({
 
   return (
     <Card style={{ padding: '22px 28px' }}>
-      {/* Hero — title + four-stat bar. Sits above the SIGNAL panel and frames
-          the rest of the morning briefing. */}
-      <div style={{
-        padding: '24px 0 20px 0',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        marginBottom: '20px',
-      }}>
-        <div style={{
-          fontSize: '28px',
-          fontWeight: 700,
-          color: '#ffffff',
-          lineHeight: 1.2,
-          marginBottom: '16px',
-          letterSpacing: '-0.01em',
-        }}>
-          Market intelligence.<br />
-          <span style={{ color: '#00d4e8' }}>In 90 seconds.</span>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {[
-            { label: 'FIELD',    value: verdict.label,                color: overall === 'GREEN' ? '#94c864' : '#d4a853' },
-            { label: 'PRESSURE', value: `${fieldStatus.pressure}/100`, color: '#d4a853' },
-            { label: 'T1 GAPS',  value: String(t1GapCount),            color: '#d4a853' },
-            { label: 'WINDOW',   value: '14 DAYS',                     color: '#94c864' },
-          ].map(({ label, value, color }) => (
-            <div key={label} style={{
-              flex: 1,
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: '3px',
-              padding: '10px 12px',
-            }}>
-              <div style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>{label}</div>
-              <div style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 700, color }}>{value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* SIGNAL — collapsible inline panel header */}
       <button
         onClick={() => setSignalOpen(o => !o)}
@@ -306,6 +263,170 @@ export default function StatusBoard({
         </svg>
       </button>
       {signalOpen && <SignalPanel onAskIntel={onAskIntel} onNav={onNav} hideHeader />}
+
+      {/* INTELLIGENCE — All URLs only. Competitor ranking has moved to
+          ScanResultsPanel; this section is now a single non-tabbed pane.
+          Collapsed by default; chevron on the far right toggles the body. */}
+      {(() => {
+        const ghostBtn = {
+          fontFamily: FONT_MONO,
+          fontSize: 10,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          background: 'transparent',
+          border: '1px solid var(--border)',
+          borderRadius: 5,
+          padding: '6px 10px',
+          cursor: 'pointer',
+          flexShrink: 0,
+          transition: 'color 0.15s, border-color 0.15s',
+        }
+
+        const stop = e => e.stopPropagation()
+
+        return (
+          <>
+            <div
+              onClick={() => setIntelOpen(o => !o)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIntelOpen(o => !o) } }}
+              aria-expanded={intelOpen}
+              aria-label={intelOpen ? 'Collapse intelligence' : 'Expand intelligence'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                background: 'rgba(0,212,232,0.06)',
+                borderBottom: '1px solid rgba(0,212,232,0.15)',
+                padding: '10px 12px',
+                marginTop: 28,
+                flexWrap: 'wrap',
+                cursor: 'pointer',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: FONT_MONO,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: 'var(--cyan)',
+                  flexShrink: 0,
+                  marginRight: 6,
+                }}
+              >
+                INTELLIGENCE — ALL URLS
+              </span>
+
+              <button
+                onClick={e => { stop(e); setAddUrlOpen(o => !o); if (!intelOpen) setIntelOpen(true) }}
+                style={{
+                  ...ghostBtn,
+                  color: addUrlOpen ? 'var(--cyan)' : 'var(--text-muted)',
+                  borderColor: addUrlOpen ? 'rgba(0,212,232,0.4)' : 'var(--border)',
+                }}
+              >
+                + Add URL
+              </button>
+              <button
+                onClick={e => { stop(e); suggestCandidateUrls() }}
+                disabled={!onAskQuestion}
+                style={{
+                  ...ghostBtn,
+                  color: onAskQuestion ? 'var(--text-muted)' : 'var(--border)',
+                  cursor: onAskQuestion ? 'pointer' : 'default',
+                }}
+                onMouseEnter={e => {
+                  if (!onAskQuestion) return
+                  e.currentTarget.style.color = '#c8d0dc'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'
+                }}
+                onMouseLeave={e => {
+                  if (!onAskQuestion) return
+                  e.currentTarget.style.color = 'var(--text-muted)'
+                  e.currentTarget.style.borderColor = 'var(--border)'
+                }}
+              >
+                Suggest Candidate URLs
+              </button>
+
+              <span style={{ flex: 1 }} />
+
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                aria-hidden="true"
+                style={{
+                  transform: intelOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s ease',
+                  color: '#94c864',
+                  flexShrink: 0,
+                  marginRight: 16,
+                }}
+              >
+                <path d="M2.5 4.5L7 9.5L11.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+
+            {intelOpen && addUrlOpen && (
+              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="url"
+                  placeholder="https://example.com/page-to-track"
+                  value={addUrlValue}
+                  onChange={e => setAddUrlValue(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      submitAddUrl()
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    fontFamily: FONT_MONO,
+                    fontSize: 12,
+                    color: '#ffffff',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 5,
+                    padding: '8px 10px',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={submitAddUrl}
+                  disabled={!addUrlValue.trim() || !onAskQuestion}
+                  style={{
+                    fontFamily: FONT_MONO,
+                    fontSize: 10,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    color: '#94c864',
+                    background: 'transparent',
+                    border: '1px solid rgba(148,200,100,0.4)',
+                    borderRadius: 5,
+                    padding: '7px 12px',
+                    cursor: addUrlValue.trim() && onAskQuestion ? 'pointer' : 'default',
+                    opacity: addUrlValue.trim() && onAskQuestion ? 1 : 0.4,
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            )}
+
+            {intelOpen && (
+              <div style={{ marginTop: 16 }}>
+                <SiteTable openWithQuestion={q => onAskIntel(q, { chips: [q] })} />
+              </div>
+            )}
+          </>
+        )
+      })()}
 
       {/* Executive summary bar — live, top of the STATUS view */}
       {execSummary.length > 0 && (
@@ -653,170 +774,6 @@ export default function StatusBoard({
               {renderIntelBlock({ label: 'RECOMMENDED ACTIONS TODAY', actions: intel.actions })}
             </div>
           </div>
-        )
-      })()}
-
-      {/* INTELLIGENCE — All URLs only. Competitor ranking has moved to
-          ScanResultsPanel; this section is now a single non-tabbed pane.
-          Collapsed by default; chevron on the far right toggles the body. */}
-      {(() => {
-        const ghostBtn = {
-          fontFamily: FONT_MONO,
-          fontSize: 10,
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          background: 'transparent',
-          border: '1px solid var(--border)',
-          borderRadius: 5,
-          padding: '6px 10px',
-          cursor: 'pointer',
-          flexShrink: 0,
-          transition: 'color 0.15s, border-color 0.15s',
-        }
-
-        const stop = e => e.stopPropagation()
-
-        return (
-          <>
-            <div
-              onClick={() => setIntelOpen(o => !o)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIntelOpen(o => !o) } }}
-              aria-expanded={intelOpen}
-              aria-label={intelOpen ? 'Collapse intelligence' : 'Expand intelligence'}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                background: 'rgba(0,212,232,0.06)',
-                borderBottom: '1px solid rgba(0,212,232,0.15)',
-                padding: '10px 12px',
-                marginTop: 28,
-                flexWrap: 'wrap',
-                cursor: 'pointer',
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: FONT_MONO,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                  color: 'var(--cyan)',
-                  flexShrink: 0,
-                  marginRight: 6,
-                }}
-              >
-                INTELLIGENCE — ALL URLS
-              </span>
-
-              <button
-                onClick={e => { stop(e); setAddUrlOpen(o => !o); if (!intelOpen) setIntelOpen(true) }}
-                style={{
-                  ...ghostBtn,
-                  color: addUrlOpen ? 'var(--cyan)' : 'var(--text-muted)',
-                  borderColor: addUrlOpen ? 'rgba(0,212,232,0.4)' : 'var(--border)',
-                }}
-              >
-                + Add URL
-              </button>
-              <button
-                onClick={e => { stop(e); suggestCandidateUrls() }}
-                disabled={!onAskQuestion}
-                style={{
-                  ...ghostBtn,
-                  color: onAskQuestion ? 'var(--text-muted)' : 'var(--border)',
-                  cursor: onAskQuestion ? 'pointer' : 'default',
-                }}
-                onMouseEnter={e => {
-                  if (!onAskQuestion) return
-                  e.currentTarget.style.color = '#c8d0dc'
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'
-                }}
-                onMouseLeave={e => {
-                  if (!onAskQuestion) return
-                  e.currentTarget.style.color = 'var(--text-muted)'
-                  e.currentTarget.style.borderColor = 'var(--border)'
-                }}
-              >
-                Suggest Candidate URLs
-              </button>
-
-              <span style={{ flex: 1 }} />
-
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
-                fill="none"
-                aria-hidden="true"
-                style={{
-                  transform: intelOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.2s ease',
-                  color: '#94c864',
-                  flexShrink: 0,
-                  marginRight: 16,
-                }}
-              >
-                <path d="M2.5 4.5L7 9.5L11.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-
-            {intelOpen && addUrlOpen && (
-              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  type="url"
-                  placeholder="https://example.com/page-to-track"
-                  value={addUrlValue}
-                  onChange={e => setAddUrlValue(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      submitAddUrl()
-                    }
-                  }}
-                  style={{
-                    flex: 1,
-                    fontFamily: FONT_MONO,
-                    fontSize: 12,
-                    color: '#ffffff',
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 5,
-                    padding: '8px 10px',
-                    outline: 'none',
-                  }}
-                />
-                <button
-                  onClick={submitAddUrl}
-                  disabled={!addUrlValue.trim() || !onAskQuestion}
-                  style={{
-                    fontFamily: FONT_MONO,
-                    fontSize: 10,
-                    letterSpacing: '0.1em',
-                    textTransform: 'uppercase',
-                    color: '#94c864',
-                    background: 'transparent',
-                    border: '1px solid rgba(148,200,100,0.4)',
-                    borderRadius: 5,
-                    padding: '7px 12px',
-                    cursor: addUrlValue.trim() && onAskQuestion ? 'pointer' : 'default',
-                    opacity: addUrlValue.trim() && onAskQuestion ? 1 : 0.4,
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-            )}
-
-            {intelOpen && (
-              <div style={{ marginTop: 16 }}>
-                <SiteTable openWithQuestion={q => onAskIntel(q, { chips: [q] })} />
-              </div>
-            )}
-          </>
         )
       })()}
     </Card>

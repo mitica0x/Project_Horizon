@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
@@ -19,7 +19,7 @@ import HorizonSidebar from './components/HorizonSidebar'
 import StatusBoard from './components/StatusBoard'
 import HorizonView from './components/HorizonView'
 import Nova from './components/Nova'
-import { getDayStatus } from './utils/horizonData'
+import { getDayStatus, statusVerdict, assessCompetitors } from './utils/horizonData'
 import { supabase, getActiveOrgId } from './lib/supabase'
 import { MOCK_SCAN, MOCK_PREV_SNAPSHOT, SNAPSHOT_KEY as MOCK_SNAPSHOT_KEY } from './fixtures/mockScan'
 
@@ -217,6 +217,10 @@ export default function App() {
   const [historyTab, setHistoryTab] = useState('decisions')
   const [novaOpen, setNovaOpen] = useState(false)
   const dayStatus = useState(() => getDayStatus().overall)[0]
+  // Hero stats — verdict label + field pressure for the always-visible header
+  // bar that frames the dashboard. Derived from existing helpers; no new state.
+  const overallVerdict = useMemo(() => statusVerdict(dayStatus).label, [dayStatus])
+  const fieldPressure = useMemo(() => assessCompetitors().pressure, [])
   const [radarOpen, setRadarOpen] = useState(false)
   const [scanProgress, setScanProgress] = useState(null)
   // Increments every time a scan completes so the scroll-to-results effect
@@ -399,7 +403,6 @@ export default function App() {
       setScanResultsVisible(true)
       setScanRevealTick((t) => t + 1)
       setScanState('complete')
-      setTimeout(() => setRadarOpen(false), 2800)
       setScanProgress(
         `Scan complete — ${data.sitesChecked} sites checked, ` +
           `${data.gaps.length} gaps found, ${data.wins} wins confirmed`,
@@ -460,7 +463,6 @@ export default function App() {
           setScanResultsVisible(true)
           setScanRevealTick((t) => t + 1)
           setScanState('idle')
-          setTimeout(() => setRadarOpen(false), 2800)
           mockScanTimerRef.current = null
         }, 2200)
       },
@@ -648,6 +650,45 @@ export default function App() {
 
       {view === 'dashboard' ? (
       <div className="hz-shell">
+      {/* Hero — always visible at the top of the STATUS area. Title + four
+          stat pills (FIELD / PRESSURE / T1 GAPS / WINDOW). Independent of
+          scan state and radar visibility. */}
+      <div style={{
+        padding: '28px 32px 22px 32px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        marginBottom: '0',
+      }}>
+        <div style={{
+          fontSize: '30px',
+          fontWeight: 700,
+          color: '#ffffff',
+          lineHeight: 1.2,
+          marginBottom: '16px',
+          letterSpacing: '-0.01em',
+        }}>
+          Read the market<br />
+          <span style={{ color: '#00d4e8' }}>before it reads you.</span>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {[
+            { label: 'FIELD',    value: overallVerdict || 'MONITORING', color: '#d4a853' },
+            { label: 'PRESSURE', value: `${fieldPressure ?? 0}/100`,    color: '#d4a853' },
+            { label: 'T1 GAPS',  value: String(t1Source.length ?? 0),   color: '#d4a853' },
+            { label: 'WINDOW',   value: '14 DAYS',                      color: '#94c864' },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{
+              flex: 1,
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: '3px',
+              padding: '10px 14px',
+            }}>
+              <div style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '5px' }}>{label}</div>
+              <div style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 700, color }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
       <div
         style={{
           overflow: 'hidden',
@@ -670,15 +711,6 @@ export default function App() {
           }
         />
       </div>
-      <ScanResultsPanel
-        ref={scanResultsPanelRef}
-        visible={scanResultsVisible}
-        scanData={scanData}
-        marketMoves={marketMoves}
-        onClose={() => setScanResultsVisible(false)}
-        onDraftOutreach={(q) => askBriefRef.current?.openWithQuestion(q)}
-        onAskIntel={openIntel}
-      />
       <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 48 }}>
 
         {statusOpen && (
@@ -703,6 +735,16 @@ export default function App() {
             />
           </div>
         )}
+
+        <ScanResultsPanel
+          ref={scanResultsPanelRef}
+          visible={scanResultsVisible}
+          scanData={scanData}
+          marketMoves={marketMoves}
+          onClose={() => setScanResultsVisible(false)}
+          onDraftOutreach={(q) => askBriefRef.current?.openWithQuestion(q)}
+          onAskIntel={openIntel}
+        />
 
 {/* Priority Gaps T1 — 3-column grid */}
         <section className="scroll-reveal" style={{ padding: '48px 0' }}>
