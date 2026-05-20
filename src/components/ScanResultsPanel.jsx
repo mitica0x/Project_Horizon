@@ -966,31 +966,40 @@ function DeltaChip({ label, delta, positiveIsGood }) {
   )
 }
 
-// One collapsible sub-row of the "vs last scan" expanded panel. Header =
-// uppercase cyan label + tone-coloured [glyph value] badge; body = rows with a
-// tone-coloured primary line and optional muted "└ sub" lines.
-function DiffSection({ section, open, onToggle }) {
+// One sub-row of the "vs last scan" panel. Header = uppercase cyan label +
+// tone-coloured [glyph value] badge; body = rows with a tone-coloured primary
+// line and optional muted "└ sub" lines.
+//
+// `staticOpen` mode locks the section open and hides the chevron / makes the
+// header non-interactive — used when the section is inside a tab pane (the
+// tab itself is the navigation, no nested toggles).
+function DiffSection({ section, open, onToggle, staticOpen = false }) {
   const badgeColor = DIFF_TONE[section.badge.tone] || HZ.teal
+  const effectiveOpen = staticOpen || open
   return (
     <div>
       <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        aria-label={`Toggle ${section.label}`}
-        onClick={onToggle}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            onToggle()
-          }
-        }}
+        {...(staticOpen
+          ? {}
+          : {
+              role: 'button',
+              tabIndex: 0,
+              'aria-expanded': open,
+              'aria-label': `Toggle ${section.label}`,
+              onClick: onToggle,
+              onKeyDown: (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onToggle()
+                }
+              },
+            })}
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 10,
-          cursor: 'pointer',
+          cursor: staticOpen ? 'default' : 'pointer',
           userSelect: 'none',
           padding: '4px 0',
         }}
@@ -1012,18 +1021,20 @@ function DiffSection({ section, open, onToggle }) {
             {section.badge.value}]
           </span>
         </span>
-        <span style={{ color: HZ.muted, display: 'inline-flex' }}>
-          <ChevronIcon open={open} />
-        </span>
+        {!staticOpen && (
+          <span style={{ color: HZ.muted, display: 'inline-flex' }}>
+            <ChevronIcon open={open} />
+          </span>
+        )}
       </div>
       <div
         style={{
-          maxHeight: open ? 1400 : 0,
-          opacity: open ? 1 : 0,
+          maxHeight: effectiveOpen ? 1400 : 0,
+          opacity: effectiveOpen ? 1 : 0,
           overflow: 'hidden',
           transition: 'max-height 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.25s ease',
         }}
-        aria-hidden={!open}
+        aria-hidden={!effectiveOpen}
       >
         <div
           style={{ padding: '6px 0 4px 2px', display: 'flex', flexDirection: 'column', gap: 8 }}
@@ -2378,6 +2389,11 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
   // section open (DiffSection treats `!== false` as open), so clearing this
   // re-expands all sections on each panel open.
   const [sectionsOpen, setSectionsOpen] = useState({})
+  // Tabbed diff layout — pill strip across the top, one pane below. Default
+  // is picked by data presence (gaps → competitors → wins → alerts → score)
+  // on first open; user picks override.
+  const [diffTab, setDiffTab] = useState(null)
+  const diffTabInitedRef = useRef(false)
   const [barHover, setBarHover] = useState(false)
   const [prevSnapshot, setPrevSnapshot] = useState(null)
   // Intelligence layer UI state.
@@ -2397,6 +2413,10 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
       setOpenCount((c) => c + 1)
       setDiffOpen(false)
       setSectionsOpen({}) // all sections expanded by default on each open
+      // Re-pick the default diff tab from scratch on every panel reopen so a
+      // fresh scan that flips counts surfaces the right tab.
+      diffTabInitedRef.current = false
+      setDiffTab(null)
       // Scan completion: capture the previously-stored snapshot to diff against,
       // then persist the current results for the next scan. Seed a synthetic
       // prior scan if none exists so the diff is never blank (req e).
@@ -2453,6 +2473,53 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
         : { hasPrevious: false, scoreDelta: 0, gapsDelta: 0, winsDelta: 0, alertsDelta: 0, sections: [] },
     [scanData, prevSnapshot]
   )
+
+  // Lookup map (id → section) so the tabbed pane can pull specific sections
+  // without iterating.
+  const diffSectionsById = useMemo(
+    () =>
+      Object.fromEntries((scanDiff.sections || []).map((s) => [s.id, s])),
+    [scanDiff.sections],
+  )
+
+  // Tab counts. 'gaps' tab unions 'opened' + 'resolved'. Competitors uses
+  // badge.value (moverCount — competitors that moved this scan), not total
+  // competitor count.
+  const diffTabCounts = useMemo(
+    () => ({
+      score: diffSectionsById.score?.rows?.length || 0,
+      gaps:
+        (diffSectionsById.opened?.rows?.length || 0) +
+        (diffSectionsById.resolved?.rows?.length || 0),
+      wins: diffSectionsById.wins?.rows?.length || 0,
+      alerts: diffSectionsById.alerts?.rows?.length || 0,
+      competitors: diffSectionsById.competitors?.badge?.value || 0,
+    }),
+    [diffSectionsById],
+  )
+
+  // Short summary string shown on the closed "vs last scan" bar so the user
+  // sees what's inside before clicking.
+  const diffSummaryBadge = useMemo(() => {
+    const parts = []
+    if (diffTabCounts.gaps > 0) parts.push(`+${diffTabCounts.gaps} gap${diffTabCounts.gaps === 1 ? '' : 's'}`)
+    if (diffTabCounts.wins > 0) parts.push(`${diffTabCounts.wins} win${diffTabCounts.wins === 1 ? '' : 's'}`)
+    if (diffTabCounts.alerts > 0) parts.push(`${diffTabCounts.alerts} alert${diffTabCounts.alerts === 1 ? '' : 's'}`)
+    if (diffTabCounts.competitors > 0)
+      parts.push(`${diffTabCounts.competitors} competitor move${diffTabCounts.competitors === 1 ? '' : 's'}`)
+    return parts.join(' · ')
+  }, [diffTabCounts])
+
+  // Default-tab init: when scan data first arrives, pick the highest-priority
+  // tab that has content. User selections override after that.
+  useEffect(() => {
+    if (diffTabInitedRef.current) return
+    if (!scanDiff.hasPrevious) return
+    diffTabInitedRef.current = true
+    const priority = ['gaps', 'competitors', 'wins', 'alerts', 'score']
+    const next = priority.find((t) => diffTabCounts[t] > 0) || 'gaps'
+    setDiffTab(next)
+  }, [scanDiff.hasPrevious, diffTabCounts])
 
   const errorState = visible && !scanData
 
@@ -2979,45 +3046,110 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
         >
           <div
             style={{
-              padding: '16px 24px',
               fontFamily: FONT_MONO,
               fontSize: 12,
               lineHeight: 1.5,
             }}
           >
             {scanDiff.hasPrevious ? (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: 12,
-                }}
-              >
-                {scanDiff.sections.map((s) => (
-                  <div
-                    key={s.id}
-                    style={{
-                      background: 'var(--bg-card)',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      borderRadius: 10,
-                      padding: '14px 16px',
-                      gridColumn: s.id === 'competitors' ? '1 / -1' : 'auto',
-                      minWidth: 0,
-                    }}
-                  >
-                    <DiffSection
-                      section={s}
-                      open={sectionsOpen[s.id] !== false}
-                      onToggle={() =>
-                        setSectionsOpen((m) => ({
-                          ...m,
-                          [s.id]: m[s.id] === false ? true : false,
-                        }))
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
+              (() => {
+                const TABS = [
+                  { id: 'score', label: 'SCORE' },
+                  { id: 'gaps', label: 'GAPS' },
+                  { id: 'wins', label: 'WINS' },
+                  { id: 'alerts', label: 'ALERTS' },
+                  { id: 'competitors', label: 'COMPETITORS' },
+                ]
+                const activeTab = diffTab || 'gaps'
+                const tabPillStyle = (isActive) => ({
+                  padding: '6px 14px',
+                  fontSize: 11,
+                  fontFamily: FONT_MONO,
+                  letterSpacing: '0.08em',
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? 'var(--cyan)' : 'var(--text-muted)',
+                  background: isActive ? 'rgba(0, 212, 232, 0.08)' : 'transparent',
+                  border: isActive
+                    ? '1px solid rgba(0,212,232,0.25)'
+                    : '1px solid transparent',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                })
+                const renderSection = (id) => {
+                  const sec = diffSectionsById[id]
+                  if (!sec) return null
+                  return (
+                    <DiffSection key={id} section={sec} staticOpen open onToggle={() => {}} />
+                  )
+                }
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 4,
+                        padding: '12px 16px 0',
+                        borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      {TABS.map((tab) => {
+                        const isActive = activeTab === tab.id
+                        const count = diffTabCounts[tab.id] || 0
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setDiffTab(tab.id)}
+                            style={tabPillStyle(isActive)}
+                          >
+                            {tab.label}
+                            {count > 0 && (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  background: isActive
+                                    ? 'var(--cyan)'
+                                    : 'rgba(255,255,255,0.15)',
+                                  color: isActive ? '#0a0e1a' : 'var(--text-muted)',
+                                  borderRadius: 10,
+                                  padding: '1px 6px',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {count}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <div
+                      style={{
+                        padding: 16,
+                        minHeight: 120,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 18,
+                      }}
+                    >
+                      {activeTab === 'score' && renderSection('score')}
+                      {activeTab === 'gaps' && (
+                        <>
+                          {renderSection('opened')}
+                          {renderSection('resolved')}
+                        </>
+                      )}
+                      {activeTab === 'wins' && renderSection('wins')}
+                      {activeTab === 'alerts' && renderSection('alerts')}
+                      {activeTab === 'competitors' && renderSection('competitors')}
+                    </div>
+                  </>
+                )
+              })()
             ) : (
               <div
                 style={{
@@ -3025,6 +3157,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                   border: '1px solid rgba(255,255,255,0.06)',
                   borderRadius: 10,
                   padding: '14px 16px',
+                  margin: '16px 24px',
                   color: HZ.muted,
                 }}
               >
@@ -3034,7 +3167,9 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           </div>
         </div>
 
-        {/* Clickable summary bar */}
+        {/* Clickable summary bar — bright section header with cyan accent.
+            Shows summary badge ("+3 gaps · 1 win") while collapsed so the
+            content inside is legible before clicking. */}
         <div
           role="button"
           tabIndex={0}
@@ -3051,7 +3186,8 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           onMouseLeave={() => setBarHover(false)}
           style={{
             borderTop: `1px solid ${HZ.border}`,
-            padding: '14px 24px',
+            borderLeft: '3px solid var(--cyan)',
+            padding: '14px 24px 14px 12px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -3063,16 +3199,31 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
             userSelect: 'none',
           }}
         >
-          <span
-            style={{
-              fontFamily: FONT_BODY,
-              fontSize: 10,
-              color: HZ.muted,
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-            }}
-          >
-            vs last scan
+          <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontFamily: FONT_MONO,
+                letterSpacing: '0.12em',
+                fontWeight: 600,
+                color: '#c8d0dc',
+                textTransform: 'uppercase',
+              }}
+            >
+              VS LAST SCAN
+            </span>
+            {!diffOpen && diffSummaryBadge && (
+              <span
+                style={{
+                  fontSize: 10,
+                  color: 'var(--text-muted)',
+                  fontFamily: FONT_MONO,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {diffSummaryBadge}
+              </span>
+            )}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {scanData.scoreDelta != null && (
