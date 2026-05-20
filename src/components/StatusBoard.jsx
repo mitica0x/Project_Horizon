@@ -442,68 +442,13 @@ export default function StatusBoard({
         </div>
       )}
 
-      {/* Signal rows */}
-      <div>
-        {signals.map((s, i) => (
-          <div
-            key={s.label}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 14,
-              padding: '14px 0',
-              borderBottom:
-                i < signals.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-            }}
-          >
-            <RagDot rag={s.rag} size={9} />
-            <span
-              style={{
-                flex: '0 0 200px',
-                fontFamily: FONT_BODY,
-                fontSize: 14,
-                color: 'var(--white)',
-              }}
-            >
-              {s.label}
-            </span>
-            <span
-              style={{
-                flex: 1,
-                fontFamily: FONT_MONO,
-                fontSize: 12,
-                color: 'var(--text-muted)',
-              }}
-            >
-              {s.note}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* ── S6 intelligence layer ───────────────────────────────────────────
-          2-col grid: WHY + RECOMMENDED ACTIONS sit side-by-side; SINCE
-          YESTERDAY spans the full row beneath. Single shared top border
-          replaces the previous per-block stacked borders. */}
-      <div
-        style={{
-          marginTop: 20,
-          paddingTop: 18,
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 32,
-        }}
-      >
-        {[
-          { label: `WHY TODAY IS ${verdict.label}`, lines: intel.why },
-          { label: 'RECOMMENDED ACTIONS TODAY', actions: intel.actions },
-          { label: 'SINCE YESTERDAY', lines: intel.since, fullWidth: true },
-        ].map(sec => (
-          <div
-            key={sec.label}
-            style={{ gridColumn: sec.fullWidth ? '1 / -1' : 'auto' }}
-          >
+      {/* Signals (left col) + Intel stack (right col). Right col runs WHY →
+          SINCE → RECOMMENDED so the first intel line lands at the same baseline
+          as the first signal row. INTELLIGENCE tabbed bar below stays full
+          width. */}
+      {(() => {
+        const renderIntelBlock = sec => (
+          <div key={sec.label}>
             <div
               style={{
                 fontFamily: FONT_MONO,
@@ -516,7 +461,6 @@ export default function StatusBoard({
             >
               {sec.label}
             </div>
-
             {sec.lines &&
               sec.lines.map((l, i) => (
                 <div
@@ -532,7 +476,6 @@ export default function StatusBoard({
                   {l}
                 </div>
               ))}
-
             {sec.actions &&
               sec.actions.map((a, i) => (
                 <button
@@ -568,8 +511,66 @@ export default function StatusBoard({
                 </button>
               ))}
           </div>
-        ))}
-      </div>
+        )
+
+        return (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 32,
+              alignItems: 'start',
+            }}
+          >
+            {/* Left column: 5 signal rows */}
+            <div>
+              {signals.map((s, i) => (
+                <div
+                  key={s.label}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    padding: '14px 0',
+                    borderBottom:
+                      i < signals.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  }}
+                >
+                  <RagDot rag={s.rag} size={9} />
+                  <span
+                    style={{
+                      flex: '0 0 200px',
+                      fontFamily: FONT_BODY,
+                      fontSize: 14,
+                      color: 'var(--white)',
+                    }}
+                  >
+                    {s.label}
+                  </span>
+                  <span
+                    style={{
+                      flex: 1,
+                      fontFamily: FONT_MONO,
+                      fontSize: 12,
+                      color: 'var(--text-muted)',
+                      minWidth: 0,
+                    }}
+                  >
+                    {s.note}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Right column: stacked intel blocks (WHY → SINCE → RECOMMENDED) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {renderIntelBlock({ label: `WHY TODAY IS ${verdict.label}`, lines: intel.why })}
+              {renderIntelBlock({ label: 'SINCE YESTERDAY', lines: intel.since })}
+              {renderIntelBlock({ label: 'RECOMMENDED ACTIONS TODAY', actions: intel.actions })}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* INTELLIGENCE — unified tabbed section. Mirrors HistoryPanel's
           DECISIONS / OUTCOMES pattern (active=cyan, inactive=muted). Collapsed

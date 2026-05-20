@@ -252,45 +252,46 @@ export default function HorizonSidebar({
         <Divider />
 
         <NavRow glyph="⬡" label="Ask C0insiglieri" collapsed={collapsed} onClick={onIntel} />
-
-        {/* SCAN NOW action — standalone button (not a NavRow) sitting below
-            Ask C0insiglieri. Triggers the same App-level runScan that drives
-            scroll-to-hero, GSAP, polling, and dashboard refresh. */}
-        {onScan && (
-          <button
-            onClick={onScan}
-            disabled={isScanning}
-            onMouseEnter={() => setScanHover(true)}
-            onMouseLeave={() => setScanHover(false)}
-            title={isScanning ? 'Scan in progress' : 'Run scan now'}
-            style={{
-              display: 'block',
-              marginTop: 8,
-              marginBottom: 4,
-              marginLeft: 12,
-              width: 'calc(100% - 24px)',
-              padding: '6px 12px',
-              background: 'transparent',
-              border: `1px solid ${
-                scanHover && !isScanning
-                  ? 'rgba(148,200,100,0.7)'
-                  : 'rgba(148,200,100,0.3)'
-              }`,
-              borderRadius: 4,
-              color: scanHover && !isScanning ? '#b8e88a' : '#94c864',
-              fontFamily: FONT_MONO,
-              fontSize: 11,
-              letterSpacing: '1px',
-              cursor: isScanning ? 'default' : 'pointer',
-              opacity: isScanning ? 0.6 : 1,
-              transition: 'color 0.15s, border-color 0.15s, opacity 0.15s',
-              textAlign: 'center',
-            }}
-          >
-            {collapsed ? '⟳' : isScanning ? '⟳ Scanning…' : '⟳ SCAN NOW'}
-          </button>
-        )}
       </div>
+
+      {/* SCAN NOW — standalone action button anchored at the bottom, directly
+          above N0VA. Triggers App-level runScan (scroll-to-hero, GSAP, polling,
+          dashboard refresh). Sits outside the scrollable nav column so it
+          stays pinned regardless of nav-item growth. */}
+      {onScan && (
+        <button
+          onClick={onScan}
+          disabled={isScanning}
+          onMouseEnter={() => setScanHover(true)}
+          onMouseLeave={() => setScanHover(false)}
+          title={isScanning ? 'Scan in progress' : 'Run scan now'}
+          style={{
+            display: 'block',
+            marginTop: 8,
+            marginBottom: 4,
+            marginLeft: 12,
+            width: 'calc(100% - 24px)',
+            padding: '6px 12px',
+            background: 'transparent',
+            border: `1px solid ${
+              scanHover && !isScanning
+                ? 'rgba(148,200,100,0.7)'
+                : 'rgba(148,200,100,0.3)'
+            }`,
+            borderRadius: 4,
+            color: scanHover && !isScanning ? '#b8e88a' : '#94c864',
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            letterSpacing: '1px',
+            cursor: isScanning ? 'default' : 'pointer',
+            opacity: isScanning ? 0.6 : 1,
+            transition: 'color 0.15s, border-color 0.15s, opacity 0.15s',
+            textAlign: 'center',
+          }}
+        >
+          {collapsed ? '⟳' : isScanning ? '⟳ Scanning…' : '⟳ SCAN NOW'}
+        </button>
+      )}
 
       {/* N0VA — always visible, lime */}
       <button

@@ -466,11 +466,6 @@ export default function App() {
   const sortedWins = sortState.wins.length > 0
     ? sortItems(WINS, sortState.wins)
     : [...WINS].sort((a,b) => new Date(b.last_scanned||0) - new Date(a.last_scanned||0))
-  const t1Left  = sortedGapsT1.slice(0, 5)
-  const t1Right = sortedGapsT1.slice(5)
-  const half     = Math.ceil(sortedWins.length / 2)
-  const winsLeft  = sortedWins.slice(0, half)
-  const winsRight = sortedWins.slice(half)
 
   return (
     <>
@@ -585,7 +580,7 @@ export default function App() {
           </div>
         )}
 
-{/* Priority Gaps T1 — 2-column grid */}
+{/* Priority Gaps T1 — 3-column grid */}
         <section className="scroll-reveal" style={{ padding: '48px 0' }}>
           <div className="container">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -594,14 +589,15 @@ export default function App() {
             </div>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-muted)', marginBottom: 20 }}>Sites where Tier 1 competitors are listed and Bybit is absent</p>
             <SortBar sectionId="gaps_t1" activeCriteria={sortState.gaps_t1} onToggle={(key) => handleToggle('gaps_t1', key)} onReset={() => handleReset('gaps_t1')} strategyBanner={strategyBanners.gaps_t1} onApplyStrategy={(c) => handleApplyStrategy('gaps_t1', c)} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-              <div>{t1Left.map(g => <GapCard key={g.url} gap={{ ...g, tier: 'T1' }} onDraftOutreach={setActiveSite} />)}</div>
-              <div>{t1Right.map(g => <GapCard key={g.url} gap={{ ...g, tier: 'T1' }} onDraftOutreach={setActiveSite} />)}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+              {sortedGapsT1.map(g => (
+                <GapCard key={g.url} gap={{ ...g, tier: 'T1' }} onDraftOutreach={setActiveSite} />
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Tier 2 Opportunities — horizontal row */}
+        {/* Tier 2 Opportunities — 3-column grid */}
         <section style={{ padding: '0 0 48px' }}>
           <div className="container">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
@@ -609,17 +605,15 @@ export default function App() {
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '1px 8px', borderRadius: 99, background: 'var(--amber-dim)', color: 'var(--amber)', border: '1px solid rgba(212,168,83,.3)' }}>{GAPS_T2.length}</span>
             </div>
             <SortBar sectionId="gaps_t2" activeCriteria={sortState.gaps_t2} onToggle={(key) => handleToggle('gaps_t2', key)} onReset={() => handleReset('gaps_t2')} strategyBanner={strategyBanners.gaps_t2} onApplyStrategy={(c) => handleApplyStrategy('gaps_t2', c)} />
-            <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 20, alignItems: 'stretch' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, alignItems: 'stretch' }}>
               {sortedGapsT2.map(g => (
-                <div key={g.url} style={{ flex: 1, minWidth: 0, display: 'grid' }}>
-                  <GapCard gap={{ ...g, tier: 'T2' }} onDraftOutreach={setActiveSite} />
-                </div>
+                <GapCard key={g.url} gap={{ ...g, tier: 'T2' }} onDraftOutreach={setActiveSite} />
               ))}
             </div>
           </div>
         </section>
 
-        {/* Confirmed Wins — 2-column grid */}
+        {/* Confirmed Wins — 3-column grid */}
         <section className="scroll-reveal" style={{ padding: '0 0 24px' }}>
           <div className="container">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -629,9 +623,8 @@ export default function App() {
             </div>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-muted)', marginBottom: 16 }}>Pages where Bybit is currently featured</p>
             <SortBar sectionId="wins" activeCriteria={sortState.wins} onToggle={(key) => handleToggle('wins', key)} onReset={() => handleReset('wins')} strategyBanner={strategyBanners.wins} onApplyStrategy={(c) => handleApplyStrategy('wins', c)} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
-              <div>{winsLeft.map(w => <WinCard key={w.url} win={w} />)}</div>
-              <div>{winsRight.map(w => <WinCard key={w.url} win={w} />)}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, alignItems: 'start' }}>
+              {sortedWins.map(w => <WinCard key={w.url} win={w} />)}
             </div>
           </div>
         </section>

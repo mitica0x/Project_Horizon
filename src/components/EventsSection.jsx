@@ -61,29 +61,31 @@ function EventCard({ event, verdict, constraints, dismissed, detected, onDismiss
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        display: 'flex', flexDirection: 'column', gap: 10, padding: 16,
+        display: 'flex', flexDirection: 'column', gap: 10, padding: 12,
         background: hover ? 'rgba(255,255,255,0.03)' : 'var(--bg-card)',
         border: `1px solid ${detected ? 'var(--amber)' : 'rgba(255,255,255,0.06)'}`,
         borderLeft: detected ? '3px solid var(--amber)' : '1px solid rgba(255,255,255,0.06)',
         borderRadius: 8, opacity: dismissed ? 0.35 : 1,
         transition: 'background 0.15s',
+        wordBreak: 'break-word',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ display:'flex', alignItems:'flex-start', gap:16 }}>
-        <div style={{ flexShrink:0, minWidth:72 }}>
+      <div style={{ display:'flex', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+        <div style={{ flexShrink:0 }}>
           <div style={{ ...mono, fontSize:11, color:'var(--text-muted)' }}>{fmtDate(event.date)}</div>
           <div style={{ ...mono, fontSize:12, fontWeight:700, color:'var(--amber)', marginTop:3 }}>{daysLabel}</div>
         </div>
-        <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ flex:'1 1 0', minWidth:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            <span style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)' }}>{event.name}</span>
+            <span style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)', wordBreak:'break-word' }}>{event.name}</span>
             <span style={{ ...mono, fontSize:9, padding:'2px 6px', borderRadius:3, textTransform:'uppercase', letterSpacing:'0.08em', background:cat.bg, color:cat.color }}>{event.cat}</span>
             {detected && <span style={{ ...mono, fontSize:9, padding:'2px 6px', borderRadius:3, textTransform:'uppercase', background:'rgba(212,168,83,0.15)', color:'var(--amber)' }}>{detected.confirmed?'CONFIRMED':'DETECTED'} · {detected.confidence}%</span>}
             {dismissed && <span style={{ ...mono, fontSize:9, textTransform:'uppercase', color:'var(--red)' }}>DISMISSED</span>}
           </div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{event.sub}</div>
         </div>
-        <div style={{ flexShrink:0, display:'flex', alignItems:'center', gap:10 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', flexShrink:0 }}>
           <div style={{ textAlign:'right' }}>
             <div style={{ ...mono, fontSize:18, fontWeight:700, color:'var(--text-primary)' }}>{living.adjustedTotal}<span style={{ fontSize:10, color:'var(--text-muted)' }}>/10</span></div>
             <div style={{ ...mono, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase' }}>relevance</div>
@@ -247,7 +249,7 @@ export default function EventsSection({ orgId }) {
         [...grouped.entries()].map(([month, events]) => (
           <div key={month} style={{ marginBottom:28 }}>
             <div style={{ ...mono, fontSize:11, color:'var(--cyan)', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:10 }}>{month}</div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:16 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap:16, overflowX:'hidden' }}>
               {events.map(event => (
                 <EventCard
                   key={event.id}
