@@ -2381,6 +2381,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     return m
   }, [marketMoves])
   const [expanded, setExpanded] = useState(false)
+  const [competitorsExpanded, setCompetitorsExpanded] = useState(false)
   // Which Priority Gap card is expanded inline (one at a time).
   const [expandedGap, setExpandedGap] = useState(null)
   // "vs last scan" expandable diff row.
@@ -2439,6 +2440,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     }
     if (!visible) {
       setExpanded(false)
+      setCompetitorsExpanded(false)
       setDiffOpen(false)
       setSectionsOpen({})
       setProjOpen(false)
@@ -2570,8 +2572,8 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
   // §1 — attach OPP and sort gaps by opportunity, highest first.
   const gapsWithOpp = scanData.gaps.map((g) => ({ ...g, _opp: oppScore(g) }))
   const sortedGaps = [...gapsWithOpp].sort((a, b) => b._opp - a._opp)
-  const visibleGaps = expanded ? sortedGaps : sortedGaps.slice(0, 6)
-  const remainingGaps = Math.max(0, sortedGaps.length - 6)
+  const visibleGaps = expanded ? sortedGaps : sortedGaps.slice(0, 3)
+  const remainingGaps = Math.max(0, sortedGaps.length - 3)
   const unresolved = sortedGaps.filter(
     (g) => g.severity === 'high' || g.severity === 'medium'
   ).length
@@ -2588,6 +2590,10 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     .sort((a, b) => b.threatScore - a.threatScore)
     .slice(0, 8)
   const maxThreatScore = sortedCompetitors[0]?.threatScore || 100
+  const visibleCompetitors = competitorsExpanded
+    ? sortedCompetitors
+    : sortedCompetitors.slice(0, 3)
+  const remainingCompetitors = Math.max(0, sortedCompetitors.length - 3)
 
   // §2 — tier×geo market map. §4 — gaps grouped per competitor.
   const fieldMatrix = buildFieldMap(gapsWithOpp)
@@ -3011,21 +3017,43 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
               No competitor data
             </div>
           ) : (
-            <div>
-              {sortedCompetitors.map((c, i) => (
-                <CompetitorRow
-                  key={c.name}
-                  comp={c}
-                  maxScore={maxThreatScore}
-                  isVisible={visible}
-                  index={i}
-                  momentum={momentumFor(c, prevSnapshot)}
-                  blockedGaps={gapsByCompetitor[c.name] || []}
-                  realMove={movesByComp[c.name]}
-                  onDraft={draftOutreach}
-                />
-              ))}
-            </div>
+            <>
+              <div>
+                {visibleCompetitors.map((c, i) => (
+                  <CompetitorRow
+                    key={c.name}
+                    comp={c}
+                    maxScore={maxThreatScore}
+                    isVisible={visible}
+                    index={i}
+                    momentum={momentumFor(c, prevSnapshot)}
+                    blockedGaps={gapsByCompetitor[c.name] || []}
+                    realMove={movesByComp[c.name]}
+                    onDraft={draftOutreach}
+                  />
+                ))}
+              </div>
+              {!competitorsExpanded && remainingCompetitors > 0 && (
+                <button
+                  onClick={() => setCompetitorsExpanded(true)}
+                  style={{
+                    marginTop: 8,
+                    padding: '8px 12px',
+                    width: '100%',
+                    background: 'transparent',
+                    border: 'none',
+                    fontFamily: FONT_MONO,
+                    fontSize: 11,
+                    color: HZ.teal,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  + {remainingCompetitors} more ↓
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
