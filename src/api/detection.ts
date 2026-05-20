@@ -2,9 +2,11 @@
 // src/api/radarBrief.ts pattern (REST to the radar backend), NOT a Supabase
 // call: the detection endpoints live on the backend, slug-scoped by org.
 //
-// NOTE: the codebase's backend base env var is VITE_RADAR_API_URL (see
-// radarBrief.ts), not VITE_BACKEND_URL — using the real one so prod resolves.
-const BASE = import.meta.env.VITE_RADAR_API_URL ?? 'http://localhost:3000'
+// Uses VITE_BACKEND_URL to match App.jsx's BACKEND const so DETECT NOW and the
+// followup fetchDetectedEvents both resolve in prod. Railway prod URL is the
+// fallback when the env var isn't set (matches the App.jsx pattern).
+const BASE =
+  import.meta.env.VITE_BACKEND_URL || 'https://web-production-e204.up.railway.app'
 
 export interface DetectedEvent {
   id: string

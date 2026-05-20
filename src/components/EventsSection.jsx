@@ -249,7 +249,7 @@ export default function EventsSection({ orgId }) {
         [...grouped.entries()].map(([month, events]) => (
           <div key={month} style={{ marginBottom:28 }}>
             <div style={{ ...mono, fontSize:11, color:'var(--cyan)', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:10 }}>{month}</div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap:16, overflowX:'hidden' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(240px, 1fr))', gap:16, overflowX:'hidden' }}>
               {events.map(event => (
                 <EventCard
                   key={event.id}

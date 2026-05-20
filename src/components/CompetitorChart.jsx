@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import { COMPETITORS, TABLE_DATA as SITE_TABLE_DATA, GAPS_T1, GAPS_T2 } from '../data/staticData'
-import { computeThreatScore, buildHookSentence, getThreatColor } from '../utils/threatScore'
+import { computeThreatScore, buildHookSentence } from '../utils/threatScore'
+
+// Absolute-threshold threat colour: red ≥6, amber ≥3, green <3. Replaces the
+// older relative gradient — scores below 3 should always read calm green, not
+// "low-relative-but-still-red".
+function threatColorFor(score) {
+  if (score >= 6) return '#ff4d6d'
+  if (score >= 3) return '#d4a853'
+  return '#94c864'
+}
 
 export default function CompetitorChart({ onOpenPanel, liveCompetitors, liveCoverage }) {
   const [hoveredIndex, setHoveredIndex] = useState(null)
@@ -47,8 +56,8 @@ export default function CompetitorChart({ onOpenPanel, liveCompetitors, liveCove
         </div>
       </div>
 
-      {/* Rows — compact 2-up grid: dot + name + score per cell. Threat colour
-          tints the score so the strongest competitors still read at a glance. */}
+      {/* Rows — 2-up card grid. Each card: dot + name + score top row, then a
+          4px relative-width bar below tinted by absolute threat threshold. */}
       <div
         style={{
           display: 'grid',
@@ -57,65 +66,87 @@ export default function CompetitorChart({ onOpenPanel, liveCompetitors, liveCove
         }}
       >
         {ranked.map((comp, i) => {
-          const color = getThreatColor(comp.score, maxScore)
+          const threatColor = threatColorFor(comp.score)
           const isHov = hoveredIndex === i
+          const barPct = Math.min((comp.score / (maxScore || 1)) * 100, 100)
           return (
             <div
               key={comp.name}
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
               onClick={() => onOpenPanel && onOpenPanel({ ...comp, maxScore })}
+              title={comp.hook || undefined}
               style={{
+                background: 'var(--bg-card)',
+                border: `1px solid ${isHov ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.06)'}`,
+                borderRadius: 8,
+                padding: '10px 14px',
                 display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '8px 10px',
+                flexDirection: 'column',
+                gap: 6,
                 cursor: 'pointer',
-                borderRadius: 6,
-                border: `1px solid ${isHov && color ? color : 'rgba(255,255,255,0.06)'}`,
-                background: isHov ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
-                transition: 'background 0.15s, border-color 0.15s',
+                transition: 'border-color 0.15s',
                 minWidth: 0,
               }}
             >
-              <span
+              {/* Top row: dot + name + score */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <span
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: '50%',
+                    background: threatColor,
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  style={{
+                    fontFamily: "'Geist', sans-serif",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#e8eaf0',
+                    flex: 1,
+                    minWidth: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {comp.name}
+                </span>
+                <span
+                  style={{
+                    fontFamily: "'Geist Mono', monospace",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: threatColor,
+                    flexShrink: 0,
+                  }}
+                >
+                  {comp.score}
+                </span>
+              </div>
+
+              {/* Bar */}
+              <div
                 style={{
-                  display: 'inline-block',
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: comp.tier === 1 ? '#94c864' : comp.tier === 2 ? '#00d4e8' : '#8892a4',
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  fontFamily: "'Geist', sans-serif",
-                  fontWeight: 600,
-                  fontSize: 14,
-                  color: isHov ? '#ffffff' : '#c8d0dc',
-                  whiteSpace: 'nowrap',
+                  height: 4,
+                  background: 'rgba(255,255,255,0.08)',
+                  borderRadius: 2,
                   overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  flex: 1,
-                  minWidth: 0,
-                  transition: 'color 0.15s',
                 }}
               >
-                {comp.name}
-              </span>
-              <span
-                style={{
-                  fontFamily: "'Geist Mono', monospace",
-                  fontWeight: 700,
-                  fontSize: 13,
-                  color: comp.score > 0 ? (color || '#ffffff') : '#8892a4',
-                  flexShrink: 0,
-                }}
-                title={comp.hook || undefined}
-              >
-                {comp.score}
-              </span>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${barPct}%`,
+                    background: threatColor,
+                    borderRadius: 2,
+                    transition: 'width 0.4s ease',
+                  }}
+                />
+              </div>
             </div>
           )
         })}

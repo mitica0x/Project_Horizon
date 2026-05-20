@@ -266,9 +266,9 @@ export default function StatusBoard({
           style={{
             transform: signalOpen ? 'rotate(180deg)' : 'rotate(0deg)',
             transition: 'transform 0.2s ease',
-            color: 'var(--cyan)',
+            color: '#94c864',
             flexShrink: 0,
-            marginLeft: 'auto',
+            marginRight: 16,
           }}
         >
           <path d="M2.5 4.5L7 9.5L11.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -761,9 +761,9 @@ export default function StatusBoard({
                 style={{
                   transform: intelOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                   transition: 'transform 0.2s ease',
-                  color: 'var(--cyan)',
+                  color: '#94c864',
                   flexShrink: 0,
-                  marginLeft: 'auto',
+                  marginRight: 16,
                 }}
               >
                 <path d="M2.5 4.5L7 9.5L11.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
