@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>C0INSIGLIERI | EVENTS Engine</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #091421;
+            color: #d9e3f7;
+            overflow-x: hidden;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-panel {
+            background: rgba(19, 25, 41, 0.8);
+            backdrop-filter: blur(20px);
+        }
+        /* Custom scrollbar for high-density UI */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0e1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00d4e8;
+        }
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 212, 232, 0.1);
+            position: absolute;
+            z-index: 10;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            animation: scan 4s linear infinite;
+        }
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        .pulse-red {
+            animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 77, 109, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 77, 109, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 77, 109, 0); }
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#6e4600",
+                        "on-secondary": "#1b3700",
+                        "inverse-on-surface": "#273140",
+                        "inverse-primary": "#006973",
+                        "surface": "#091421",
+                        "background": "#091421",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "on-secondary-fixed": "#0d2000",
+                        "on-secondary-container": "#a1d570",
+                        "on-primary": "#00363c",
+                        "surface-container-low": "#121c2a",
+                        "heading-white": "#ffffff",
+                        "on-tertiary": "#452b00",
+                        "inverse-surface": "#d9e3f7",
+                        "tertiary-fixed-dim": "#ffb955",
+                        "surface-container-highest": "#2b3544",
+                        "primary": "#70eeff",
+                        "surface-container-high": "#212a39",
+                        "background-base": "#0a0e1a",
+                        "background-panel": "#131929",
+                        "surface-tint": "#1ddaee",
+                        "outline": "#859396",
+                        "threat-red": "#ff4d6d",
+                        "primary-container": "#00d4e8",
+                        "on-primary-fixed-variant": "#004f57",
+                        "outline-variant": "#3b494b",
+                        "surface-container-lowest": "#050f1c",
+                        "tertiary-fixed": "#ffddb5",
+                        "primary-fixed-dim": "#1ddaee",
+                        "secondary": "#a1d670",
+                        "primary-fixed": "#92f1ff",
+                        "secondary-fixed": "#bcf389",
+                        "surface-bright": "#303a49",
+                        "on-tertiary-fixed-variant": "#633f00",
+                        "tertiary": "#ffd6a3",
+                        "tertiary-container": "#ffb139",
+                        "surface-container": "#16202e",
+                        "on-error-container": "#ffdad6",
+                        "signal-purple": "#7b5ea7",
+                        "on-tertiary-fixed": "#2a1800",
+                        "warning-amber": "#d4a853",
+                        "error-container": "#93000a",
+                        "on-surface-variant": "#bac9cc",
+                        "border-tactical": "#1e293b",
+                        "surface-variant": "#2b3544",
+                        "secondary-container": "#315d00",
+                        "on-background": "#d9e3f7",
+                        "secondary-fixed-dim": "#a1d670",
+                        "on-secondary-fixed-variant": "#295000",
+                        "on-primary-container": "#005760",
+                        "on-primary-fixed": "#001f23",
+                        "on-surface": "#d9e3f7",
+                        "surface-dim": "#091421"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "panel-padding": "12px",
+                        "sidebar-width": "210px",
+                        "stack-tight": "4px",
+                        "topbar-height": "48px",
+                        "gutter": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["JetBrains Mono"],
+                        "headline-lg": ["JetBrains Mono"],
+                        "data-mono": ["JetBrains Mono"],
+                        "label-caps": ["JetBrains Mono"],
+                        "headline-md": ["JetBrains Mono"],
+                        "body-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-md": ["13px", {"lineHeight": "18px", "letterSpacing": "-0.01em", "fontWeight": "400"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "data-mono": ["14px", {"lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "500"}],
+                        "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700"}],
+                        "headline-md": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.01em", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-base text-on-surface select-none">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full h-[48px] bg-background/80 backdrop-blur-xl border-b border-border-tactical flex justify-between items-center px-panel-padding z-50">
+<div class="flex items-center gap-gutter">
+<span class="font-headline-md text-headline-md font-bold tracking-tighter text-heading-white">C0INSIGLIERI</span>
+<div class="h-4 w-[1px] bg-border-tactical mx-2"></div>
+<div class="flex items-center bg-background-base border border-border-tactical px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[16px] mr-2 text-on-surface-variant">search</span>
+<input class="bg-transparent border-none outline-none font-label-caps text-label-caps text-on-surface w-48 p-0 placeholder:text-outline-variant" placeholder="QUERY NETWORK..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-end">
+<span class="font-label-caps text-[9px] text-secondary">SYSTEM STABLE</span>
+<span class="font-data-mono text-[10px] text-on-surface-variant">LATENCY: 12ms</span>
+</div>
+<div class="flex gap-2">
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors text-on-surface-variant" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors text-on-surface-variant" data-icon="account_circle">account_circle</span>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[210px] bg-background-panel border-r border-border-tactical flex flex-col pt-[48px] pb-panel-padding z-40">
+<div class="px-panel-padding py-4 flex flex-col border-b border-border-tactical mb-2">
+<span class="font-label-caps text-label-caps text-primary tracking-widest">OPERATOR TERMINAL</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">ID: 0x82...F9A2</span>
+</div>
+<nav class="flex-grow">
+<!-- Navigation Items Mapping -->
+<a class="flex items-center px-panel-padding py-3 text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all duration-150 ease-in-out border-l-2 border-transparent" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="dashboard">dashboard</span>
+<span class="font-label-caps text-label-caps">STATUS</span>
+</a>
+<a class="flex items-center px-panel-padding py-3 border-l-2 border-primary bg-surface-container-high text-primary transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="event_note">event_note</span>
+<span class="font-label-caps text-label-caps">EVENTS</span>
+</a>
+<a class="flex items-center px-panel-padding py-3 text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all duration-150 ease-in-out border-l-2 border-transparent" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="bolt">bolt</span>
+<span class="font-label-caps text-label-caps">Ask C0insiglieri</span>
+</a>
+<a class="flex items-center px-panel-padding py-3 text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all duration-150 ease-in-out border-l-2 border-transparent" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="history">history</span>
+<span class="font-label-caps text-label-caps">HISTORY</span>
+</a>
+</nav>
+<div class="px-panel-padding space-y-2">
+<button class="w-full py-2 border border-secondary text-secondary font-label-caps text-label-caps rounded-[3px] hover:bg-secondary/10 transition-colors">
+                SCAN NOW
+            </button>
+<button class="w-full py-2 bg-threat-red text-background-base font-label-caps text-label-caps rounded-[3px] pulse-red flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[14px]" data-icon="emergency_home">emergency_home</span>
+                N0VA
+            </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-[210px] mt-[48px] p-panel-padding">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-6">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="w-2 h-2 bg-primary animate-pulse"></span>
+<h1 class="font-headline-lg text-headline-lg text-heading-white">EVENTS ENGINE</h1>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">PRIORITIZED MARKET FEED • REFRESHING IN <span id="timer">12s</span></p>
+</div>
+<div class="flex gap-2">
+<div class="flex flex-col border border-border-tactical px-3 py-1 bg-background-panel rounded">
+<span class="font-label-caps text-[9px] text-on-surface-variant">ACTIVE THREATS</span>
+<span class="font-data-mono text-headline-md text-threat-red">03</span>
+</div>
+<div class="flex flex-col border border-border-tactical px-3 py-1 bg-background-panel rounded">
+<span class="font-label-caps text-[9px] text-on-surface-variant">ALPHA OPP</span>
+<span class="font-data-mono text-headline-md text-secondary">08</span>
+</div>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Main Event Feed (High Density Table) -->
+<div class="col-span-9 bg-background-panel border border-border-tactical flex flex-col overflow-hidden">
+<div class="bg-surface-container-high px-3 py-2 border-b border-border-tactical flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface">LIVE EVENT STREAM</span>
+<div class="flex gap-4">
+<span class="font-label-caps text-[10px] text-primary cursor-pointer hover:underline">ALL EVENTS</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant cursor-pointer hover:text-primary">THREATS ONLY</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant cursor-pointer hover:text-primary">ALPHA ONLY</span>
+</div>
+</div>
+<div class="overflow-y-auto max-h-[calc(100vh-250px)] relative">
+<div class="scanline"></div>
+<table class="w-full text-left font-data-mono">
+<thead class="bg-background-base/50 text-on-surface-variant sticky top-0 z-10">
+<tr>
+<th class="px-3 py-2 font-label-caps text-[10px] border-b border-border-tactical">PRIORITY</th>
+<th class="px-3 py-2 font-label-caps text-[10px] border-b border-border-tactical">TIMESTAMP</th>
+<th class="px-3 py-2 font-label-caps text-[10px] border-b border-border-tactical">ENTITY / TYPE</th>
+<th class="px-3 py-2 font-label-caps text-[10px] border-b border-border-tactical">DESCRIPTION</th>
+<th class="px-3 py-2 font-label-caps text-[10px] border-b border-border-tactical text-right">SCORE</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-tactical/50">
+<!-- High Priority Row -->
+<tr class="hover:bg-surface-container transition-colors group cursor-pointer">
+<td class="px-3 py-3">
+<span class="bg-threat-red/10 text-threat-red border border-threat-red/30 px-2 py-0.5 rounded-[2px] text-[10px] font-bold">CRITICAL</span>
+</td>
+<td class="px-3 py-3 text-body-sm text-on-surface-variant">14:02:11.23</td>
+<td class="px-3 py-3">
+<div class="flex flex-col">
+<span class="text-on-surface font-bold text-[12px]">LIQUIDITY DRAIN</span>
+<span class="text-threat-red text-[10px]">CEX: BINANCE_HOT_3</span>
+</div>
+</td>
+<td class="px-3 py-3 text-body-sm text-on-surface-variant">Massive withdrawal of $45M USDC detected. Potential de-pegging risk in Pool_092.</td>
+<td class="px-3 py-3 text-right">
+<span class="text-threat-red font-bold text-headline-md">98.2</span>
+</td>
+</tr>
+<!-- High Alpha Row -->
+<tr class="hover:bg-surface-container transition-colors group cursor-pointer">
+<td class="px-3 py-3">
+<span class="bg-secondary/10 text-secondary border border-secondary/30 px-2 py-0.5 rounded-[2px] text-[10px] font-bold">ALPHA</span>
+</td>
+<td class="px-3 py-3 text-body-sm text-on-surface-variant">13:58:45.02</td>
+<td class="px-3 py-3">
+<div class="flex flex-col">
+<span class="text-on-surface font-bold text-[12px]">WHALE INFLOW</span>
+<span class="text-secondary text-[10px]">ASSET: $SOL</span>
+</div>
+</td>
+<td class="px-3 py-3 text-body-sm text-on-surface-variant">Dormant wallet (6yrs) moved 120,000 SOL to Orca LP. Accumulation signal confirmed.</td>
+<td class="px-3 py-3 text-right">
+<span class="text-secondary font-bold text-headline-md">94.1</span>
+</td>
+</tr>
+<!-- Medium Row -->
+<tr class="hover:bg-surface-container transition-colors group cursor-pointer">
+<td class="px-3 py-3">
+<span class="bg-warning-amber/10 text-warning-amber border border-warning-amber/30 px-2 py-0.5 rounded-[2px] text-[10px] font-bold">MEDIUM</span>
+</td>
+<td class="px-3 py-3 text-body-sm text-on-surface-variant">13:55:12.88</td>
+<td class="px-3 py-3">
+<div class="flex flex-col">
+<span class="text-on-surface font-bold text-[12px]">GOVERNANCE VOTE</span>
+<span class="text-on-surface-variant text-[10px]">PROTOCOL: AAVE_V3</span>
+</div>
+</td>
+<td class="px-3 py-3 text-body-sm text-on-surface-variant">AIP-192 passed quorum. Rate adjustments scheduled for 00:00 UTC.</td>
+<td class="px-3 py-3 text-right">
+<span class="text-on-surface font-bold text-headline-md">62.8</span>
+</td>
+</tr>
+<!-- Low Row -->
+<tr class="hover:bg-surface-container transition-colors group cursor-pointer">
+<td class="px-3 py-3">
+<span class="bg-outline/10 text-on-surface-variant border border-border-tactical px-2 py-0.5 rounded-[2px] text-[10px] font-bold">LOW</span>
+</td>
+<td class="px-3 py-3 text-body-sm text-on-surface-variant">13:52:01.44</td>
+<td class="px-3 py-3">
+<div class="flex flex-col">
+<span class="text-on-surface font-bold text-[12px]">DEV ACTIVITY</span>
+<span class="text-on-surface-variant text-[10px]">REPO: ETHEREUM_CORE</span>
+</div>
+</td>
+<td class="px-3 py-3 text-body-sm text-on-surface-variant">Minor patch merged for P2P networking layer. No immediate market impact.</td>
+<td class="px-3 py-3 text-right">
+<span class="text-on-surface-variant font-bold text-headline-md">14.5</span>
+</td>
+</tr>
+<!-- High Alpha Row 2 -->
+<tr class="hover:bg-surface-container transition-colors group cursor-pointer">
+<td class="px-3 py-3">
+<span class="bg-secondary/10 text-secondary border border-secondary/30 px-2 py-0.5 rounded-[2px] text-[10px] font-bold">ALPHA</span>
+</td>
+<td class="px-3 py-3 text-body-sm text-on-surface-variant">13:48:22.10</td>
+<td class="px-3 py-3">
+<div class="flex flex-col">
+<span class="text-on-surface font-bold text-[12px]">NEW LISTING</span>
+<span class="text-secondary text-[10px]">ASSET: $C0IN</span>
+</div>
+</td>
+<td class="px-3 py-3 text-body-sm text-on-surface-variant">Tier-1 Exchange backend update detected containing C0INSIGLIERI tickers.</td>
+<td class="px-3 py-3 text-right">
+<span class="text-secondary font-bold text-headline-md">88.7</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-auto bg-surface-container-low p-2 border-t border-border-tactical flex justify-between items-center">
+<span class="font-body-sm text-[10px] text-on-surface-variant">SHOWING 24 OF 1,029 EVENTS</span>
+<div class="flex gap-2">
+<button class="px-2 py-1 bg-background-base border border-border-tactical text-on-surface-variant text-[10px] hover:text-primary transition-colors">PREV</button>
+<button class="px-2 py-1 bg-background-base border border-border-tactical text-on-surface-variant text-[10px] hover:text-primary transition-colors">NEXT</button>
+</div>
+</div>
+</div>
+<!-- Sidebar Widgets -->
+<div class="col-span-3 flex flex-col gap-gutter">
+<!-- Priority Distribution Card -->
+<div class="bg-background-panel border border-border-tactical p-panel-padding">
+<div class="flex justify-between items-center mb-4">
+<span class="font-label-caps text-label-caps text-on-surface">THREAT MATRIX</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">query_stats</span>
+</div>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between font-label-caps text-[9px] mb-1">
+<span class="text-threat-red">CRITICAL</span>
+<span class="text-on-surface">12%</span>
+</div>
+<div class="w-full h-1 bg-background-base">
+<div class="h-full bg-threat-red" style="width: 12%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-label-caps text-[9px] mb-1">
+<span class="text-secondary">ALPHA</span>
+<span class="text-on-surface">34%</span>
+</div>
+<div class="w-full h-1 bg-background-base">
+<div class="h-full bg-secondary" style="width: 34%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-label-caps text-[9px] mb-1">
+<span class="text-on-surface-variant">NEUTRAL</span>
+<span class="text-on-surface">54%</span>
+</div>
+<div class="w-full h-1 bg-background-base">
+<div class="h-full bg-border-tactical" style="width: 54%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Analysis Panel -->
+<div class="bg-background-panel border border-border-tactical flex flex-col flex-grow">
+<div class="bg-surface-container-high px-3 py-2 border-b border-border-tactical">
+<span class="font-label-caps text-label-caps text-on-surface">N0VA INTELLIGENCE</span>
+</div>
+<div class="p-panel-padding flex-grow flex flex-col">
+<div class="bg-background-base border border-border-tactical p-3 mb-4 rounded italic text-body-sm text-primary">
+                            "Summary: Market sentiment remains high-risk. Massive stablecoin outflows suggest whale hedging. Watch Solana ecosystem for volatility spikes within 4H window."
+                        </div>
+<div class="mt-auto">
+<span class="font-label-caps text-[9px] text-on-surface-variant block mb-2">HOT SPOTS</span>
+<div class="grid grid-cols-2 gap-2">
+<div class="bg-surface-container-low p-2 border border-border-tactical rounded">
+<span class="font-label-caps text-[8px] text-on-surface-variant block">SOL/USD</span>
+<span class="font-data-mono text-secondary text-[12px]">+4.2%</span>
+</div>
+<div class="bg-surface-container-low p-2 border border-border-tactical rounded">
+<span class="font-label-caps text-[8px] text-on-surface-variant block">ETH/USD</span>
+<span class="font-data-mono text-threat-red text-[12px]">-1.2%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Visual Asset Placeholder -->
+<div class="h-[180px] bg-background-panel border border-border-tactical relative overflow-hidden">
+<img alt="Cybersecurity interface" class="w-full h-full object-cover opacity-30 grayscale mix-blend-screen" data-alt="A futuristic dark-ops command center interface showing 3D wireframe terrain data and complex digital network nodes. The visual style is strictly tactical with a dark blue and cyan color palette, high-density HUD elements, and glowing data streams. Minimalist military aesthetic with sharp structural lines and no decorative fluff, evoking premium intelligence software." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5gQWssTeAPxDKkRsp-Amjo7JSGw_J_5-71YjIcPxvMpd4mxlDFyw5iaEW6n8kxFKNq7Wzu63TBs0jLoFgsTmLH9XPrP1HduLaRgZjMRk54_GRiIt2c41UGk8Z4sANj844sfubXzmbFb9K4s6rJlHrx1ni9FJPD2TfZV5Qqtdb3rqPT7Cr_zsX1mIlXQJ-dg2cBKKQr-oqje2psPVL7Z-urUV2h4eO_t8gn8rYzGZYI1Oyc3GoAUfkligW41ws8i5h_LICJEdYqHY"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background-panel to-transparent"></div>
+<div class="absolute bottom-2 left-2">
+<span class="font-label-caps text-[8px] text-primary bg-background-panel/80 px-1 border border-primary/20">SECTOR_SIGMA_LIVE</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual Toast Notification (Mock) -->
+<div class="fixed bottom-6 right-6 z-[100] bg-background-panel border border-primary p-4 shadow-2xl max-w-xs animate-bounce" id="toast">
+<div class="flex gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<div>
+<p class="font-label-caps text-label-caps text-primary">NEW ALPHA SIGNAL</p>
+<p class="font-body-sm text-[10px] text-on-surface-variant">Whale cluster accumulation detected in $JUP.</p>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface" onclick="document.getElementById('toast').style.display='none'">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</div>
+<script>
+        // Micro-interaction for the refresh timer
+        let timeLeft = 12;
+        const timerEl = document.getElementById('timer');
+        setInterval(() => {
+            timeLeft = timeLeft <= 1 ? 15 : timeLeft - 1;
+            timerEl.innerText = timeLeft + 's';
+        }, 1000);
+
+        // Simple flicker effect for tactical feeling
+        const elementsToFlicker = document.querySelectorAll('.text-threat-red, .text-primary');
+        setInterval(() => {
+            const el = elementsToFlicker[Math.floor(Math.random() * elementsToFlicker.length)];
+            el.style.opacity = '0.7';
+            setTimeout(() => el.style.opacity = '1', 50);
+        }, 3000);
+    </script>
+</body></html>
