@@ -532,6 +532,8 @@ export default function App() {
             'You are the C0insiglieri operations assistant. The operator opened you from the sidebar — answer across the full intelligence suite (status, windows, outcomes, ledger, signal, brief, network).',
           )
         }
+        onScan={runScan}
+        scanState={scanState}
         compactStatus={statusOpen ? null : dayStatus}
       />
 

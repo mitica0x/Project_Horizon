@@ -94,6 +94,8 @@ export default function HorizonSidebar({
   onNova,
   onTrace,
   onIntel,
+  onScan,
+  scanState = 'idle',
   compactStatus,
 }) {
   const [collapsed, setCollapsed] = useState(() => {
@@ -104,6 +106,12 @@ export default function HorizonSidebar({
     }
   })
   const [novaHover, setNovaHover] = useState(false)
+  const [scanHover, setScanHover] = useState(false)
+  // scanState values from App.jsx's runScan: idle | sentry | mirror | herald
+  // | complete | error. Treat anything between idle and a terminal state as
+  // "scanning" for the sidebar button's two-state UI.
+  const isScanning =
+    scanState && scanState !== 'idle' && scanState !== 'complete' && scanState !== 'error'
 
   // Keep the content offset (.hz-shell) in sync with the actual width.
   useEffect(() => {
@@ -244,6 +252,44 @@ export default function HorizonSidebar({
         <Divider />
 
         <NavRow glyph="⬡" label="Ask C0insiglieri" collapsed={collapsed} onClick={onIntel} />
+
+        {/* SCAN NOW action — standalone button (not a NavRow) sitting below
+            Ask C0insiglieri. Triggers the same App-level runScan that drives
+            scroll-to-hero, GSAP, polling, and dashboard refresh. */}
+        {onScan && (
+          <button
+            onClick={onScan}
+            disabled={isScanning}
+            onMouseEnter={() => setScanHover(true)}
+            onMouseLeave={() => setScanHover(false)}
+            title={isScanning ? 'Scan in progress' : 'Run scan now'}
+            style={{
+              display: 'block',
+              marginTop: 8,
+              marginBottom: 4,
+              marginLeft: 12,
+              width: 'calc(100% - 24px)',
+              padding: '6px 12px',
+              background: 'transparent',
+              border: `1px solid ${
+                scanHover && !isScanning
+                  ? 'rgba(148,200,100,0.7)'
+                  : 'rgba(148,200,100,0.3)'
+              }`,
+              borderRadius: 4,
+              color: scanHover && !isScanning ? '#b8e88a' : '#94c864',
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              letterSpacing: '1px',
+              cursor: isScanning ? 'default' : 'pointer',
+              opacity: isScanning ? 0.6 : 1,
+              transition: 'color 0.15s, border-color 0.15s, opacity 0.15s',
+              textAlign: 'center',
+            }}
+          >
+            {collapsed ? '⟳' : isScanning ? '⟳ Scanning…' : '⟳ SCAN NOW'}
+          </button>
+        )}
       </div>
 
       {/* N0VA — always visible, lime */}
