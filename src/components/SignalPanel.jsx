@@ -13,7 +13,6 @@ import {
   FONT_HEAD,
   FONT_BODY,
   FONT_MONO,
-  SiteLink,
 } from './horizonUI'
 
 // P8 — Budget Deployment Signal. One dominant verdict + posture intelligence
@@ -148,23 +147,38 @@ function WhatToDoNow({ verdict, onAskIntel, onNav }) {
   const draftGap = g => {
     const geo = geoOf(g.country)
     const comp = (g.competitors || [])[0] || 'a competitor'
-    const prompt = `Draft outreach to get Bybit listed on ${g.domain}${pathOf(
-      g.url,
-    )} (${geo}, T1). ${comp} is currently listed; Bybit is absent. Tone: confident, brief, value-first. Max 150 words.`
+    const url = `${g.domain}${pathOf(g.url)}`
+    // Spec prompt — affiliate/sponsored listing pitch to the editor or
+    // partnerships team. Kept verbatim so every DRAFT OUTREACH entry sends
+    // the same prompt to Ask C0insiglieri.
+    const prompt =
+      `Draft a cold outreach email to the editor or partnerships team at ${url}. ` +
+      `Context: this page currently lists Bybit's competitors (Crypto.com, OKX etc.) ` +
+      `but does not mention Bybit. We want to propose an affiliate partnership or ` +
+      `sponsored listing. Tone: professional, direct, no fluff.`
     onAskIntel?.(
-      `Budget signal verdict is ${verdict}. Acting on T1 gap ${g.domain}${pathOf(
-        g.url,
-      )} — ${geo}, ${comp} currently listed.`,
+      `Budget signal verdict is ${verdict}. Acting on gap ${url} — ${geo}, ${comp} currently listed.`,
       { insight: 'Outreach context loaded — tap below to draft.', chips: [prompt] },
     )
   }
 
   const GapLine = ({ g }) => {
     const opp = oppFor(g)
+    const gapPath = pathOf(g.url)
+    const visibleUrl = `${g.domain}${gapPath}`
     return (
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontFamily: FONT_MONO, fontSize: 12, color: '#c8d0dc' }}>
-          <SiteLink domain={g.domain} path={pathOf(g.url)}>{g.domain}<span style={{ color: 'var(--text-muted)' }}>{pathOf(g.url)}</span></SiteLink> —{' '}
+          <a
+            href={visibleUrl.startsWith('http') ? visibleUrl : `https://${visibleUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title={`Open ${visibleUrl} — verify Bybit absence`}
+            style={{ color: 'var(--cyan)', textDecoration: 'underline', cursor: 'pointer' }}
+          >
+            {visibleUrl}
+          </a> —{' '}
           <span style={{ color: 'var(--cyan)' }}>{geoOf(g.country)} T1</span> —{' '}
           <span style={{ color: opp >= 80 ? '#94c864' : '#D4A853', fontWeight: 700 }}>
             OPP {opp}

@@ -347,7 +347,7 @@ function buildDiffSections(scanData, prev) {
     })),
   }
 
-  // ── GAPS RESOLVED ──
+  // ── GAPS RESOLVED ── (Bybit now listed — render URL as a green win link)
   const resolvedRows = resolved.map((g) => {
     const url = `${g.domain}${g.path || ''}`
     const k = gapKey(g)
@@ -358,7 +358,9 @@ function buildDiffSections(scanData, prev) {
     if (trig === along) trig = seedPick(SEED_CLOSE_COMPS, h >> 7)
     return {
       tone: 'lime',
-      primary: `${url} — ${geoLabel(g)} ${g.tier || 'T2'} — was missing, now listed`,
+      url,
+      urlKind: 'win',
+      tail: ` — ${geoLabel(g)} ${g.tier || 'T2'} — was missing, now listed`,
       sub: [`gap open ${age} days · Bybit added alongside ${trig}`],
     }
   })
@@ -371,14 +373,16 @@ function buildDiffSections(scanData, prev) {
     emptyText: 'No gaps resolved since last scan',
   }
 
-  // ── NEW GAPS OPENED ──
+  // ── NEW GAPS OPENED ── (Bybit absent — render URL as a cyan gap link)
   const openedRows = opened.map((g) => {
     const live = liveByKey[gapKey(g)] || g
     const comps = competitorsForGap(live)
     const url = `${g.domain}${g.path || ''}`
     return {
       tone: 'amber',
-      primary: `${url} — ${geoLabel(g)} ${g.tier || 'T2'} — ${comps.join(' + ')} present, Bybit absent`,
+      url,
+      urlKind: 'gap',
+      tail: ` — ${geoLabel(g)} ${g.tier || 'T2'} — ${comps.join(' + ')} present, Bybit absent`,
     }
   })
   const newGapsSection = {
@@ -405,7 +409,9 @@ function buildDiffSections(scanData, prev) {
           const url = `${g.domain}${g.path || ''}`
           return {
             tone: 'lime',
-            primary: `${url} — ${geoLabel(g)} ${g.tier || 'T2'}`,
+            url,
+            urlKind: 'win',
+            tail: ` — ${geoLabel(g)} ${g.tier || 'T2'}`,
             sub: [`Confirmed: Bybit now listed · ${detected}`, `Impact: ${impactFor(g.tier)}`],
           }
         })
@@ -749,15 +755,16 @@ const MARKET_MOVES = {
 }
 const MARKET_MOVE_NAMES = Object.keys(MARKET_MOVES)
 
-// §5d outreach prompt fed to the existing INTEL panel.
+// §5d outreach prompt fed to the existing INTEL panel. Exact spec text — the
+// page already lists competitors and we want to propose an affiliate or
+// sponsored listing.
 function outreachPrompt(gap) {
-  const comp = competitorsForGap(gap)[0] || 'a competitor'
   const url = gapUrl(gap)
-  const pageName = (gap.path || '/').split('/').filter(Boolean).pop() || 'listing'
   return (
-    `Draft a professional outreach email to the editorial team at ${url} requesting that ` +
-    `Bybit EU be added to their ${pageName} listing. Context: Bybit is absent, ${comp} is ` +
-    `currently listed. Tone: confident, brief, value-focused. Max 150 words.`
+    `Draft a cold outreach email to the editor or partnerships team at ${url}. ` +
+    `Context: this page currently lists Bybit's competitors (Crypto.com, OKX etc.) ` +
+    `but does not mention Bybit. We want to propose an affiliate partnership or ` +
+    `sponsored listing. Tone: professional, direct, no fluff.`
   )
 }
 
@@ -1029,9 +1036,33 @@ function DiffSection({ section, open, onToggle }) {
           ) : (
             section.rows.map((r, i) => {
               const rowColor = DIFF_TONE[r.tone] || HZ.muted
+              const isWin = r.urlKind === 'win'
+              const linkHref = r.url
+                ? (r.url.startsWith('http') ? r.url : `https://${r.url}`)
+                : null
               return (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <div style={{ color: rowColor }}>{r.primary}</div>
+                  {r.url ? (
+                    <div style={{ color: rowColor }}>
+                      <a
+                        href={linkHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        title={`Open ${r.url} — verify Bybit ${isWin ? 'presence' : 'absence'}`}
+                        style={{
+                          color: isWin ? 'var(--green)' : 'var(--cyan)',
+                          textDecoration: 'underline',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {r.url}
+                      </a>
+                      {r.tail || ''}
+                    </div>
+                  ) : (
+                    <div style={{ color: rowColor }}>{r.primary}</div>
+                  )}
                   {(r.sub || []).map((s, j) => (
                     <div key={j} style={{ color: HZ.muted, paddingLeft: 12 }}>
                       └ {s}

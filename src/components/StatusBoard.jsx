@@ -117,14 +117,25 @@ export default function StatusBoard({
       `${t1.length} T1 gaps uncontacted (incl. ${dom(g1)}, ${dom(g2)}).`,
     ]
 
+    // Actions can carry a `url` so the renderer emits a clickable cyan link
+    // (gap context — verify Bybit absence) instead of plain text.
+    const g1Url = g1 ? `${g1.domain}${g1.url?.slice(g1.domain.length) || ''}` : null
     const actions = [
       {
+        url: g1Url,
+        urlKind: 'gap',
+        prefix: 'Contact ',
+        tail: ` — T1 ${g1?.country || 'Global'}, ${(g1?.competitors || ['competitor'])[0]} listed`,
         text: `Contact ${dom(g1)}${g1?.url?.slice(g1.domain.length) || ''} — T1 ${
           g1?.country || 'Global'
         }, ${(g1?.competitors || ['competitor'])[0]} listed`,
         nav: 'network',
       },
       {
+        url: 'investopedia.com',
+        urlKind: 'gap',
+        prefix: 'Review ',
+        tail: ' outreach — sent, no response logged',
         text: 'Review investopedia.com outreach — sent, no response logged',
         nav: 'outcomes',
       },
@@ -489,39 +500,80 @@ export default function StatusBoard({
                 </div>
               ))}
             {sec.actions &&
-              sec.actions.map((a, i) => (
-                <button
-                  key={i}
-                  onClick={() => onNav?.(a.nav)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    width: '100%',
-                    textAlign: 'left',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom:
-                      i < sec.actions.length - 1
-                        ? '1px solid rgba(255,255,255,0.04)'
-                        : 'none',
-                    padding: '10px 0',
-                    cursor: 'pointer',
-                    fontFamily: FONT_BODY,
-                    fontSize: 13,
-                    color: '#c8d0dc',
-                    transition: 'color 0.15s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--white)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#c8d0dc')}
-                >
-                  <span style={{ color: '#94c864', fontWeight: 700, flexShrink: 0 }}>
-                    {i + 1}.
-                  </span>
-                  <span style={{ flex: 1 }}>{a.text}</span>
-                  <span style={{ color: '#94c864', flexShrink: 0 }}>→</span>
-                </button>
-              ))}
+              sec.actions.map((a, i) => {
+                // Row is a `<div role="button">` (not `<button>`) so a real
+                // `<a>` for the gap URL can sit inside without nested
+                // interactive elements. Row click → onNav; URL click →
+                // new tab, stopPropagation so the row click doesn't also fire.
+                const linkHref = a.url
+                  ? (a.url.startsWith('http') ? a.url : `https://${a.url}`)
+                  : null
+                const isWin = a.urlKind === 'win'
+                return (
+                  <div
+                    key={i}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onNav?.(a.nav)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        onNav?.(a.nav)
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom:
+                        i < sec.actions.length - 1
+                          ? '1px solid rgba(255,255,255,0.04)'
+                          : 'none',
+                      padding: '10px 0',
+                      cursor: 'pointer',
+                      fontFamily: FONT_BODY,
+                      fontSize: 13,
+                      color: '#c8d0dc',
+                      transition: 'color 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--white)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = '#c8d0dc')}
+                  >
+                    <span style={{ color: '#94c864', fontWeight: 700, flexShrink: 0 }}>
+                      {i + 1}.
+                    </span>
+                    <span style={{ flex: 1 }}>
+                      {a.url ? (
+                        <>
+                          {a.prefix || ''}
+                          <a
+                            href={linkHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            title={`Open ${a.url} — verify Bybit ${isWin ? 'presence' : 'absence'}`}
+                            style={{
+                              color: isWin ? 'var(--green)' : 'var(--cyan)',
+                              textDecoration: 'underline',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {a.url}
+                          </a>
+                          {a.tail || ''}
+                        </>
+                      ) : (
+                        a.text
+                      )}
+                    </span>
+                    <span style={{ color: '#94c864', flexShrink: 0 }}>→</span>
+                  </div>
+                )
+              })}
           </div>
         )
 
