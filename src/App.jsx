@@ -664,12 +664,13 @@ export default function App() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
         <div style={{
-          fontSize: '30px',
-          fontWeight: 700,
+          fontSize: '72px',
+          fontWeight: 800,
           color: '#ffffff',
-          lineHeight: 1.2,
-          marginBottom: '16px',
-          letterSpacing: '-0.01em',
+          lineHeight: 1.0,
+          letterSpacing: '-0.03em',
+          textTransform: 'uppercase',
+          marginBottom: '24px',
         }}>
           Market intelligence.<br />
           <span style={{ color: '#94c864' }}>0 guess.</span>

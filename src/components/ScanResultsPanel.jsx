@@ -3314,72 +3314,88 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
             {/* Tab content */}
             <div style={{ padding: '16px 20px', minHeight: '80px' }}>
               {vsTab === 'GAPS' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {(diffData?.newGaps?.length > 0 ? diffData.newGaps : []).map((g, i) => (
-                    <div key={`new-${i}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', background: 'rgba(255,77,109,0.05)', border: '1px solid rgba(255,77,109,0.15)', borderRadius: '3px' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#ff4d6d', textTransform: 'uppercase', minWidth: '32px' }}>NEW</span>
-                      <a href={buildGapHref(g)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '12px', color: '#ffffff', textDecoration: 'none' }}>
-                        {g.domain}<span style={{ color: '#00d4e8' }}>{g.path || ''}</span>
-                      </a>
-                      {g.tier && <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4' }}>{g.tier}</span>}
-                    </div>
-                  ))}
-                  {(diffData?.resolvedGaps?.length > 0 ? diffData.resolvedGaps : []).map((g, i) => (
-                    <div key={`closed-${i}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', background: 'rgba(148,200,100,0.05)', border: '1px solid rgba(148,200,100,0.15)', borderRadius: '3px' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#94c864', textTransform: 'uppercase', minWidth: '32px' }}>CLOSED</span>
-                      <a href={buildGapHref(g)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '12px', color: '#ffffff', textDecoration: 'none' }}>
-                        {g.domain}<span style={{ color: '#00d4e8' }}>{g.path || ''}</span>
-                      </a>
-                    </div>
-                  ))}
-                  {(!diffData?.newGaps?.length && !diffData?.resolvedGaps?.length) && (
-                    <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No gap changes detected since last scan.</div>
-                  )}
-                </div>
+                (!diffData?.newGaps?.length && !diffData?.resolvedGaps?.length) ? (
+                  <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No gap changes detected since last scan.</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                    {(diffData?.newGaps || []).map((g, i) => (
+                      <div key={`new-${i}`} style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '3px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ff4d6d' }}>NEW</span>
+                          {g.tier && <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4' }}>{g.tier}</span>}
+                        </div>
+                        <a href={buildGapHref(g)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', textDecoration: 'none' }}>
+                          {g.domain}<span style={{ color: '#00d4e8' }}>{g.path || ''}</span>
+                        </a>
+                      </div>
+                    ))}
+                    {(diffData?.resolvedGaps || []).map((g, i) => (
+                      <div key={`closed-${i}`} style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '3px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94c864' }}>CLOSED</span>
+                          {g.tier && <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4' }}>{g.tier}</span>}
+                        </div>
+                        <a href={buildGapHref(g)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', textDecoration: 'none' }}>
+                          {g.domain}<span style={{ color: '#00d4e8' }}>{g.path || ''}</span>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
 
               {vsTab === 'WINS' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {(diffData?.newWins?.length > 0 ? diffData.newWins : []).map((w, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', background: 'rgba(148,200,100,0.05)', border: '1px solid rgba(148,200,100,0.15)', borderRadius: '3px' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#94c864', textTransform: 'uppercase', minWidth: '32px' }}>WIN</span>
-                      <a href={buildGapHref(w)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '12px', color: '#ffffff', textDecoration: 'none' }}>
-                        {w.domain}<span style={{ color: '#00d4e8' }}>{w.path || ''}</span>
-                      </a>
-                    </div>
-                  ))}
-                  {!diffData?.newWins?.length && (
-                    <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No new wins since last scan.</div>
-                  )}
-                </div>
+                !diffData?.newWins?.length ? (
+                  <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No new wins since last scan.</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                    {diffData.newWins.map((w, i) => (
+                      <div key={i} style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '3px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94c864' }}>WIN</span>
+                          {w.tier && <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4' }}>{w.tier}</span>}
+                        </div>
+                        <a href={buildGapHref(w)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', textDecoration: 'none' }}>
+                          {w.domain}<span style={{ color: '#00d4e8' }}>{w.path || ''}</span>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
 
               {vsTab === 'ALERTS' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {(diffData?.alerts?.length > 0 ? diffData.alerts : []).map((a, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', background: 'rgba(212,168,83,0.05)', border: '1px solid rgba(212,168,83,0.15)', borderRadius: '3px' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#d4a853', textTransform: 'uppercase', minWidth: '40px' }}>ALERT</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#b8c4d4' }}>{a.message || a}</span>
-                    </div>
-                  ))}
-                  {!diffData?.alerts?.length && (
-                    <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No alerts since last scan.</div>
-                  )}
-                </div>
+                !diffData?.alerts?.length ? (
+                  <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No alerts since last scan.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {diffData.alerts.map((a, i) => (
+                      <div key={i} style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '3px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#d4a853' }}>ALERT</span>
+                        </div>
+                        <span style={{ fontFamily: 'monospace', fontSize: '13px', color: '#b8c4d4' }}>{a.message || a}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
 
               {vsTab === 'COMPETITORS' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {(diffData?.competitorMoves?.length > 0 ? diffData.competitorMoves : []).map((c, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '3px' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#d4a853', textTransform: 'uppercase', minWidth: '40px' }}>MOVE</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#b8c4d4' }}>{c.message || c}</span>
-                    </div>
-                  ))}
-                  {!diffData?.competitorMoves?.length && (
-                    <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No competitor moves detected since last scan.</div>
-                  )}
-                </div>
+                !diffData?.competitorMoves?.length ? (
+                  <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8892a4' }}>No competitor moves detected since last scan.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {diffData.competitorMoves.map((c, i) => (
+                      <div key={i} style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '3px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#d4a853' }}>MOVE</span>
+                        </div>
+                        <span style={{ fontFamily: 'monospace', fontSize: '13px', color: '#b8c4d4' }}>{c.message || c}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
             </div>
           </div>
