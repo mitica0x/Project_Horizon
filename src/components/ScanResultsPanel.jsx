@@ -2539,7 +2539,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
 
   if (errorState) {
     return (
-      <div ref={ref} id="scan-results" style={wrapperStyle} aria-hidden={!visible}>
+      <div ref={ref} id="scan-results-panel" style={wrapperStyle} aria-hidden={!visible}>
         <div
           style={{
             padding: '20px 24px',
@@ -2564,7 +2564,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
   if (!scanData) {
     // Not visible and no data — render the collapsed shell (no content) so
     // the slide-up animation has a stable element to transition against.
-    return <div ref={ref} id="scan-results" style={wrapperStyle} aria-hidden="true" />
+    return <div ref={ref} id="scan-results-panel" style={wrapperStyle} aria-hidden="true" />
   }
 
   // §1 — attach OPP and sort gaps by opportunity, highest first.
@@ -2637,7 +2637,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
   }
 
   return (
-    <div ref={ref} id="scan-results" style={wrapperStyle} aria-hidden={!visible}>
+    <div ref={ref} id="scan-results-panel" style={wrapperStyle} aria-hidden={!visible}>
       {/* ─── Section 1 — scan meta bar ─────────────────────────────────── */}
       <div
         style={{

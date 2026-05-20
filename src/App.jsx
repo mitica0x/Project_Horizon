@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
 import HeroCanvas from './components/HeroCanvas'
 import ScanResultsPanel from './components/ScanResultsPanel'
 import GapCard from './components/GapCard'
@@ -22,7 +23,7 @@ import { getDayStatus } from './utils/horizonData'
 import { supabase, getActiveOrgId } from './lib/supabase'
 import { MOCK_SCAN, MOCK_PREV_SNAPSHOT, SNAPSHOT_KEY as MOCK_SNAPSHOT_KEY } from './fixtures/mockScan'
 
-gsap.registerPlugin(ScrollTrigger)
+gsap.registerPlugin(ScrollTrigger, ScrollToPlugin)
 
 const STATUS_VIEWED_KEY = 'horizon_last_status_viewed'
 const todayKey = () => new Date().toISOString().slice(0, 10)
@@ -322,7 +323,19 @@ export default function App() {
       setTimeout(() => { setScanState('idle'); setScanProgress(null) }, 4000)
       return
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    // Scroll to top first, then flip the scanState — so the HeroCanvas amber
+    // pulse starts exactly when the user is at the top of the page. State
+    // only changes inside onComplete; the promise lets the async runScan
+    // wait for the scroll to land before continuing.
+    await new Promise((resolve) => {
+      gsap.to(window, {
+        duration: 0.6,
+        scrollTo: 0,
+        ease: 'power2.inOut',
+        onComplete: () => { setScanState('sentry'); resolve() },
+      })
+    })
+
     const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
 
     // Pre-scan timestamp so polling knows when fresh results land.
@@ -335,7 +348,6 @@ export default function App() {
       if (r.ok) prevAt = (await r.json()).scanned_at || null
     } catch { /* first scan — no prior */ }
 
-    setScanState('sentry')
     let tick = 0
     const ticker = setInterval(() => {
       const host = SCAN_TICKER[tick % SCAN_TICKER.length]
@@ -384,7 +396,9 @@ export default function App() {
         `Scan complete — ${data.sitesChecked} sites checked, ` +
           `${data.gaps.length} gaps found, ${data.wins} wins confirmed`,
       )
-      setTimeout(() => window.scrollBy({ top: 400, behavior: 'smooth' }), 600)
+      // (Scroll into the results panel is handled by the
+      // scanResultsVisible-watcher effect below — same GSAP target as the
+      // mock path so both feel identical.)
       setTimeout(() => { setScanState('idle'); setScanProgress(null) }, 5000)
     } catch (err) {
       clearInterval(ticker)
@@ -410,24 +424,36 @@ export default function App() {
       clearTimeout(mockScanTimerRef.current)
       mockScanTimerRef.current = null
     }
-    setScanState('sentry')
-    mockScanTimerRef.current = setTimeout(() => {
-      // Seed the prior-scan snapshot ScanResultsPanel reads from localStorage
-      // so VS LAST SCAN renders deterministic deltas (+4 score, +1 gap, +2
-      // wins, +1 alert) instead of synthesising them from seedPriorSnapshot.
-      try {
-        localStorage.setItem(MOCK_SNAPSHOT_KEY, JSON.stringify(MOCK_PREV_SNAPSHOT))
-      } catch { /* localStorage unavailable — diff still works in-memory */ }
-      const data = transformScan(MOCK_SCAN)
-      // transformScan hard-codes brandAlerts to 0 at the top level (the live
-      // dashboard reads dashboard.brandAlerts which IS derived). For the
-      // VS LAST SCAN alert delta to fire, surface the dashboard count here.
-      data.brandAlerts = data.dashboard?.brandAlerts ?? 0
-      setScanData(data)
-      setScanResultsVisible(true)
-      setScanState('idle')
-      mockScanTimerRef.current = null
-    }, 2200)
+    // Scroll to top first. Only when the scroll lands do we flip into the
+    // amber scanning state and schedule the deferred mock injection — so
+    // the animation timing matches the real runScan path exactly.
+    gsap.to(window, {
+      duration: 0.6,
+      scrollTo: 0,
+      ease: 'power2.inOut',
+      onComplete: () => {
+        setScanState('sentry')
+        mockScanTimerRef.current = setTimeout(() => {
+          // Seed the prior-scan snapshot ScanResultsPanel reads from
+          // localStorage so VS LAST SCAN renders deterministic deltas
+          // (+4 score, +1 gap, +2 wins, +1 alert) instead of synthesising
+          // them from seedPriorSnapshot.
+          try {
+            localStorage.setItem(MOCK_SNAPSHOT_KEY, JSON.stringify(MOCK_PREV_SNAPSHOT))
+          } catch { /* localStorage unavailable — diff still works in-memory */ }
+          const data = transformScan(MOCK_SCAN)
+          // transformScan hard-codes brandAlerts to 0 at the top level (the
+          // live dashboard reads dashboard.brandAlerts which IS derived). For
+          // the VS LAST SCAN alert delta to fire, surface the dashboard
+          // count here.
+          data.brandAlerts = data.dashboard?.brandAlerts ?? 0
+          setScanData(data)
+          setScanResultsVisible(true)
+          setScanState('idle')
+          mockScanTimerRef.current = null
+        }, 2200)
+      },
+    })
   }, [])
 
   // T-key shortcut listener. Re-registers when loadMockScan identity changes
@@ -447,6 +473,24 @@ export default function App() {
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [loadMockScan])
+
+  // Scroll the user down to the results panel as soon as it becomes visible.
+  // Shared by runScan and loadMockScan — both trip scanResultsVisible → true
+  // at the end of their flow, so this single effect handles both paths
+  // identically. 300ms delay lets the panel's enter animation start before
+  // we scroll, so the header arrives at the offset already rendered.
+  useEffect(() => {
+    if (!scanResultsVisible) return
+    const t = setTimeout(() => {
+      if (!document.getElementById('scan-results-panel')) return
+      gsap.to(window, {
+        duration: 0.8,
+        scrollTo: { y: '#scan-results-panel', offsetY: 48 },
+        ease: 'power2.inOut',
+      })
+    }, 300)
+    return () => clearTimeout(t)
+  }, [scanResultsVisible])
 
   const SCAN_LABELS = {
     idle:     '⟳ Scan Now',
