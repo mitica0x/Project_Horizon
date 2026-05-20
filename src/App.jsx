@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import HeroCanvas from './components/HeroCanvas'
@@ -309,7 +309,7 @@ export default function App() {
     'kryptoszene.de', 'tradersunion.com', 'cryptonews.com', 'blockworks.co',
   ]
 
-  async function runScan() {
+  const runScan = useCallback(async () => {
     if (scanState !== 'idle') return
     const orgId = getActiveOrgId()
     if (!orgId) {
@@ -389,7 +389,26 @@ export default function App() {
       setScanProgress(`Scan failed: ${String(err?.message ?? err).slice(0, 80)}`)
       setTimeout(() => { setScanState('idle'); setScanProgress(null) }, 5000)
     }
-  }
+  }, [scanState])
+
+  // T-key scan shortcut. Listener re-registers when runScan identity changes
+  // (useCallback dep on scanState) so the closure always sees the latest gate.
+  useEffect(() => {
+    const handleKey = (e) => {
+      console.log('[T-KEY] keydown fired:', e.key, 'active:', document.activeElement?.tagName)
+      if (e.key !== 't' && e.key !== 'T') return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const ae = document.activeElement
+      const tag = ae?.tagName?.toLowerCase()
+      // Block when typing into an input/textarea/contenteditable. Body (or
+      // null active element) is fine.
+      if (tag === 'input' || tag === 'textarea' || ae?.isContentEditable) return
+      e.preventDefault()
+      runScan()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [runScan])
 
   const SCAN_LABELS = {
     idle:     '⟳ Scan Now',
