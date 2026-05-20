@@ -610,18 +610,13 @@ function oppColor(opp) {
   return '#00d4e8' // cyan
 }
 
-// 7-stop threat scale — purple at the top, muted grey at the bottom.
-function getThreatColor(score, maxScore) {
-  if (score === 0) return null
-  const r = maxScore > 0 ? score / maxScore : 0
-  if (r >= 0.85) return '#9B6FC7'
-  if (r >= 0.70) return '#7B5EA7'
-  if (r >= 0.55) return '#00d4e8'
-  if (r >= 0.40) return '#00c4a0'
-  if (r >= 0.25) return '#D4A853'
-  if (r >= 0.10) return '#b8863a'
-  return '#8892a4'
-}
+// Rank-based competitor bar palette — colour follows sorted position, not the
+// score ratio. Indices wrap if there are more than 12 competitors.
+const RANK_COLORS = [
+  '#9B6FC7', '#7B5EA7', '#6B4F9A', '#00d4e8',
+  '#00c4a0', '#4a9eff', '#D4A853', '#b8863a',
+  '#c46b3a', '#8892a4', '#6a7080', '#4a5060',
+]
 
 // Live competitor shape (from App.jsx transformScan):
 //   { name: string, blocksOnGaps: number, threatScore: number }
@@ -2436,7 +2431,6 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     return m
   }, [marketMoves])
   const [expanded, setExpanded] = useState(false)
-  const [competitorsExpanded, setCompetitorsExpanded] = useState(false)
   const [gapFilter, setGapFilter] = useState('country')
   // Which Priority Gap card is expanded inline (one at a time).
   const [expandedGap, setExpandedGap] = useState(null)
@@ -2496,7 +2490,6 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     }
     if (!visible) {
       setExpanded(false)
-      setCompetitorsExpanded(false)
       setDiffOpen(false)
       setSectionsOpen({})
       setProjOpen(false)
@@ -2648,14 +2641,16 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     ...c,
     _effectiveScore: effectiveCompetitorScore(c, gapsWithOpp),
   }))
-  const sortedCompetitors = compsWithScore
-    .sort((a, b) => b._effectiveScore - a._effectiveScore)
-    .slice(0, 8)
-  const maxThreatScore = sortedCompetitors[0]?._effectiveScore || 100
-  const visibleCompetitors = competitorsExpanded
-    ? sortedCompetitors
-    : sortedCompetitors.slice(0, 5)
-  const remainingCompetitors = Math.max(0, sortedCompetitors.length - 5)
+  const sortedCompetitors = compsWithScore.sort(
+    (a, b) => b._effectiveScore - a._effectiveScore,
+  )
+  const maxThreatScore = sortedCompetitors[0]?._effectiveScore || 0
+  // When every competitor scores zero (e.g. live scan has no Bybit-absent rows
+  // yet), bar widths fall back to a rank-based ladder so the ordering remains
+  // readable instead of every bar collapsing to 0%.
+  const allCompetitorScoresZero = sortedCompetitors.every(
+    (c) => (c._effectiveScore ?? c.threatScore ?? 0) === 0,
+  )
 
   // §2 — tier×geo market map. §4 — gaps grouped per competitor.
   const fieldMatrix = buildFieldMap(gapsWithOpp)
@@ -3307,16 +3302,18 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
               No competitor data
             </div>
           ) : (
-            <>
-              <div>
-                {visibleCompetitors.map((c, i) => {
+            <div>
+              {sortedCompetitors.map((c, i) => {
                   const tier = i === 0 ? 1 : i <= 2 ? 2 : 3
                   const dotColor =
                     tier === 1 ? '#94c864' : tier === 2 ? '#00d4e8' : '#8892a4'
                   const score = c._effectiveScore ?? c.threatScore ?? 0
-                  const color = getThreatColor(score, maxThreatScore)
-                  const pct =
-                    maxThreatScore > 0 ? (score / maxThreatScore) * 100 : 0
+                  const color = RANK_COLORS[i % RANK_COLORS.length]
+                  const pct = allCompetitorScoresZero
+                    ? ((12 - i) / 12) * 100
+                    : maxThreatScore > 0
+                    ? (score / maxThreatScore) * 100
+                    : 0
                   return (
                     <div
                       key={c.name}
@@ -3379,20 +3376,18 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                           overflow: 'hidden',
                         }}
                       >
-                        {color && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: 0,
-                              top: 0,
-                              bottom: 0,
-                              width: visible ? `${pct}%` : '0%',
-                              borderRadius: 3,
-                              background: `linear-gradient(to right, ${color}ee 0%, ${color}99 30%, ${color}33 70%, transparent 100%)`,
-                              transition: `width 600ms cubic-bezier(0.16,1,0.3,1) ${i * 100}ms`,
-                            }}
-                          />
-                        )}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: visible ? `${pct}%` : '0%',
+                            borderRadius: 3,
+                            background: `linear-gradient(to right, ${color}ee 0%, ${color}99 30%, ${color}33 70%, transparent 100%)`,
+                            transition: `width 600ms cubic-bezier(0.16,1,0.3,1) ${i * 100}ms`,
+                          }}
+                        />
                       </div>
 
                       {/* Cell 3 — score */}
@@ -3410,28 +3405,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                     </div>
                   )
                 })}
-              </div>
-              {!competitorsExpanded && remainingCompetitors > 0 && (
-                <button
-                  onClick={() => setCompetitorsExpanded(true)}
-                  style={{
-                    marginTop: 8,
-                    padding: '8px 12px',
-                    width: '100%',
-                    background: 'transparent',
-                    border: 'none',
-                    fontFamily: FONT_MONO,
-                    fontSize: 11,
-                    color: HZ.teal,
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  + {remainingCompetitors} more ↓
-                </button>
-              )}
-            </>
+            </div>
           )}
         </div>
       </div>
