@@ -195,7 +195,7 @@ export default function StatusBoard({
     )
 
   return (
-    <Card style={{ padding: '22px 28px' }}>
+    <Card style={{ padding: '8px 28px 22px' }}>
       {/* SIGNAL — collapsible inline panel header */}
       <button
         onClick={() => setSignalOpen(o => !o)}
@@ -676,7 +676,7 @@ export default function StatusBoard({
                 fontSize: 11,
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
-                color: 'var(--cyan)',
+                color: '#8892a4',
                 marginBottom: 12,
               }}
             >
@@ -755,10 +755,12 @@ export default function StatusBoard({
                             onClick={(e) => e.stopPropagation()}
                             title={`Open ${a.url} — verify Bybit ${isWin ? 'presence' : 'absence'}`}
                             style={{
-                              color: isWin ? 'var(--green)' : 'var(--cyan)',
-                              textDecoration: 'underline',
+                              color: isWin ? 'var(--green)' : '#b8c4d4',
+                              textDecoration: 'none',
                               cursor: 'pointer',
                             }}
+                            onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none' }}
                           >
                             {a.url}
                           </a>

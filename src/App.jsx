@@ -662,7 +662,6 @@ export default function App() {
       <div style={{
         padding: '52px 32px 22px 32px',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
-        marginBottom: '0',
       }}>
         <div style={{
           fontSize: '30px',
@@ -717,10 +716,10 @@ export default function App() {
           }
         />
       </div>
-      <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 48 }}>
+      <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 0 }}>
 
         {statusOpen && (
-          <div id="hz-status" className="container" style={{ paddingTop: 24 }}>
+          <div id="hz-status" className="container" style={{ paddingTop: 0 }}>
             <StatusBoard
               onDismiss={() => setStatusOpen(false)}
               onAskIntel={openIntel}
