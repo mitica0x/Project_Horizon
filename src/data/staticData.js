@@ -2,38 +2,43 @@ export const SCORE = 52
 export const PAGES_PRESENT = 13
 export const PAGES_TRACKED = 25
 
-// Locked default competitor set — canonical order. Do not add non-canonical
-// names (no Trading 212 / KuCoin EU / N26). Tier shown inline (T1/T2/T3).
+// Pre-merge canonical competitor set — brand-accurate colours, Bybit excluded,
+// BingX given its own purple so it no longer clashes with Binance. Trading 212
+// and KuCoin EU are listed (zero-count) so the ranking visual stays complete.
 export const COMPETITOR_COLORS = {
-  Binance:       '#7B5EA7', // T2
+  Revolut:       '#60a5fa', // T1
   Kraken:        '#D4A853', // T2
+  Binance:       '#F3BA2F', // T2
+  'Crypto.com':  '#00d4e8', // T1
+  OKX:           '#8892a4', // T2
+  Bitget:        '#00b4d8', // T2
   Coinbase:      '#1652F0', // T1
   Bitpanda:      '#f97316', // T1
-  OKX:           '#8892a4', // T2
-  'Crypto.com':  '#00d4e8', // T1
-  Revolut:       '#60a5fa', // T1
+  'Trading 212': '#00d26a', // T2
   KuCoin:        '#2ecc71', // T2
-  Bitget:        '#00b4d8', // T2
-  WhiteBit:      '#6b7280', // T3
+  'KuCoin EU':   '#27ae60', // T2
+  BingX:         '#9B6FC7', // T3
   MEXC:          '#2354e6', // T3
-  BingX:         '#7B5EA7', // T3
+  WhiteBit:      '#6b7280', // T3
 }
 
-// Locked default competitor set — canonical order. Counts/tiers preserved
-// per competitor; Trading 212 and KuCoin EU removed (non-canonical).
+// Pre-merge canonical competitor set — sorted by count desc. Counts/tiers
+// preserved per competitor.
 export const COMPETITORS = [
-  { name: 'Binance',      count: 8,  color: '#7B5EA7', tier: 2 },
+  { name: 'Revolut',      count: 10, color: '#60a5fa', tier: 1 },
   { name: 'Kraken',       count: 9,  color: '#D4A853', tier: 2 },
+  { name: 'Binance',      count: 8,  color: '#F3BA2F', tier: 2 },
+  { name: 'Crypto.com',   count: 5,  color: '#00d4e8', tier: 1 },
+  { name: 'OKX',          count: 3,  color: '#8892a4', tier: 2 },
+  { name: 'Bitget',       count: 3,  color: '#00b4d8', tier: 2 },
   { name: 'Coinbase',     count: 2,  color: '#1652F0', tier: 1 },
   { name: 'Bitpanda',     count: 0,  color: '#f97316', tier: 1 },
-  { name: 'OKX',          count: 3,  color: '#8892a4', tier: 2 },
-  { name: 'Crypto.com',   count: 5,  color: '#00d4e8', tier: 1 },
-  { name: 'Revolut',      count: 10, color: '#60a5fa', tier: 1 },
+  { name: 'Trading 212',  count: 0,  color: '#00d26a', tier: 2 },
   { name: 'KuCoin',       count: 0,  color: '#2ecc71', tier: 2 },
-  { name: 'Bitget',       count: 3,  color: '#00b4d8', tier: 2 },
-  { name: 'WhiteBit',     count: 0,  color: '#6b7280', tier: 3 },
+  { name: 'KuCoin EU',    count: 0,  color: '#27ae60', tier: 2 },
+  { name: 'BingX',        count: 0,  color: '#9B6FC7', tier: 3 },
   { name: 'MEXC',         count: 0,  color: '#2354e6', tier: 3 },
-  { name: 'BingX',        count: 0,  color: '#7B5EA7', tier: 3 },
+  { name: 'WhiteBit',     count: 0,  color: '#6b7280', tier: 3 },
 ]
 
 export const GAPS_T1 = [

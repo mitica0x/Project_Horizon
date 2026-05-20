@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { CONTACT_EMAIL } from '../config'
+import { COMPETITOR_COLORS } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
 import { AskIntelButton, SiteLink } from './horizonUI'
 
@@ -609,14 +610,6 @@ function oppColor(opp) {
   if (opp >= 50) return '#f59e0b' // amber
   return '#00d4e8' // cyan
 }
-
-// Rank-based competitor bar palette — colour follows sorted position, not the
-// score ratio. Indices wrap if there are more than 12 competitors.
-const RANK_COLORS = [
-  '#9B6FC7', '#7B5EA7', '#6B4F9A', '#00d4e8',
-  '#00c4a0', '#4a9eff', '#D4A853', '#b8863a',
-  '#c46b3a', '#8892a4', '#6a7080', '#4a5060',
-]
 
 // Live competitor shape (from App.jsx transformScan):
 //   { name: string, blocksOnGaps: number, threatScore: number }
@@ -2636,10 +2629,13 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
       baseComps.push({ name: n, threatScore: 0, blocksOnGaps: 0 })
   })
   // Stamp every competitor with an effective score that survives empty live
-  // data — see effectiveCompetitorScore for the fallback chain.
+  // data — see effectiveCompetitorScore for the fallback chain. Brand colour
+  // comes from staticData so live competitors render with the same identity
+  // they have everywhere else; falls back to muted grey when unknown.
   const compsWithScore = baseComps.map((c) => ({
     ...c,
     _effectiveScore: effectiveCompetitorScore(c, gapsWithOpp),
+    color: c.color || COMPETITOR_COLORS[c.name] || '#8892a4',
   }))
   const sortedCompetitors = compsWithScore.sort(
     (a, b) => b._effectiveScore - a._effectiveScore,
@@ -3308,7 +3304,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                   const dotColor =
                     tier === 1 ? '#94c864' : tier === 2 ? '#00d4e8' : '#8892a4'
                   const score = c._effectiveScore ?? c.threatScore ?? 0
-                  const color = RANK_COLORS[i % RANK_COLORS.length]
+                  const color = c.color || '#8892a4'
                   const pct = allCompetitorScoresZero
                     ? ((12 - i) / 12) * 100
                     : maxThreatScore > 0
