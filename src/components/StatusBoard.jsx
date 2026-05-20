@@ -14,15 +14,12 @@ import SignalPanel, { VERDICT } from './SignalPanel'
 import CompetitorChart from './CompetitorChart'
 import CustomCompetitors from './CustomCompetitors'
 import SiteTable from './SiteTable'
-import { supabase, getActiveOrgId } from '../lib/supabase'
 
 // P2 — Morning Status Board. 90-second daily briefing. Verdict reframed:
 // HIGH PRESSURE / ELEVATED WATCH (cyan) · ALL CLEAR (lime). No crisis red.
 
 const VERDICT_KEY = 'horizon_status_verdict'
 const DAY = 86400000
-const BACKEND =
-  import.meta.env.VITE_BACKEND_URL || 'https://web-production-e204.up.railway.app'
 
 export default function StatusBoard({
   onDismiss,
@@ -55,49 +52,6 @@ export default function StatusBoard({
     hasScanData ||
     (tableData && tableData.length > 0) ||
     (gapData && gapData.length > 0)
-  // Internal scan state — StatusBoard owns the scan trigger so the button
-  // keeps working even if the App → HorizonView → StatusBoard prop chain
-  // drops onScan/scanState during a nav refactor.
-  const [localScanState, setLocalScanState] = useState('idle')
-  const [localScanMsg, setLocalScanMsg] = useState(null)
-
-  // External scanState (when present) reflects an App-level run in progress;
-  // local takes precedence when the user clicked SCAN NOW from this board.
-  const effectiveScanState =
-    localScanState !== 'idle' ? localScanState : scanState
-
-  async function handleScan() {
-    if (effectiveScanState !== 'idle') return
-    const orgId = getActiveOrgId()
-    if (!orgId) {
-      setLocalScanState('error')
-      setLocalScanMsg('No organisation bound to this account.')
-      setTimeout(() => { setLocalScanState('idle'); setLocalScanMsg(null) }, 4000)
-      return
-    }
-    setLocalScanState('sending')
-    const headers = { 'Content-Type': 'application/json' }
-    try {
-      const { data } = await supabase.auth.getSession()
-      const t = data?.session?.access_token
-      if (t) headers.Authorization = `Bearer ${t}`
-    } catch { /* unauthenticated → backend will reject */ }
-    try {
-      const r = await fetch(`${BACKEND}/api/scan/trigger`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ org_id: orgId }),
-      })
-      if (!r.ok) throw new Error(`scan ${r.status}`)
-      setLocalScanState('complete')
-      setLocalScanMsg('✓ Scan kicked off — results refresh shortly.')
-      setTimeout(() => { setLocalScanState('idle'); setLocalScanMsg(null) }, 5000)
-    } catch (e) {
-      setLocalScanState('error')
-      setLocalScanMsg(`Scan failed: ${String(e?.message ?? e).slice(0, 80)}`)
-      setTimeout(() => { setLocalScanState('idle'); setLocalScanMsg(null) }, 5000)
-    }
-  }
 
   const submitAddUrl = () => {
     const url = addUrlValue.trim()
@@ -131,13 +85,13 @@ export default function StatusBoard({
   }
 
   const scanLabel =
-    effectiveScanState === 'idle'
+    scanState === 'idle'
       ? effectiveHasScanData
         ? '⟳ SCAN NOW'
         : '⟳ Run first scan'
-      : effectiveScanState === 'complete'
+      : scanState === 'complete'
       ? '✓ Scan complete'
-      : effectiveScanState === 'error'
+      : scanState === 'error'
       ? '⚠ Agent offline'
       : '⟳ Scanning…'
   const { signals, overall, updatedAt } = useMemo(() => getDayStatus(), [])
@@ -403,39 +357,41 @@ export default function StatusBoard({
           <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: 'var(--text-muted)' }}>
             Last updated {fmtClock(updatedAt)}
           </span>
-          {/* SCAN NOW is always visible in STATUS — no prop gate. handleScan
-              hits /api/scan/trigger directly with the active orgId. */}
-          <button
-            onClick={handleScan}
-            disabled={effectiveScanState !== 'idle'}
-            title={localScanMsg || undefined}
-            style={{
-              fontFamily: FONT_MONO,
-              fontSize: 11,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color:
-                effectiveScanState === 'error'
-                  ? '#ff4d6d'
-                  : effectiveScanState === 'complete'
-                  ? '#94c864'
-                  : effectiveScanState === 'idle'
-                  ? '#94c864'
-                  : 'var(--text-muted)',
-              background: 'transparent',
-              border: `1px solid ${
-                effectiveScanState === 'error'
-                  ? 'rgba(255,77,109,0.4)'
-                  : 'rgba(148,200,100,0.4)'
-              }`,
-              borderRadius: 5,
-              padding: '7px 12px',
-              cursor: effectiveScanState === 'idle' ? 'pointer' : 'default',
-              transition: 'color 0.15s, border-color 0.15s',
-            }}
-          >
-            {scanLabel}
-          </button>
+          {/* SCAN NOW delegates to App.jsx's runScan via the onScan prop —
+              that path owns scroll-to-hero, GSAP animation, scan polling,
+              ScanResultsPanel display, and dashboard refresh. */}
+          {onScan && (
+            <button
+              onClick={onScan}
+              disabled={scanState !== 'idle'}
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color:
+                  scanState === 'error'
+                    ? '#ff4d6d'
+                    : scanState === 'complete'
+                    ? '#94c864'
+                    : scanState === 'idle'
+                    ? '#94c864'
+                    : 'var(--text-muted)',
+                background: 'transparent',
+                border: `1px solid ${
+                  scanState === 'error'
+                    ? 'rgba(255,77,109,0.4)'
+                    : 'rgba(148,200,100,0.4)'
+                }`,
+                borderRadius: 5,
+                padding: '7px 12px',
+                cursor: scanState === 'idle' ? 'pointer' : 'default',
+                transition: 'color 0.15s, border-color 0.15s',
+              }}
+            >
+              {scanLabel}
+            </button>
+          )}
           {onAskIntel && <AskIntelButton onClick={askIntel} />}
           <button
             onClick={onDismiss}

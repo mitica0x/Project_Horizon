@@ -217,11 +217,19 @@ export function MeterBar({ pct, color = '#00d4e8', track = 'rgba(255,255,255,0.0
 // a scheme is used as-is). If nothing resolvable, renders plain text.
 export function SiteLink({ domain, path, href, style, children }) {
   const raw = href || String(domain ?? '')
+  // path can arrive as: plain fragment ("/foo"), protocol-relative
+  // ("//example.com/foo"), or full URL ("https://example.com/foo"). Only
+  // concatenate domain+path when path is a plain relative fragment; otherwise
+  // treat path itself as the destination.
   const url = href
     ? href
     : raw
-      ? (/^https?:\/\//i.test(raw) ? raw : `https://${raw}${path || ''}`)
-      : null
+    ? (/^https?:\/\//i.test(raw)
+        ? raw
+        : path && /^(https?:)?\/\//.test(path)
+          ? (path.startsWith('//') ? `https:${path}` : path)
+          : `https://${raw}${path || ''}`)
+    : null
   const text = children != null ? children : (path ? `${domain}${path}` : domain)
   if (!url) return <>{text}</>
   return (
