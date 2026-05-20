@@ -9,7 +9,7 @@ import {
 } from '../utils/horizonData'
 import { GAPS_T1, TABLE_DATA } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
-import { Card, RagDot, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
+import { Card, RagDot, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 import SignalPanel, { VERDICT } from './SignalPanel'
 import SiteTable from './SiteTable'
 
@@ -312,7 +312,7 @@ export default function StatusBoard({
                   fontWeight: 700,
                   letterSpacing: '0.14em',
                   textTransform: 'uppercase',
-                  color: 'var(--cyan)',
+                  color: '#ffffff',
                   flexShrink: 0,
                   marginRight: 6,
                 }}
@@ -442,31 +442,44 @@ export default function StatusBoard({
             marginBottom: 18,
           }}
         >
-          {execSummary.map(p => (
-            <div
-              key={p.label}
-              style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                gap: 8,
-                fontFamily: FONT_MONO,
-                fontSize: 12,
-                minWidth: 0,
-              }}
-            >
-              <span
+          {execSummary.map(p => {
+            // Per-label semantic colour — GAP reads as a problem (red), THREAT
+            // as caution (amber), WINDOW as opportunity (green). Cyan is held
+            // back for the hero headline only.
+            const labelColor =
+              p.label === 'GAP'
+                ? '#ff4d6d'
+                : p.label === 'THREAT'
+                ? '#d4a853'
+                : p.label === 'WINDOW'
+                ? '#94c864'
+                : '#ffffff'
+            return (
+              <div
+                key={p.label}
                 style={{
-                  color: 'var(--cyan)',
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
-                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: 8,
+                  fontFamily: FONT_MONO,
+                  fontSize: 12,
+                  minWidth: 0,
                 }}
               >
-                {p.label}
-              </span>
-              <span style={{ color: 'var(--text-body)' }}>{p.text}</span>
-            </div>
-          ))}
+                <span
+                  style={{
+                    color: labelColor,
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                    flexShrink: 0,
+                  }}
+                >
+                  {p.label}
+                </span>
+                <span style={{ color: 'var(--text-body)' }}>{p.text}</span>
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -483,16 +496,29 @@ export default function StatusBoard({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <span
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              background: verdict.color,
-              boxShadow: `0 0 8px ${verdict.color}`,
-              flexShrink: 0,
-            }}
-          />
+          {(() => {
+            // Bullet uses a semantic colour rather than the verdict's display
+            // cyan, so the dot reads as severity at a glance:
+            // GREEN/ALL CLEAR → lime, AMBER/HIGH PRESSURE → amber, RED → red.
+            const dotColor =
+              overall === 'GREEN'
+                ? '#94c864'
+                : overall === 'RED'
+                ? '#ff4d6d'
+                : '#d4a853'
+            return (
+              <span
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  background: dotColor,
+                  boxShadow: `0 0 8px ${dotColor}`,
+                  flexShrink: 0,
+                }}
+              />
+            )
+          })()}
           <div>
             <div
               style={{
@@ -536,16 +562,12 @@ export default function StatusBoard({
                 color:
                   scanState === 'error'
                     ? '#ff4d6d'
-                    : scanState === 'complete'
-                    ? '#94c864'
-                    : scanState === 'idle'
-                    ? '#94c864'
-                    : 'var(--text-muted)',
+                    : 'rgba(255,255,255,0.7)',
                 background: 'transparent',
                 border: `1px solid ${
                   scanState === 'error'
                     ? 'rgba(255,77,109,0.4)'
-                    : 'rgba(148,200,100,0.4)'
+                    : 'rgba(255,255,255,0.15)'
                 }`,
                 borderRadius: 5,
                 padding: '7px 12px',
@@ -556,7 +578,42 @@ export default function StatusBoard({
               {scanLabel}
             </button>
           )}
-          {onAskIntel && <AskIntelButton onClick={askIntel} />}
+          {onAskIntel && (
+            // Local copy of AskIntelButton, restyled white-on-transparent so
+            // the in-StatusBoard pair (SCAN NOW + ASK C0INSIGLIERI) reads as a
+            // quiet action cluster instead of a coloured CTA grid.
+            <button
+              onClick={askIntel}
+              title="Ask C0insiglieri about this section"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.7)',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 6,
+                padding: '7px 13px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'
+                e.currentTarget.style.color = '#ffffff'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
+                e.currentTarget.style.color = 'rgba(255,255,255,0.7)'
+              }}
+            >
+              <span style={{ fontSize: 12 }}>⬡</span> Ask C0insiglieri
+            </button>
+          )}
           <button
             onClick={onDismiss}
             style={{

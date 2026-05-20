@@ -660,7 +660,7 @@ export default function App() {
           stat pills (FIELD / PRESSURE / T1 GAPS / WINDOW). Independent of
           scan state and radar visibility. */}
       <div style={{
-        padding: '28px 32px 22px 32px',
+        padding: '52px 32px 22px 32px',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         marginBottom: '0',
       }}>

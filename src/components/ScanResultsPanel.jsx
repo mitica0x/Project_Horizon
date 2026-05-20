@@ -3249,6 +3249,229 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           )}
         </div>
 
+        {/* ─── Section 4 — "vs last scan" expandable diff row ────────────── */}
+        <div>
+          {/* Inline diff panel — slides up directly above the bar */}
+          <div
+            style={{
+              maxHeight: diffOpen ? 2600 : 0,
+              opacity: diffOpen ? 1 : 0,
+              overflow: 'hidden',
+              borderTop: diffOpen ? `1px solid ${HZ.border}` : '1px solid transparent',
+              transition:
+                'max-height 0.45s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease, border-color 0.3s ease',
+            }}
+            aria-hidden={!diffOpen}
+          >
+            <div
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
+              {scanDiff.hasPrevious ? (
+                (() => {
+                  const TABS = [
+                    { id: 'score', label: 'SCORE' },
+                    { id: 'gaps', label: 'GAPS' },
+                    { id: 'wins', label: 'WINS' },
+                    { id: 'alerts', label: 'ALERTS' },
+                    { id: 'competitors', label: 'COMPETITORS' },
+                  ]
+                  const activeTab = diffTab || 'gaps'
+                  const tabPillStyle = (isActive) => ({
+                    padding: '6px 14px',
+                    fontSize: 11,
+                    fontFamily: FONT_MONO,
+                    letterSpacing: '0.08em',
+                    fontWeight: isActive ? 600 : 400,
+                    color: isActive ? 'var(--cyan)' : 'var(--text-muted)',
+                    background: isActive ? 'rgba(0, 212, 232, 0.08)' : 'transparent',
+                    border: isActive
+                      ? '1px solid rgba(0,212,232,0.25)'
+                      : '1px solid transparent',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  })
+                  const renderSection = (id) => {
+                    const sec = diffSectionsById[id]
+                    if (!sec) return null
+                    return (
+                      <DiffSection key={id} section={sec} staticOpen open onToggle={() => {}} />
+                    )
+                  }
+                  return (
+                    <>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 4,
+                          padding: '12px 16px 0',
+                          borderBottom: '1px solid rgba(255,255,255,0.06)',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        {TABS.map((tab) => {
+                          const isActive = activeTab === tab.id
+                          const count = diffTabCounts[tab.id] || 0
+                          return (
+                            <button
+                              key={tab.id}
+                              onClick={() => setDiffTab(tab.id)}
+                              style={tabPillStyle(isActive)}
+                            >
+                              {tab.label}
+                              {count > 0 && (
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    background: isActive
+                                      ? 'var(--cyan)'
+                                      : 'rgba(255,255,255,0.15)',
+                                    color: isActive ? '#0a0e1a' : 'var(--text-muted)',
+                                    borderRadius: 10,
+                                    padding: '1px 6px',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {count}
+                                </span>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <div
+                        style={{
+                          padding: 16,
+                          minHeight: 120,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 18,
+                        }}
+                      >
+                        {activeTab === 'score' && renderSection('score')}
+                        {activeTab === 'gaps' && (
+                          <>
+                            {renderSection('opened')}
+                            {renderSection('resolved')}
+                          </>
+                        )}
+                        {activeTab === 'wins' && renderSection('wins')}
+                        {activeTab === 'alerts' && renderSection('alerts')}
+                        {activeTab === 'competitors' && renderSection('competitors')}
+                      </div>
+                    </>
+                  )
+                })()
+              ) : (
+                <div
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: 10,
+                    padding: '14px 16px',
+                    margin: '16px 24px',
+                    color: HZ.muted,
+                  }}
+                >
+                  First scan — no previous data to compare.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Clickable summary bar — bright section header with cyan accent.
+              Shows summary badge ("+3 gaps · 1 win") while collapsed so the
+              content inside is legible before clicking. */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-expanded={diffOpen}
+            aria-label="Toggle diff vs last scan"
+            onClick={() => setDiffOpen((o) => !o)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setDiffOpen((o) => !o)
+              }
+            }}
+            onMouseEnter={() => setBarHover(true)}
+            onMouseLeave={() => setBarHover(false)}
+            style={{
+              borderTop: `1px solid ${HZ.border}`,
+              borderLeft: '3px solid var(--cyan)',
+              padding: '14px 24px 14px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+              cursor: 'pointer',
+              background: barHover ? HZ.elevated : 'transparent',
+              transition: 'background 0.15s',
+              userSelect: 'none',
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontFamily: FONT_MONO,
+                  letterSpacing: '0.12em',
+                  fontWeight: 600,
+                  color: '#c8d0dc',
+                  textTransform: 'uppercase',
+                }}
+              >
+                VS LAST SCAN
+              </span>
+              {!diffOpen && diffSummaryBadge && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--text-muted)',
+                    fontFamily: FONT_MONO,
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  {diffSummaryBadge}
+                </span>
+              )}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {scanData.scoreDelta != null && (
+                <DeltaChip label="SCORE" delta={scanData.scoreDelta} positiveIsGood />
+              )}
+              {scanData.tier1GapsDelta != null && (
+                <DeltaChip label="GAPS" delta={scanData.tier1GapsDelta} positiveIsGood={false} />
+              )}
+              {scanData.winsDelta != null && (
+                <DeltaChip label="WINS" delta={scanData.winsDelta} positiveIsGood />
+              )}
+              {scanData.alertsDelta != null && (
+                <DeltaChip label="ALERTS" delta={scanData.alertsDelta} positiveIsGood={false} />
+              )}
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginLeft: 4,
+                  color: HZ.muted,
+                }}
+              >
+                <ChevronIcon open={diffOpen} />
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* COMPETITOR THREAT RANKING — full width, mt 16 */}
         <div
           style={{
@@ -3431,229 +3654,6 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
               )}
             </>
           )}
-        </div>
-      </div>
-
-      {/* ─── Section 4 — "vs last scan" expandable diff row ────────────── */}
-      <div>
-        {/* Inline diff panel — slides up directly above the bar */}
-        <div
-          style={{
-            maxHeight: diffOpen ? 2600 : 0,
-            opacity: diffOpen ? 1 : 0,
-            overflow: 'hidden',
-            borderTop: diffOpen ? `1px solid ${HZ.border}` : '1px solid transparent',
-            transition:
-              'max-height 0.45s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease, border-color 0.3s ease',
-          }}
-          aria-hidden={!diffOpen}
-        >
-          <div
-            style={{
-              fontFamily: FONT_MONO,
-              fontSize: 12,
-              lineHeight: 1.5,
-            }}
-          >
-            {scanDiff.hasPrevious ? (
-              (() => {
-                const TABS = [
-                  { id: 'score', label: 'SCORE' },
-                  { id: 'gaps', label: 'GAPS' },
-                  { id: 'wins', label: 'WINS' },
-                  { id: 'alerts', label: 'ALERTS' },
-                  { id: 'competitors', label: 'COMPETITORS' },
-                ]
-                const activeTab = diffTab || 'gaps'
-                const tabPillStyle = (isActive) => ({
-                  padding: '6px 14px',
-                  fontSize: 11,
-                  fontFamily: FONT_MONO,
-                  letterSpacing: '0.08em',
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? 'var(--cyan)' : 'var(--text-muted)',
-                  background: isActive ? 'rgba(0, 212, 232, 0.08)' : 'transparent',
-                  border: isActive
-                    ? '1px solid rgba(0,212,232,0.25)'
-                    : '1px solid transparent',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                })
-                const renderSection = (id) => {
-                  const sec = diffSectionsById[id]
-                  if (!sec) return null
-                  return (
-                    <DiffSection key={id} section={sec} staticOpen open onToggle={() => {}} />
-                  )
-                }
-                return (
-                  <>
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: 4,
-                        padding: '12px 16px 0',
-                        borderBottom: '1px solid rgba(255,255,255,0.06)',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      {TABS.map((tab) => {
-                        const isActive = activeTab === tab.id
-                        const count = diffTabCounts[tab.id] || 0
-                        return (
-                          <button
-                            key={tab.id}
-                            onClick={() => setDiffTab(tab.id)}
-                            style={tabPillStyle(isActive)}
-                          >
-                            {tab.label}
-                            {count > 0 && (
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  background: isActive
-                                    ? 'var(--cyan)'
-                                    : 'rgba(255,255,255,0.15)',
-                                  color: isActive ? '#0a0e1a' : 'var(--text-muted)',
-                                  borderRadius: 10,
-                                  padding: '1px 6px',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                {count}
-                              </span>
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    <div
-                      style={{
-                        padding: 16,
-                        minHeight: 120,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 18,
-                      }}
-                    >
-                      {activeTab === 'score' && renderSection('score')}
-                      {activeTab === 'gaps' && (
-                        <>
-                          {renderSection('opened')}
-                          {renderSection('resolved')}
-                        </>
-                      )}
-                      {activeTab === 'wins' && renderSection('wins')}
-                      {activeTab === 'alerts' && renderSection('alerts')}
-                      {activeTab === 'competitors' && renderSection('competitors')}
-                    </div>
-                  </>
-                )
-              })()
-            ) : (
-              <div
-                style={{
-                  background: 'var(--bg-card)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderRadius: 10,
-                  padding: '14px 16px',
-                  margin: '16px 24px',
-                  color: HZ.muted,
-                }}
-              >
-                First scan — no previous data to compare.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Clickable summary bar — bright section header with cyan accent.
-            Shows summary badge ("+3 gaps · 1 win") while collapsed so the
-            content inside is legible before clicking. */}
-        <div
-          role="button"
-          tabIndex={0}
-          aria-expanded={diffOpen}
-          aria-label="Toggle diff vs last scan"
-          onClick={() => setDiffOpen((o) => !o)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              setDiffOpen((o) => !o)
-            }
-          }}
-          onMouseEnter={() => setBarHover(true)}
-          onMouseLeave={() => setBarHover(false)}
-          style={{
-            borderTop: `1px solid ${HZ.border}`,
-            borderLeft: '3px solid var(--cyan)',
-            padding: '14px 24px 14px 12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-            flexWrap: 'wrap',
-            cursor: 'pointer',
-            background: barHover ? HZ.elevated : 'transparent',
-            transition: 'background 0.15s',
-            userSelect: 'none',
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span
-              style={{
-                fontSize: 11,
-                fontFamily: FONT_MONO,
-                letterSpacing: '0.12em',
-                fontWeight: 600,
-                color: '#c8d0dc',
-                textTransform: 'uppercase',
-              }}
-            >
-              VS LAST SCAN
-            </span>
-            {!diffOpen && diffSummaryBadge && (
-              <span
-                style={{
-                  fontSize: 10,
-                  color: 'var(--text-muted)',
-                  fontFamily: FONT_MONO,
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {diffSummaryBadge}
-              </span>
-            )}
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {scanData.scoreDelta != null && (
-              <DeltaChip label="SCORE" delta={scanData.scoreDelta} positiveIsGood />
-            )}
-            {scanData.tier1GapsDelta != null && (
-              <DeltaChip label="GAPS" delta={scanData.tier1GapsDelta} positiveIsGood={false} />
-            )}
-            {scanData.winsDelta != null && (
-              <DeltaChip label="WINS" delta={scanData.winsDelta} positiveIsGood />
-            )}
-            {scanData.alertsDelta != null && (
-              <DeltaChip label="ALERTS" delta={scanData.alertsDelta} positiveIsGood={false} />
-            )}
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginLeft: 4,
-                color: HZ.muted,
-              }}
-            >
-              <ChevronIcon open={diffOpen} />
-            </span>
-          </div>
         </div>
       </div>
 
