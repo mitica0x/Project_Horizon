@@ -610,15 +610,17 @@ function oppColor(opp) {
   return '#00d4e8' // cyan
 }
 
-// Restored 5-stop threat scale — used by COMPETITOR THREAT RANKING bars.
+// 7-stop threat scale — purple at the top, muted grey at the bottom.
 function getThreatColor(score, maxScore) {
-  const r = maxScore > 0 ? score / maxScore : 0
   if (score === 0) return null
-  if (r < 0.15) return '#7B5EA7'
-  if (r < 0.35) return '#9B6FC7'
-  if (r < 0.55) return '#D4A853'
-  if (r < 0.75) return '#00d4e8'
-  return '#60a5fa'
+  const r = maxScore > 0 ? score / maxScore : 0
+  if (r >= 0.85) return '#9B6FC7'
+  if (r >= 0.70) return '#7B5EA7'
+  if (r >= 0.55) return '#00d4e8'
+  if (r >= 0.40) return '#00c4a0'
+  if (r >= 0.25) return '#D4A853'
+  if (r >= 0.10) return '#b8863a'
+  return '#8892a4'
 }
 
 // Live competitor shape (from App.jsx transformScan):
@@ -3095,7 +3097,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{
-                                color: '#00d4e8',
+                                color: '#ffffff',
                                 textDecoration: 'underline',
                                 cursor: 'pointer',
                               }}
