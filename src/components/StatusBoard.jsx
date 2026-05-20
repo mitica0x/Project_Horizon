@@ -11,8 +11,6 @@ import { GAPS_T1, TABLE_DATA } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
 import { Card, RagDot, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 import SignalPanel, { VERDICT } from './SignalPanel'
-import CompetitorChart from './CompetitorChart'
-import CustomCompetitors from './CustomCompetitors'
 import SiteTable from './SiteTable'
 
 // P2 — Morning Status Board. 90-second daily briefing. Verdict reframed:
@@ -34,14 +32,11 @@ export default function StatusBoard({
   onOpenCompetitorPanel,
 }) {
   const [signalOpen, setSignalOpen] = useState(false)
-  // Unified intelligence section — COMPETITORS / ALL URLS are tabs, collapsed
-  // by default, modeled on HistoryPanel's tab pattern.
+  // Intelligence section — All URLs only; competitor ranking lives in
+  // ScanResultsPanel. Collapsed by default; chevron toggles the body.
   const [intelOpen, setIntelOpen] = useState(false)
-  const [intelTab, setIntelTab] = useState('competitors')
   const [addUrlOpen, setAddUrlOpen] = useState(false)
   const [addUrlValue, setAddUrlValue] = useState('')
-  const [addCompetitorOpen, setAddCompetitorOpen] = useState(false)
-  const [addCompetitorValue, setAddCompetitorValue] = useState('')
 
   // Banner gate: hide whenever ANY data is populating the UI. The seeded
   // table/gap data is what the user actually sees, so an empty notice while
@@ -64,24 +59,6 @@ export default function StatusBoard({
   const suggestCandidateUrls = () => {
     if (!onAskQuestion) return
     onAskQuestion('Which URLs should we add to tracking to close our biggest coverage gaps?')
-  }
-
-  const submitAddCompetitor = () => {
-    const name = addCompetitorValue.trim()
-    if (!name || !onAskQuestion) return
-    onAskQuestion(`Please add this competitor to tracking: ${name}`)
-    setAddCompetitorValue('')
-    setAddCompetitorOpen(false)
-  }
-
-  const suggestCompetitors = () => {
-    if (!onAskQuestion) return
-    onAskQuestion('Which competitors should we add to tracking based on current market presence and our gap data?')
-  }
-
-  const activateTab = (next) => {
-    setIntelTab(next)
-    if (!intelOpen) setIntelOpen(true)
   }
 
   const scanLabel =
@@ -636,37 +613,10 @@ export default function StatusBoard({
         )
       })()}
 
-      {/* INTELLIGENCE — unified tabbed section. Mirrors HistoryPanel's
-          DECISIONS / OUTCOMES pattern (active=cyan, inactive=muted). Collapsed
-          by default; chevron on the far right toggles the body. Per-tab
-          contextual action buttons sit between the section label and the tabs. */}
+      {/* INTELLIGENCE — All URLs only. Competitor ranking has moved to
+          ScanResultsPanel; this section is now a single non-tabbed pane.
+          Collapsed by default; chevron on the far right toggles the body. */}
       {(() => {
-        const tabActive = {
-          fontFamily: FONT_MONO,
-          fontSize: 11,
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          padding: '6px 14px',
-          borderRadius: 4,
-          border: '1px solid var(--cyan)',
-          background: 'rgba(0,212,232,0.1)',
-          color: 'var(--cyan)',
-          cursor: 'pointer',
-          flexShrink: 0,
-        }
-        const tabInactive = {
-          fontFamily: FONT_MONO,
-          fontSize: 11,
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          padding: '6px 14px',
-          borderRadius: 4,
-          border: '1px solid rgba(255,255,255,0.08)',
-          background: 'transparent',
-          color: 'var(--text-muted)',
-          cursor: 'pointer',
-          flexShrink: 0,
-        }
         const ghostBtn = {
           fontFamily: FONT_MONO,
           fontSize: 10,
@@ -716,93 +666,42 @@ export default function StatusBoard({
                   marginRight: 6,
                 }}
               >
-                INTELLIGENCE
+                INTELLIGENCE — ALL URLS
               </span>
 
-              {intelTab === 'competitors' ? (
-                <>
-                  <button
-                    onClick={e => { stop(e); setAddCompetitorOpen(o => !o); if (!intelOpen) setIntelOpen(true) }}
-                    style={{
-                      ...ghostBtn,
-                      color: addCompetitorOpen ? 'var(--cyan)' : 'var(--text-muted)',
-                      borderColor: addCompetitorOpen ? 'rgba(0,212,232,0.4)' : 'var(--border)',
-                    }}
-                  >
-                    + Add Competitor
-                  </button>
-                  <button
-                    onClick={e => { stop(e); suggestCompetitors() }}
-                    disabled={!onAskQuestion}
-                    style={{
-                      ...ghostBtn,
-                      color: onAskQuestion ? 'var(--text-muted)' : 'var(--border)',
-                      cursor: onAskQuestion ? 'pointer' : 'default',
-                    }}
-                    onMouseEnter={e => {
-                      if (!onAskQuestion) return
-                      e.currentTarget.style.color = '#c8d0dc'
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'
-                    }}
-                    onMouseLeave={e => {
-                      if (!onAskQuestion) return
-                      e.currentTarget.style.color = 'var(--text-muted)'
-                      e.currentTarget.style.borderColor = 'var(--border)'
-                    }}
-                  >
-                    Suggest Competitors
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={e => { stop(e); setAddUrlOpen(o => !o); if (!intelOpen) setIntelOpen(true) }}
-                    style={{
-                      ...ghostBtn,
-                      color: addUrlOpen ? 'var(--cyan)' : 'var(--text-muted)',
-                      borderColor: addUrlOpen ? 'rgba(0,212,232,0.4)' : 'var(--border)',
-                    }}
-                  >
-                    + Add URL
-                  </button>
-                  <button
-                    onClick={e => { stop(e); suggestCandidateUrls() }}
-                    disabled={!onAskQuestion}
-                    style={{
-                      ...ghostBtn,
-                      color: onAskQuestion ? 'var(--text-muted)' : 'var(--border)',
-                      cursor: onAskQuestion ? 'pointer' : 'default',
-                    }}
-                    onMouseEnter={e => {
-                      if (!onAskQuestion) return
-                      e.currentTarget.style.color = '#c8d0dc'
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'
-                    }}
-                    onMouseLeave={e => {
-                      if (!onAskQuestion) return
-                      e.currentTarget.style.color = 'var(--text-muted)'
-                      e.currentTarget.style.borderColor = 'var(--border)'
-                    }}
-                  >
-                    Suggest Candidate URLs
-                  </button>
-                </>
-              )}
+              <button
+                onClick={e => { stop(e); setAddUrlOpen(o => !o); if (!intelOpen) setIntelOpen(true) }}
+                style={{
+                  ...ghostBtn,
+                  color: addUrlOpen ? 'var(--cyan)' : 'var(--text-muted)',
+                  borderColor: addUrlOpen ? 'rgba(0,212,232,0.4)' : 'var(--border)',
+                }}
+              >
+                + Add URL
+              </button>
+              <button
+                onClick={e => { stop(e); suggestCandidateUrls() }}
+                disabled={!onAskQuestion}
+                style={{
+                  ...ghostBtn,
+                  color: onAskQuestion ? 'var(--text-muted)' : 'var(--border)',
+                  cursor: onAskQuestion ? 'pointer' : 'default',
+                }}
+                onMouseEnter={e => {
+                  if (!onAskQuestion) return
+                  e.currentTarget.style.color = '#c8d0dc'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'
+                }}
+                onMouseLeave={e => {
+                  if (!onAskQuestion) return
+                  e.currentTarget.style.color = 'var(--text-muted)'
+                  e.currentTarget.style.borderColor = 'var(--border)'
+                }}
+              >
+                Suggest Candidate URLs
+              </button>
 
               <span style={{ flex: 1 }} />
-
-              <button
-                onClick={e => { stop(e); activateTab('competitors') }}
-                style={intelTab === 'competitors' ? tabActive : tabInactive}
-              >
-                Competitors
-              </button>
-              <button
-                onClick={e => { stop(e); activateTab('urls') }}
-                style={intelTab === 'urls' ? tabActive : tabInactive}
-              >
-                All URLs
-              </button>
 
               <svg
                 width="14"
@@ -822,54 +721,7 @@ export default function StatusBoard({
               </svg>
             </div>
 
-            {intelOpen && intelTab === 'competitors' && addCompetitorOpen && (
-              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  type="text"
-                  placeholder="Competitor name (e.g. Kraken)"
-                  value={addCompetitorValue}
-                  onChange={e => setAddCompetitorValue(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      submitAddCompetitor()
-                    }
-                  }}
-                  style={{
-                    flex: 1,
-                    fontFamily: FONT_MONO,
-                    fontSize: 12,
-                    color: '#ffffff',
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 5,
-                    padding: '8px 10px',
-                    outline: 'none',
-                  }}
-                />
-                <button
-                  onClick={submitAddCompetitor}
-                  disabled={!addCompetitorValue.trim() || !onAskQuestion}
-                  style={{
-                    fontFamily: FONT_MONO,
-                    fontSize: 10,
-                    letterSpacing: '0.1em',
-                    textTransform: 'uppercase',
-                    color: '#94c864',
-                    background: 'transparent',
-                    border: '1px solid rgba(148,200,100,0.4)',
-                    borderRadius: 5,
-                    padding: '7px 12px',
-                    cursor: addCompetitorValue.trim() && onAskQuestion ? 'pointer' : 'default',
-                    opacity: addCompetitorValue.trim() && onAskQuestion ? 1 : 0.4,
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-            )}
-
-            {intelOpen && intelTab === 'urls' && addUrlOpen && (
+            {intelOpen && addUrlOpen && (
               <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
                 <input
                   type="url"
@@ -918,18 +770,7 @@ export default function StatusBoard({
 
             {intelOpen && (
               <div style={{ marginTop: 16 }}>
-                {intelTab === 'competitors' ? (
-                  <>
-                    <CustomCompetitors />
-                    <CompetitorChart
-                      liveCompetitors={liveCompetitors}
-                      liveCoverage={liveCoverage}
-                      onOpenPanel={onOpenCompetitorPanel}
-                    />
-                  </>
-                ) : (
-                  <SiteTable openWithQuestion={q => onAskIntel(q, { chips: [q] })} />
-                )}
+                <SiteTable openWithQuestion={q => onAskIntel(q, { chips: [q] })} />
               </div>
             )}
           </>
