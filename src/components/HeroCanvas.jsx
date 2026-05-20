@@ -41,8 +41,8 @@ function blipXY(angle, r) {
 // "active scan" = backend agent currently running. complete/error/idle don't get the in-flight visual treatment.
 const isActivelyScanning = (s) => s === 'sentry' || s === 'mirror' || s === 'herald';
 
-const SWEEP_BG_IDLE = 'conic-gradient(from 0deg, transparent 0deg, rgba(0,212,232,0.18) 0deg, transparent 70deg)';
-const SWEEP_BG_SCAN = 'conic-gradient(from 0deg, transparent 0deg, rgba(0,212,232,0.45) 0deg, transparent 70deg)';
+const SWEEP_BG_IDLE = 'conic-gradient(from 0deg, transparent 0deg, rgba(0,212,232,0.07) 0deg, transparent 70deg)';
+const SWEEP_BG_SCAN = 'conic-gradient(from 0deg, transparent 0deg, rgba(212,168,83,0.55) 0deg, transparent 70deg)';
 
 export default function HeroCanvas({ scanState = 'idle', targetScore, metrics } = {}) {
   // Real EU-presence score / metrics when scan data exists; seeded otherwise.

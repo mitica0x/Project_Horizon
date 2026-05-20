@@ -73,6 +73,10 @@ export default function StatusBoard({
       : '⟳ Scanning…'
   const { signals, overall, updatedAt } = useMemo(() => getDayStatus(), [])
   const verdict = statusVerdict(overall)
+  // Field pressure (0-100) and T1 gap count — surfaced for the hero stats bar
+  // at the top of the board so the four pills always show real numbers.
+  const fieldStatus = useMemo(() => assessCompetitors(), [])
+  const t1GapCount = (GAPS_T1 || []).length
 
   // SIGNAL bar — uses the hoisted computeSignal() from horizonData.
   const sig = useMemo(() => computeSignal(), [])
@@ -196,6 +200,45 @@ export default function StatusBoard({
 
   return (
     <Card style={{ padding: '22px 28px' }}>
+      {/* Hero — title + four-stat bar. Sits above the SIGNAL panel and frames
+          the rest of the morning briefing. */}
+      <div style={{
+        padding: '24px 0 20px 0',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        marginBottom: '20px',
+      }}>
+        <div style={{
+          fontSize: '28px',
+          fontWeight: 700,
+          color: '#ffffff',
+          lineHeight: 1.2,
+          marginBottom: '16px',
+          letterSpacing: '-0.01em',
+        }}>
+          Market intelligence.<br />
+          <span style={{ color: '#00d4e8' }}>In 90 seconds.</span>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {[
+            { label: 'FIELD',    value: verdict.label,                color: overall === 'GREEN' ? '#94c864' : '#d4a853' },
+            { label: 'PRESSURE', value: `${fieldStatus.pressure}/100`, color: '#d4a853' },
+            { label: 'T1 GAPS',  value: String(t1GapCount),            color: '#d4a853' },
+            { label: 'WINDOW',   value: '14 DAYS',                     color: '#94c864' },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{
+              flex: 1,
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: '3px',
+              padding: '10px 12px',
+            }}>
+              <div style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>{label}</div>
+              <div style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 700, color }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* SIGNAL — collapsible inline panel header */}
       <button
         onClick={() => setSignalOpen(o => !o)}

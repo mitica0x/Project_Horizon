@@ -217,6 +217,7 @@ export default function App() {
   const [historyTab, setHistoryTab] = useState('decisions')
   const [novaOpen, setNovaOpen] = useState(false)
   const dayStatus = useState(() => getDayStatus().overall)[0]
+  const [radarOpen, setRadarOpen] = useState(false)
   const [scanProgress, setScanProgress] = useState(null)
   // Increments every time a scan completes so the scroll-to-results effect
   // refires even when scanResultsVisible was already true (back-to-back
@@ -320,6 +321,7 @@ export default function App() {
 
   const runScan = useCallback(async () => {
     if (scanState !== 'idle') return
+    setRadarOpen(true)
     const orgId = getActiveOrgId()
     if (!orgId) {
       setScanState('error')
@@ -397,6 +399,7 @@ export default function App() {
       setScanResultsVisible(true)
       setScanRevealTick((t) => t + 1)
       setScanState('complete')
+      setTimeout(() => setRadarOpen(false), 2800)
       setScanProgress(
         `Scan complete — ${data.sitesChecked} sites checked, ` +
           `${data.gaps.length} gaps found, ${data.wins} wins confirmed`,
@@ -423,6 +426,7 @@ export default function App() {
   // real scan emits — 'sentry' / 'mirror' / 'herald'. We use 'sentry' here
   // so the same animation fires (there's no literal 'scanning' state).
   const loadMockScan = useCallback(() => {
+    setRadarOpen(true)
     // Cancel any pending mock injection so rapid T-presses don't stack
     // timers and inject twice.
     if (mockScanTimerRef.current) {
@@ -456,6 +460,7 @@ export default function App() {
           setScanResultsVisible(true)
           setScanRevealTick((t) => t + 1)
           setScanState('idle')
+          setTimeout(() => setRadarOpen(false), 2800)
           mockScanTimerRef.current = null
         }, 2200)
       },
@@ -643,18 +648,28 @@ export default function App() {
 
       {view === 'dashboard' ? (
       <div className="hz-shell">
-      <HeroCanvas
-        scanState={scanState}
-        targetScore={dash?.euScore}
-        metrics={
-          dash && {
-            sitesMonitored: dash.sitesMonitored,
-            bybitPresent: dash.bybitPresent,
-            tier1Gaps: dash.tier1Gaps,
-            brandAlerts: dash.brandAlerts,
+      <div
+        style={{
+          overflow: 'hidden',
+          maxHeight: radarOpen ? '820px' : '0px',
+          opacity: radarOpen ? 1 : 0,
+          transition: 'max-height 0.55s cubic-bezier(0.4,0,0.2,1), opacity 0.45s ease',
+          pointerEvents: radarOpen ? 'auto' : 'none',
+        }}
+      >
+        <HeroCanvas
+          scanState={scanState}
+          targetScore={dash?.euScore}
+          metrics={
+            dash && {
+              sitesMonitored: dash.sitesMonitored,
+              bybitPresent: dash.bybitPresent,
+              tier1Gaps: dash.tier1Gaps,
+              brandAlerts: dash.brandAlerts,
+            }
           }
-        }
-      />
+        />
+      </div>
       <ScanResultsPanel
         ref={scanResultsPanelRef}
         visible={scanResultsVisible}
