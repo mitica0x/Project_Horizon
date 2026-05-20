@@ -20,6 +20,7 @@ import HorizonView from './components/HorizonView'
 import Nova from './components/Nova'
 import { getDayStatus } from './utils/horizonData'
 import { supabase, getActiveOrgId } from './lib/supabase'
+import { MOCK_SCAN, MOCK_PREV_SNAPSHOT, SNAPSHOT_KEY as MOCK_SNAPSHOT_KEY } from './fixtures/mockScan'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -391,11 +392,30 @@ export default function App() {
     }
   }, [scanState])
 
-  // T-key scan shortcut. Listener re-registers when runScan identity changes
-  // (useCallback dep on scanState) so the closure always sees the latest gate.
+  // T-key shortcut: injects a local mock fixture into frontend state. No
+  // network call, no scanState transitions, no polling — purely a UI test
+  // harness. The real scan stays gated behind SCAN NOW (sidebar / status
+  // board), which calls runScan above.
+  const loadMockScan = useCallback(() => {
+    // Seed the prior-scan snapshot ScanResultsPanel reads from localStorage
+    // so VS LAST SCAN renders deterministic deltas (+4 score, +1 gap, +2
+    // wins, +1 alert) instead of synthesising them from seedPriorSnapshot.
+    try {
+      localStorage.setItem(MOCK_SNAPSHOT_KEY, JSON.stringify(MOCK_PREV_SNAPSHOT))
+    } catch { /* localStorage unavailable — diff still works in-memory */ }
+    const data = transformScan(MOCK_SCAN)
+    // transformScan hard-codes brandAlerts to 0 at the top level (the live
+    // dashboard reads dashboard.brandAlerts which IS derived). For the
+    // VS LAST SCAN alert delta to fire, surface the dashboard count here.
+    data.brandAlerts = data.dashboard?.brandAlerts ?? 0
+    setScanData(data)
+    setScanResultsVisible(true)
+  }, [])
+
+  // T-key shortcut listener. Re-registers when loadMockScan identity changes
+  // (stable via useCallback so this effectively runs once).
   useEffect(() => {
     const handleKey = (e) => {
-      console.log('[T-KEY] keydown fired:', e.key, 'active:', document.activeElement?.tagName)
       if (e.key !== 't' && e.key !== 'T') return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       const ae = document.activeElement
@@ -404,11 +424,11 @@ export default function App() {
       // null active element) is fine.
       if (tag === 'input' || tag === 'textarea' || ae?.isContentEditable) return
       e.preventDefault()
-      runScan()
+      loadMockScan()
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [runScan])
+  }, [loadMockScan])
 
   const SCAN_LABELS = {
     idle:     '⟳ Scan Now',
