@@ -218,6 +218,10 @@ export default function App() {
   const [novaOpen, setNovaOpen] = useState(false)
   const dayStatus = useState(() => getDayStatus().overall)[0]
   const [scanProgress, setScanProgress] = useState(null)
+  // Increments every time a scan completes so the scroll-to-results effect
+  // refires even when scanResultsVisible was already true (back-to-back
+  // scans without closing the panel in between).
+  const [scanRevealTick, setScanRevealTick] = useState(0)
   const [marketMoves, setMarketMoves] = useState(null)
 
   // On load: pull the latest real scan + market moves for this org so the
@@ -391,6 +395,7 @@ export default function App() {
       const data = transformScan(payload)
       setScanData(data)
       setScanResultsVisible(true)
+      setScanRevealTick((t) => t + 1)
       setScanState('complete')
       setScanProgress(
         `Scan complete — ${data.sitesChecked} sites checked, ` +
@@ -449,6 +454,7 @@ export default function App() {
           data.brandAlerts = data.dashboard?.brandAlerts ?? 0
           setScanData(data)
           setScanResultsVisible(true)
+          setScanRevealTick((t) => t + 1)
           setScanState('idle')
           mockScanTimerRef.current = null
         }, 2200)
@@ -474,15 +480,17 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [loadMockScan])
 
-  // Scroll the user down to the results panel as soon as it becomes visible.
-  // Shared by runScan and loadMockScan — both trip scanResultsVisible → true
-  // at the end of their flow, so this single effect handles both paths
-  // identically. 300ms delay lets the panel's enter animation start before
-  // we scroll, so the header arrives at the offset already rendered.
+  // Scroll the user down to the results panel after every completed scan.
+  // Keyed on a tick counter (not on scanResultsVisible) so back-to-back scans
+  // refire even when the panel was already visible — setScanResultsVisible(true)
+  // is a no-op in that case, but bumping the tick is not.
+  // 300ms delay lets the panel's enter animation start before we scroll, so
+  // the header arrives at the offset already rendered.
   useEffect(() => {
-    if (!scanResultsVisible) return
+    if (scanRevealTick === 0) return
     const t = setTimeout(() => {
-      if (!document.getElementById('scan-results-panel')) return
+      const el = document.getElementById('scan-results-panel')
+      if (!el) return
       gsap.to(window, {
         duration: 0.8,
         scrollTo: { y: '#scan-results-panel', offsetY: 48 },
@@ -490,7 +498,7 @@ export default function App() {
       })
     }, 300)
     return () => clearTimeout(t)
-  }, [scanResultsVisible])
+  }, [scanRevealTick])
 
   const SCAN_LABELS = {
     idle:     '⟳ Scan Now',
