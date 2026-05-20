@@ -61,11 +61,11 @@ function EventCard({ event, verdict, constraints, dismissed, detected, onDismiss
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px',
+        display: 'flex', flexDirection: 'column', gap: 10, padding: 16,
         background: hover ? 'rgba(255,255,255,0.03)' : 'var(--bg-card)',
-        border: `1px solid ${detected ? 'var(--amber)' : 'rgba(255,255,255,0.07)'}`,
-        borderLeft: detected ? '3px solid var(--amber)' : '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 6, opacity: dismissed ? 0.35 : 1,
+        border: `1px solid ${detected ? 'var(--amber)' : 'rgba(255,255,255,0.06)'}`,
+        borderLeft: detected ? '3px solid var(--amber)' : '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 8, opacity: dismissed ? 0.35 : 1,
         transition: 'background 0.15s',
       }}
     >
@@ -247,7 +247,7 @@ export default function EventsSection({ orgId }) {
         [...grouped.entries()].map(([month, events]) => (
           <div key={month} style={{ marginBottom:28 }}>
             <div style={{ ...mono, fontSize:11, color:'var(--cyan)', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:10 }}>{month}</div>
-            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:16 }}>
               {events.map(event => (
                 <EventCard
                   key={event.id}

@@ -525,85 +525,95 @@ export default function StatusBoard({
         ))}
       </div>
 
-      {/* ── S6 intelligence layer ───────────────────────────────────────── */}
-      {[
-        { label: `WHY TODAY IS ${verdict.label}`, lines: intel.why },
-        { label: 'RECOMMENDED ACTIONS TODAY', actions: intel.actions },
-        { label: 'SINCE YESTERDAY', lines: intel.since },
-      ].map(sec => (
-        <div
-          key={sec.label}
-          style={{
-            marginTop: 20,
-            paddingTop: 18,
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
+      {/* ── S6 intelligence layer ───────────────────────────────────────────
+          2-col grid: WHY + RECOMMENDED ACTIONS sit side-by-side; SINCE
+          YESTERDAY spans the full row beneath. Single shared top border
+          replaces the previous per-block stacked borders. */}
+      <div
+        style={{
+          marginTop: 20,
+          paddingTop: 18,
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: 32,
+        }}
+      >
+        {[
+          { label: `WHY TODAY IS ${verdict.label}`, lines: intel.why },
+          { label: 'RECOMMENDED ACTIONS TODAY', actions: intel.actions },
+          { label: 'SINCE YESTERDAY', lines: intel.since, fullWidth: true },
+        ].map(sec => (
           <div
-            style={{
-              fontFamily: FONT_MONO,
-              fontSize: 11,
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              color: 'var(--cyan)',
-              marginBottom: 12,
-            }}
+            key={sec.label}
+            style={{ gridColumn: sec.fullWidth ? '1 / -1' : 'auto' }}
           >
-            {sec.label}
+            <div
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: 'var(--cyan)',
+                marginBottom: 12,
+              }}
+            >
+              {sec.label}
+            </div>
+
+            {sec.lines &&
+              sec.lines.map((l, i) => (
+                <div
+                  key={i}
+                  style={{
+                    fontFamily: FONT_BODY,
+                    fontSize: 13,
+                    color: '#c8d0dc',
+                    lineHeight: 1.6,
+                    padding: '4px 0',
+                  }}
+                >
+                  {l}
+                </div>
+              ))}
+
+            {sec.actions &&
+              sec.actions.map((a, i) => (
+                <button
+                  key={i}
+                  onClick={() => onNav?.(a.nav)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    width: '100%',
+                    textAlign: 'left',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom:
+                      i < sec.actions.length - 1
+                        ? '1px solid rgba(255,255,255,0.04)'
+                        : 'none',
+                    padding: '10px 0',
+                    cursor: 'pointer',
+                    fontFamily: FONT_BODY,
+                    fontSize: 13,
+                    color: '#c8d0dc',
+                    transition: 'color 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--white)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#c8d0dc')}
+                >
+                  <span style={{ color: '#94c864', fontWeight: 700, flexShrink: 0 }}>
+                    {i + 1}.
+                  </span>
+                  <span style={{ flex: 1 }}>{a.text}</span>
+                  <span style={{ color: '#94c864', flexShrink: 0 }}>→</span>
+                </button>
+              ))}
           </div>
-
-          {sec.lines &&
-            sec.lines.map((l, i) => (
-              <div
-                key={i}
-                style={{
-                  fontFamily: FONT_BODY,
-                  fontSize: 13,
-                  color: '#c8d0dc',
-                  lineHeight: 1.6,
-                  padding: '4px 0',
-                }}
-              >
-                {l}
-              </div>
-            ))}
-
-          {sec.actions &&
-            sec.actions.map((a, i) => (
-              <button
-                key={i}
-                onClick={() => onNav?.(a.nav)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  width: '100%',
-                  textAlign: 'left',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom:
-                    i < sec.actions.length - 1
-                      ? '1px solid rgba(255,255,255,0.04)'
-                      : 'none',
-                  padding: '10px 0',
-                  cursor: 'pointer',
-                  fontFamily: FONT_BODY,
-                  fontSize: 13,
-                  color: '#c8d0dc',
-                  transition: 'color 0.15s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--white)')}
-                onMouseLeave={e => (e.currentTarget.style.color = '#c8d0dc')}
-              >
-                <span style={{ color: '#94c864', fontWeight: 700, flexShrink: 0 }}>
-                  {i + 1}.
-                </span>
-                <span style={{ flex: 1 }}>{a.text}</span>
-                <span style={{ color: '#94c864', flexShrink: 0 }}>→</span>
-              </button>
-            ))}
-        </div>
-      ))}
+        ))}
+      </div>
 
       {/* INTELLIGENCE — unified tabbed section. Mirrors HistoryPanel's
           DECISIONS / OUTCOMES pattern (active=cyan, inactive=muted). Collapsed
