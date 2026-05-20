@@ -2424,6 +2424,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     return m
   }, [marketMoves])
   const [expanded, setExpanded] = useState(false)
+  const [competitorsExpanded, setCompetitorsExpanded] = useState(false)
   const [gapFilter, setGapFilter] = useState('country')
   // Which Priority Gap card is expanded inline (one at a time).
   const [expandedGap, setExpandedGap] = useState(null)
@@ -2483,6 +2484,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     }
     if (!visible) {
       setExpanded(false)
+      setCompetitorsExpanded(false)
       setDiffOpen(false)
       setSectionsOpen({})
       setProjOpen(false)
@@ -2641,6 +2643,10 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     (a, b) => b._effectiveScore - a._effectiveScore,
   )
   const maxThreatScore = sortedCompetitors[0]?._effectiveScore || 0
+  const visibleCompetitors = competitorsExpanded
+    ? sortedCompetitors
+    : sortedCompetitors.slice(0, 6)
+  const remainingCompetitors = Math.max(0, sortedCompetitors.length - 6)
   // When every competitor scores zero (e.g. live scan has no Bybit-absent rows
   // yet), bar widths fall back to a rank-based ladder so the ordering remains
   // readable instead of every bar collapsing to 0%.
@@ -3298,8 +3304,9 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
               No competitor data
             </div>
           ) : (
-            <div>
-              {sortedCompetitors.map((c, i) => {
+            <>
+              <div>
+              {visibleCompetitors.map((c, i) => {
                   const tier = i === 0 ? 1 : i <= 2 ? 2 : 3
                   const dotColor =
                     tier === 1 ? '#94c864' : tier === 2 ? '#00d4e8' : '#8892a4'
@@ -3401,7 +3408,28 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                     </div>
                   )
                 })}
-            </div>
+              </div>
+              {!competitorsExpanded && remainingCompetitors > 0 && (
+                <button
+                  onClick={() => setCompetitorsExpanded(true)}
+                  style={{
+                    marginTop: 8,
+                    padding: '8px 12px',
+                    width: '100%',
+                    background: 'transparent',
+                    border: 'none',
+                    fontFamily: FONT_MONO,
+                    fontSize: 11,
+                    color: '#00d4e8',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  + {remainingCompetitors} more ↓
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
