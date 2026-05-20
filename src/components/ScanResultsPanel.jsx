@@ -610,6 +610,17 @@ function oppColor(opp) {
   return '#00d4e8' // cyan
 }
 
+// Restored 5-stop threat scale — used by COMPETITOR THREAT RANKING bars.
+function getThreatColor(score, maxScore) {
+  const r = maxScore > 0 ? score / maxScore : 0
+  if (score === 0) return null
+  if (r < 0.15) return '#7B5EA7'
+  if (r < 0.35) return '#9B6FC7'
+  if (r < 0.55) return '#D4A853'
+  if (r < 0.75) return '#00d4e8'
+  return '#60a5fa'
+}
+
 // §3a — top-3 OPP gaps; T1 closed = +4, T2 = +2, T3 = +1.
 function projectionFor(sortedByOpp, currentScore) {
   const top3 = sortedByOpp.slice(0, 3)
@@ -2382,6 +2393,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
   }, [marketMoves])
   const [expanded, setExpanded] = useState(false)
   const [competitorsExpanded, setCompetitorsExpanded] = useState(false)
+  const [gapFilter, setGapFilter] = useState('country')
   // Which Priority Gap card is expanded inline (one at a time).
   const [expandedGap, setExpandedGap] = useState(null)
   // "vs last scan" expandable diff row.
@@ -2592,8 +2604,8 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
   const maxThreatScore = sortedCompetitors[0]?.threatScore || 100
   const visibleCompetitors = competitorsExpanded
     ? sortedCompetitors
-    : sortedCompetitors.slice(0, 3)
-  const remainingCompetitors = Math.max(0, sortedCompetitors.length - 3)
+    : sortedCompetitors.slice(0, 5)
+  const remainingCompetitors = Math.max(0, sortedCompetitors.length - 5)
 
   // §2 — tier×geo market map. §4 — gaps grouped per competitor.
   const fieldMatrix = buildFieldMap(gapsWithOpp)
@@ -2860,16 +2872,9 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
         <FieldMap matrix={fieldMatrix} onGapCell={jumpToGap} />
       </div>
 
-      {/* ─── Section 3 — two-column grid (gaps left, competitors right) ── */}
-      <div
-        style={{
-          padding: '0 24px 24px',
-          display: 'grid',
-          gridTemplateColumns: '1.4fr 1fr',
-          gap: 24,
-        }}
-      >
-        {/* Gaps */}
+      {/* ─── Section 3 — full-width stacked: gaps then competitor threat rank ─ */}
+      <div style={{ padding: '0 24px 24px' }}>
+        {/* GAPS DETECTED THIS SCAN — full width */}
         <div
           style={{
             background: HZ.surface,
@@ -2917,6 +2922,50 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
             )}
           </div>
 
+          {/* Filter pills — cosmetic state for now */}
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 6,
+              marginBottom: 12,
+            }}
+          >
+            {[
+              { id: 'card', label: 'Card Pages' },
+              { id: 'country', label: 'Country Priority' },
+              { id: 'density', label: 'Competitor Density' },
+              { id: 'easy', label: 'Easy Entry' },
+              { id: 'recent', label: 'Recently Changed' },
+              { id: 'affiliate', label: 'Affiliate Ready' },
+            ].map((f) => {
+              const active = gapFilter === f.id
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => setGapFilter(f.id)}
+                  style={{
+                    fontFamily: FONT_MONO,
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    padding: '4px 10px',
+                    borderRadius: 3,
+                    cursor: 'pointer',
+                    background: active ? 'rgba(0,212,232,0.08)' : 'transparent',
+                    color: active ? '#00d4e8' : '#8892a4',
+                    border: active
+                      ? '1px solid rgba(0,212,232,0.4)'
+                      : '1px solid rgba(255,255,255,0.1)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {f.label}
+                </button>
+              )
+            })}
+          </div>
+
           {sortedGaps.length === 0 ? (
             <div
               style={{
@@ -2932,21 +2981,190 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
             </div>
           ) : (
             <>
-              <div key={`gaps-${openCount}`}>
+              <div
+                key={`gaps-${openCount}`}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 10,
+                }}
+              >
                 {visibleGaps.map((gap, i) => {
                   const slug = gapSlug(gap)
+                  const opp = gap._opp ?? oppScore(gap)
+                  const comps = competitorsForGap(gap)
+                  const href = `https://${gap.domain || ''}${gap.path || ''}`
                   return (
-                    <GapRow
+                    <div
                       key={`${gap.domain}-${gap.path}-${i}`}
-                      gap={gap}
-                      index={i}
-                      highlighted={highlightGapId === `gap-row-${slug}`}
-                      isOpen={expandedGap === slug}
-                      onToggle={() =>
-                        setExpandedGap((prev) => (prev === slug ? null : slug))
-                      }
-                      onAskIntel={onAskIntel}
-                    />
+                      id={`gap-row-${slug}`}
+                      style={{
+                        background: '#131929',
+                        border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: 3,
+                        padding: 12,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 8,
+                        minWidth: 0,
+                        transition: 'border-color 0.15s',
+                        animation:
+                          highlightGapId === `gap-row-${slug}`
+                            ? 'srpGapPulse 0.5s ease-out 1'
+                            : `srpRowFade 380ms cubic-bezier(0.16,1,0.3,1) ${i * 50}ms both`,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(0,212,232,0.25)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
+                      }}
+                    >
+                      {/* Top row — domain + path | tier + country */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div
+                            title={gap.domain}
+                            style={{
+                              fontFamily: FONT_MONO,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color: '#fff',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                color: 'var(--cyan)',
+                                textDecoration: 'underline',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {gap.domain}
+                            </a>
+                          </div>
+                          {gap.path && (
+                            <div
+                              title={gap.path}
+                              style={{
+                                fontFamily: FONT_MONO,
+                                fontSize: 10,
+                                color: 'rgba(255,255,255,0.35)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                marginTop: 2,
+                              }}
+                            >
+                              {gap.path}
+                            </div>
+                          )}
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 4,
+                            flexShrink: 0,
+                            alignItems: 'center',
+                          }}
+                        >
+                          <TierBadge tier={gap.tier} />
+                          {gap.country && (
+                            <span
+                              style={{
+                                fontFamily: FONT_MONO,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                padding: '2px 6px',
+                                borderRadius: 3,
+                                background: 'rgba(255,255,255,0.04)',
+                                color: HZ.muted,
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                letterSpacing: '0.04em',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {gap.country}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Competitor chips */}
+                      {comps.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {comps.map((name) => {
+                            const m = competitorMeta(name)
+                            return (
+                              <span
+                                key={name}
+                                style={{
+                                  fontFamily: FONT_MONO,
+                                  fontSize: 10,
+                                  padding: '2px 6px',
+                                  background: 'rgba(255,255,255,0.05)',
+                                  borderLeft: `2px solid ${m.color}`,
+                                  color: HZ.text,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {name}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* Footer — Draft Outreach | OPP */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginTop: 'auto',
+                          paddingTop: 4,
+                        }}
+                      >
+                        <a
+                          href={buildOutreachMailto(gap)}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            fontFamily: FONT_MONO,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: HZ.teal,
+                            letterSpacing: '0.06em',
+                            textDecoration: 'none',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          → Draft Outreach
+                        </a>
+                        <span
+                          style={{
+                            fontFamily: FONT_MONO,
+                            fontSize: 10,
+                            color: HZ.muted,
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          OPP {opp}
+                        </span>
+                      </div>
+                    </div>
                   )
                 })}
               </div>
@@ -2974,13 +3192,14 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           )}
         </div>
 
-        {/* Competitors */}
+        {/* COMPETITOR THREAT RANKING — full width, mt 16 */}
         <div
           style={{
-            background: HZ.surface,
-            border: `1px solid ${HZ.border}`,
-            borderRadius: 6,
-            padding: '14px 16px',
+            marginTop: 16,
+            background: '#131929',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 3,
+            padding: 16,
           }}
         >
           <div
@@ -2988,22 +3207,33 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: 10,
+              marginBottom: 12,
             }}
           >
             <span
               style={{
-                fontFamily: FONT_BODY,
-                fontSize: 10,
-                color: HZ.muted,
-                textTransform: 'uppercase',
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                fontWeight: 700,
                 letterSpacing: '0.12em',
-                fontWeight: 600,
+                color: '#fff',
+                textTransform: 'uppercase',
               }}
             >
-              Competitor Activity
+              COMPETITOR THREAT RANKING
+            </span>
+            <span
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 10,
+                color: 'rgba(255,255,255,0.25)',
+                letterSpacing: '0.08em',
+              }}
+            >
+              SCORE · WEIGHTED
             </span>
           </div>
+
           {sortedCompetitors.length === 0 ? (
             <div
               style={{
@@ -3019,19 +3249,106 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           ) : (
             <>
               <div>
-                {visibleCompetitors.map((c, i) => (
-                  <CompetitorRow
-                    key={c.name}
-                    comp={c}
-                    maxScore={maxThreatScore}
-                    isVisible={visible}
-                    index={i}
-                    momentum={momentumFor(c, prevSnapshot)}
-                    blockedGaps={gapsByCompetitor[c.name] || []}
-                    realMove={movesByComp[c.name]}
-                    onDraft={draftOutreach}
-                  />
-                ))}
+                {visibleCompetitors.map((c, i) => {
+                  const tier = i === 0 ? 1 : i <= 2 ? 2 : 3
+                  const dotColor =
+                    tier === 1 ? '#94c864' : tier === 2 ? '#00d4e8' : '#8892a4'
+                  const color = getThreatColor(c.threatScore, maxThreatScore)
+                  const pct =
+                    maxThreatScore > 0 ? (c.threatScore / maxThreatScore) * 100 : 0
+                  return (
+                    <div
+                      key={c.name}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '130px 1fr 42px',
+                        columnGap: 12,
+                        rowGap: 0,
+                        alignItems: 'center',
+                        padding: '7px 0',
+                      }}
+                    >
+                      {/* Cell 1 — name pill */}
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '5px 10px',
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          borderRadius: 5,
+                          width: '100%',
+                          justifyContent: 'flex-end',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            width: 5,
+                            height: 5,
+                            borderRadius: '50%',
+                            background: dotColor,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontFamily: FONT_MONO,
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: '#8892a4',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {c.name}
+                        </span>
+                      </div>
+
+                      {/* Cell 2 — bar */}
+                      <div
+                        style={{
+                          height: 36,
+                          background: 'rgba(255,255,255,0.03)',
+                          borderRadius: 3,
+                          position: 'relative',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {color && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: visible ? `${pct}%` : '0%',
+                              borderRadius: 3,
+                              background: `linear-gradient(to right, ${color}ee 0%, ${color}99 30%, ${color}33 70%, transparent 100%)`,
+                              transition: `width 600ms cubic-bezier(0.16,1,0.3,1) ${i * 100}ms`,
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      {/* Cell 3 — score */}
+                      <span
+                        style={{
+                          fontFamily: FONT_MONO,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: '#fff',
+                          textAlign: 'right',
+                        }}
+                      >
+                        {c.threatScore}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
               {!competitorsExpanded && remainingCompetitors > 0 && (
                 <button
