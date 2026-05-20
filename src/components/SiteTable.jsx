@@ -91,7 +91,7 @@ export default function SiteTable({ openWithQuestion }) {
             <thead style={{ position: 'sticky', top: 0, background: '#0b0f1e', zIndex: 5 }}>
               <tr>
                 {['','Domain','Country','Tier','Bybit','Card','Competitors'].map((h,i) => (
-                  <th key={i} style={{ fontFamily: 'var(--font-head)', fontWeight: 600, fontSize: 11, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '11px 14px', textAlign: 'left', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={i} style={{ fontFamily: 'var(--font-head)', fontWeight: 600, fontSize: 11, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '11px 10px', textAlign: 'left', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -113,7 +113,7 @@ export default function SiteTable({ openWithQuestion }) {
                       transition: `opacity 0.3s ease ${i * 35}ms, transform 0.3s ease ${i * 35}ms, background 0.15s ease, border-left-color 0.15s ease`,
                     }}
                   >
-                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)' }}>
                       <span style={{
                         display: 'inline-block',
                         width: 8,
@@ -124,14 +124,14 @@ export default function SiteTable({ openWithQuestion }) {
                         animation: `statusPulse ${dotDuration} ease-in-out infinite`,
                       }} />
                     </td>
-                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-body)', fontWeight: 400, fontSize: 13, color: 'var(--white)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><SiteLink domain={row.domain}>{row.domain}</SiteLink></td>
-                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
+                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-body)', fontWeight: 400, fontSize: 13, color: 'var(--white)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><SiteLink domain={row.domain}>{row.domain}</SiteLink></td>
+                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
                       {(() => { const { flag, code, color, tooltip } = countryLabel(row.country); return <span title={tooltip || undefined} style={{ color }}>{flag} {code}</span> })()}
                     </td>
-                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 11, color: row.tier === 'Tier 1' ? 'var(--t1)' : 'var(--amber)' }}>{row.tier}</td>
-                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13, color: row.status === 'present' ? 'var(--green)' : 'var(--text-muted)' }}>{row.status === 'present' ? 'Yes' : '-'}</td>
-                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13, color: row.card ? 'var(--cyan)' : 'var(--text-muted)' }}>{row.card ? 'Yes' : '-'}</td>
-                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', position: 'relative' }}>
+                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 11, color: row.tier === 'Tier 1' ? 'var(--t1)' : 'var(--amber)' }}>{row.tier}</td>
+                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13, color: row.status === 'present' ? 'var(--green)' : 'var(--text-muted)' }}>{row.status === 'present' ? 'Yes' : '-'}</td>
+                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13, color: row.card ? 'var(--cyan)' : 'var(--text-muted)' }}>{row.card ? 'Yes' : '-'}</td>
+                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', position: 'relative' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingRight: 96 }}>
                         {(row.competitors || []).slice(0,3).map(c => (
                           <span key={c} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '1px 6px', borderRadius: 3, background: 'rgba(255,255,255,.05)', color: '#ffffff' }}>{c}</span>

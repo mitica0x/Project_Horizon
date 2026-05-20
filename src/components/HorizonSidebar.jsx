@@ -268,7 +268,7 @@ export default function HorizonSidebar({
           style={{
             display: 'block',
             marginTop: 8,
-            marginBottom: 4,
+            marginBottom: 10,
             marginLeft: 12,
             width: 'calc(100% - 24px)',
             padding: '6px 12px',

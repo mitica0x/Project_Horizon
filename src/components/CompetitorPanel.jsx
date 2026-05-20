@@ -17,7 +17,22 @@ function UrlSection({ title, urls }) {
         <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#8892a4', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           {title} ({urls.length})
         </span>
-        <span style={{ color: '#8892a4', fontSize: 10 }}>{open ? '▲' : '▼'}</span>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
+          aria-hidden="true"
+          style={{
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s ease',
+            color: 'var(--cyan)',
+            flexShrink: 0,
+            marginLeft: 'auto',
+          }}
+        >
+          <path d="M2.5 4.5L7 9.5L11.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
       {open && (
         <div style={{ marginTop: 4 }}>

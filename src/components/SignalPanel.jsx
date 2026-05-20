@@ -339,19 +339,20 @@ export default function SignalPanel({ onAskIntel, onNav, hideHeader = false }) {
         }
       />}
 
-      {/* Recommendation card (unchanged top) */}
+      {/* Recommendation card — verdict + confidence + drivers on the left,
+          flip-conditions and "What to do now" on the right. Track record,
+          90-day rhythm, field posture, and next-reassessment sit full-width
+          below the grid. */}
       <Card style={{ padding: '34px 36px', borderColor: v.color + '40' }}>
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 20,
-            flexWrap: 'wrap',
-            paddingBottom: 26,
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '24px 32px',
+            alignItems: 'start',
           }}
         >
+          {/* LEFT COLUMN */}
           <div>
             <div
               style={{
@@ -383,7 +384,6 @@ export default function SignalPanel({ onAskIntel, onNav, hideHeader = false }) {
                 fontSize: 14,
                 color: '#c8d0dc',
                 marginTop: 12,
-                maxWidth: 460,
               }}
             >
               {v.blurb}
@@ -391,110 +391,115 @@ export default function SignalPanel({ onAskIntel, onNav, hideHeader = false }) {
                 ? ` Window opening: ${fmtDate(sig.nextMove.event.date)} (${sig.nextMove.daysOut}d).`
                 : ''}
             </div>
-          </div>
-          <div style={{ textAlign: 'right', minWidth: 180 }}>
+
+            <div style={{ marginTop: 24 }}>
+              <div
+                style={{
+                  fontFamily: FONT_MONO,
+                  fontSize: 11,
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                  color: 'var(--text-muted)',
+                  marginBottom: 8,
+                }}
+              >
+                Confidence
+              </div>
+              <div
+                style={{
+                  fontFamily: FONT_HEAD,
+                  fontWeight: 800,
+                  fontSize: 34,
+                  color: v.color,
+                  marginBottom: 8,
+                }}
+              >
+                {sig.confidence}%
+              </div>
+              <MeterBar pct={sig.confidence} color={v.color} height={7} />
+              <div style={{ marginTop: 16 }}>
+                <span
+                  style={{
+                    fontFamily: FONT_MONO,
+                    fontSize: 10,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-muted)',
+                    marginRight: 8,
+                  }}
+                >
+                  Budget
+                </span>
+                <Badge color={v.color} bg="transparent" border={v.color + '4d'}>
+                  {v.budget} effort
+                </Badge>
+              </div>
+            </div>
+
+            <Section title="Posture duration">
+              <div style={{ fontFamily: FONT_BODY, fontSize: 15, color: '#c8d0dc' }}>
+                You have been in{' '}
+                <span style={{ color: v.color, fontFamily: FONT_HEAD, fontWeight: 700 }}>
+                  {sig.verdict}
+                </span>{' '}
+                for{' '}
+                <span style={{ color: v.color, fontFamily: FONT_HEAD, fontWeight: 700 }}>
+                  {durationDays}
+                </span>{' '}
+                {durationDays === 1 ? 'day' : 'days'}.
+              </div>
+            </Section>
+
             <div
               style={{
                 fontFamily: FONT_MONO,
                 fontSize: 11,
-                letterSpacing: '0.16em',
+                letterSpacing: '0.14em',
                 textTransform: 'uppercase',
                 color: 'var(--text-muted)',
-                marginBottom: 8,
+                margin: '28px 0 14px',
               }}
             >
-              Confidence
+              Signals driving this verdict
             </div>
-            <div
-              style={{
-                fontFamily: FONT_HEAD,
-                fontWeight: 800,
-                fontSize: 34,
-                color: v.color,
-                marginBottom: 8,
-              }}
-            >
-              {sig.confidence}%
-            </div>
-            <MeterBar pct={sig.confidence} color={v.color} height={7} />
-            <div style={{ marginTop: 16 }}>
-              <span
+            {sig.inputs.map((s, i) => (
+              <div
+                key={s.label}
                 style={{
-                  fontFamily: FONT_MONO,
-                  fontSize: 10,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  color: 'var(--text-muted)',
-                  marginRight: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  padding: '13px 0',
+                  borderBottom:
+                    i < sig.inputs.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
                 }}
               >
-                Budget
-              </span>
-              <Badge color={v.color} bg="transparent" border={v.color + '4d'}>
-                {v.budget} effort
-              </Badge>
-            </div>
+                <RagDot rag={s.rag} size={9} />
+                <span
+                  style={{ flex: '0 0 160px', fontFamily: FONT_BODY, fontSize: 14, color: 'var(--white)' }}
+                >
+                  {s.label}
+                </span>
+                <span style={{ flex: 1, fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', minWidth: 0 }}>
+                  {s.detail}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* RIGHT COLUMN */}
+          <div>
+            <Section title="What would flip it">
+              <div style={{ fontFamily: FONT_BODY, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.7 }}>
+                {FLIP_LINE[sig.verdict]}
+              </div>
+            </Section>
+
+            <WhatToDoNow verdict={sig.verdict} onAskIntel={onAskIntel} onNav={onNav} />
           </div>
         </div>
 
-        <div
-          style={{
-            fontFamily: FONT_MONO,
-            fontSize: 11,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: 'var(--text-muted)',
-            margin: '22px 0 14px',
-          }}
-        >
-          Signals driving this verdict
-        </div>
-        {sig.inputs.map((s, i) => (
-          <div
-            key={s.label}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 14,
-              padding: '13px 0',
-              borderBottom:
-                i < sig.inputs.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-            }}
-          >
-            <RagDot rag={s.rag} size={9} />
-            <span
-              style={{ flex: '0 0 200px', fontFamily: FONT_BODY, fontSize: 14, color: 'var(--white)' }}
-            >
-              {s.label}
-            </span>
-            <span style={{ flex: 1, fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)' }}>
-              {s.detail}
-            </span>
-          </div>
-        ))}
-
-        <Section title="Posture duration">
-          <div style={{ fontFamily: FONT_BODY, fontSize: 15, color: '#c8d0dc' }}>
-            You have been in{' '}
-            <span style={{ color: v.color, fontFamily: FONT_HEAD, fontWeight: 700 }}>
-              {sig.verdict}
-            </span>{' '}
-            for{' '}
-            <span style={{ color: v.color, fontFamily: FONT_HEAD, fontWeight: 700 }}>
-              {durationDays}
-            </span>{' '}
-            {durationDays === 1 ? 'day' : 'days'}.
-          </div>
-        </Section>
-
-        <Section title="What would flip it">
-          <div style={{ fontFamily: FONT_BODY, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.7 }}>
-            {FLIP_LINE[sig.verdict]}
-          </div>
-        </Section>
-
-        <WhatToDoNow verdict={sig.verdict} onAskIntel={onAskIntel} onNav={onNav} />
-
+        {/* Sections below the 2-col grid — full width */}
         <Section title="Signal track record">
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {history.slice(0, 5).map((h, i) => (

@@ -258,9 +258,21 @@ export default function StatusBoard({
         >
           {VERDICT[sig.verdict].blurb}
         </span>
-        <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-          {signalOpen ? '▲' : '▼'}
-        </span>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
+          style={{
+            transform: signalOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s ease',
+            color: 'var(--cyan)',
+            flexShrink: 0,
+            marginLeft: 'auto',
+          }}
+        >
+          <path d="M2.5 4.5L7 9.5L11.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
       {signalOpen && <SignalPanel onAskIntel={onAskIntel} onNav={onNav} hideHeader />}
 
@@ -617,9 +629,17 @@ export default function StatusBoard({
           transition: 'color 0.15s, border-color 0.15s',
         }
 
+        const stop = e => e.stopPropagation()
+
         return (
           <>
             <div
+              onClick={() => setIntelOpen(o => !o)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIntelOpen(o => !o) } }}
+              aria-expanded={intelOpen}
+              aria-label={intelOpen ? 'Collapse intelligence' : 'Expand intelligence'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -629,6 +649,7 @@ export default function StatusBoard({
                 padding: '10px 12px',
                 marginTop: 28,
                 flexWrap: 'wrap',
+                cursor: 'pointer',
               }}
             >
               <span
@@ -649,7 +670,7 @@ export default function StatusBoard({
               {intelTab === 'competitors' ? (
                 <>
                   <button
-                    onClick={() => { setAddCompetitorOpen(o => !o); if (!intelOpen) setIntelOpen(true) }}
+                    onClick={e => { stop(e); setAddCompetitorOpen(o => !o); if (!intelOpen) setIntelOpen(true) }}
                     style={{
                       ...ghostBtn,
                       color: addCompetitorOpen ? 'var(--cyan)' : 'var(--text-muted)',
@@ -659,7 +680,7 @@ export default function StatusBoard({
                     + Add Competitor
                   </button>
                   <button
-                    onClick={suggestCompetitors}
+                    onClick={e => { stop(e); suggestCompetitors() }}
                     disabled={!onAskQuestion}
                     style={{
                       ...ghostBtn,
@@ -683,7 +704,7 @@ export default function StatusBoard({
               ) : (
                 <>
                   <button
-                    onClick={() => { setAddUrlOpen(o => !o); if (!intelOpen) setIntelOpen(true) }}
+                    onClick={e => { stop(e); setAddUrlOpen(o => !o); if (!intelOpen) setIntelOpen(true) }}
                     style={{
                       ...ghostBtn,
                       color: addUrlOpen ? 'var(--cyan)' : 'var(--text-muted)',
@@ -693,7 +714,7 @@ export default function StatusBoard({
                     + Add URL
                   </button>
                   <button
-                    onClick={suggestCandidateUrls}
+                    onClick={e => { stop(e); suggestCandidateUrls() }}
                     disabled={!onAskQuestion}
                     style={{
                       ...ghostBtn,
@@ -719,34 +740,34 @@ export default function StatusBoard({
               <span style={{ flex: 1 }} />
 
               <button
-                onClick={() => activateTab('competitors')}
+                onClick={e => { stop(e); activateTab('competitors') }}
                 style={intelTab === 'competitors' ? tabActive : tabInactive}
               >
                 Competitors
               </button>
               <button
-                onClick={() => activateTab('urls')}
+                onClick={e => { stop(e); activateTab('urls') }}
                 style={intelTab === 'urls' ? tabActive : tabInactive}
               >
                 All URLs
               </button>
 
-              <button
-                onClick={() => setIntelOpen(o => !o)}
-                aria-label={intelOpen ? 'Collapse intelligence' : 'Expand intelligence'}
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                aria-hidden="true"
                 style={{
-                  fontFamily: FONT_MONO,
-                  fontSize: 12,
-                  color: 'var(--text-muted)',
-                  background: 'transparent',
-                  border: 'none',
-                  padding: '6px 4px',
-                  cursor: 'pointer',
+                  transform: intelOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s ease',
+                  color: 'var(--cyan)',
                   flexShrink: 0,
+                  marginLeft: 'auto',
                 }}
               >
-                {intelOpen ? '▲' : '▼'}
-              </button>
+                <path d="M2.5 4.5L7 9.5L11.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </div>
 
             {intelOpen && intelTab === 'competitors' && addCompetitorOpen && (
