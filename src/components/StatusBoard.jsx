@@ -7,7 +7,7 @@ import {
   getWindows,
   computeSignal,
 } from '../utils/horizonData'
-import { GAPS_T1, COMPETITORS, TABLE_DATA } from '../data/staticData'
+import { GAPS_T1, TABLE_DATA } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
 import { Card, RagDot, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 import SignalPanel, { VERDICT } from './SignalPanel'
@@ -37,10 +37,24 @@ export default function StatusBoard({
   onOpenCompetitorPanel,
 }) {
   const [signalOpen, setSignalOpen] = useState(false)
-  const [competitorsOpen, setCompetitorsOpen] = useState(false)
-  const [urlsOpen, setUrlsOpen] = useState(false)
+  // Unified intelligence section — COMPETITORS / ALL URLS are tabs, collapsed
+  // by default, modeled on HistoryPanel's tab pattern.
+  const [intelOpen, setIntelOpen] = useState(false)
+  const [intelTab, setIntelTab] = useState('competitors')
   const [addUrlOpen, setAddUrlOpen] = useState(false)
   const [addUrlValue, setAddUrlValue] = useState('')
+  const [addCompetitorOpen, setAddCompetitorOpen] = useState(false)
+  const [addCompetitorValue, setAddCompetitorValue] = useState('')
+
+  // Banner gate: hide whenever ANY data is populating the UI. The seeded
+  // table/gap data is what the user actually sees, so an empty notice while
+  // those have entries reads as stale.
+  const tableData = TABLE_DATA
+  const gapData = GAPS_T1
+  const effectiveHasScanData =
+    hasScanData ||
+    (tableData && tableData.length > 0) ||
+    (gapData && gapData.length > 0)
   // Internal scan state — StatusBoard owns the scan trigger so the button
   // keeps working even if the App → HorizonView → StatusBoard prop chain
   // drops onScan/scanState during a nav refactor.
@@ -98,9 +112,27 @@ export default function StatusBoard({
     onAskQuestion('Which URLs should we add to tracking to close our biggest coverage gaps?')
   }
 
+  const submitAddCompetitor = () => {
+    const name = addCompetitorValue.trim()
+    if (!name || !onAskQuestion) return
+    onAskQuestion(`Please add this competitor to tracking: ${name}`)
+    setAddCompetitorValue('')
+    setAddCompetitorOpen(false)
+  }
+
+  const suggestCompetitors = () => {
+    if (!onAskQuestion) return
+    onAskQuestion('Which competitors should we add to tracking based on current market presence and our gap data?')
+  }
+
+  const activateTab = (next) => {
+    setIntelTab(next)
+    if (!intelOpen) setIntelOpen(true)
+  }
+
   const scanLabel =
     effectiveScanState === 'idle'
-      ? hasScanData
+      ? effectiveHasScanData
         ? '⟳ SCAN NOW'
         : '⟳ Run first scan'
       : effectiveScanState === 'complete'
@@ -434,9 +466,9 @@ export default function StatusBoard({
         </div>
       </div>
 
-      {/* Empty-state notice — surfaces only when there's truly no scan data.
-          Uses the same hasScanData gate that drives the SCAN NOW label. */}
-      {!hasScanData && (
+      {/* Empty-state notice — surfaces only when there's truly no scan data,
+          including no seeded table/gap entries. Same gate as the SCAN NOW label. */}
+      {!effectiveHasScanData && (
         <div
           style={{
             marginTop: 14,
@@ -573,211 +605,296 @@ export default function StatusBoard({
         </div>
       ))}
 
-      {/* COMPETITORS — collapsible */}
-      <button
-        onClick={() => setCompetitorsOpen(o => !o)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          width: '100%',
-          textAlign: 'left',
-          background: 'rgba(0,212,232,0.06)',
-          border: 'none',
-          borderBottom: '1px solid rgba(0,212,232,0.15)',
-          padding: '14px 0',
-          marginTop: 28,
+      {/* INTELLIGENCE — unified tabbed section. Mirrors HistoryPanel's
+          DECISIONS / OUTCOMES pattern (active=cyan, inactive=muted). Collapsed
+          by default; chevron on the far right toggles the body. Per-tab
+          contextual action buttons sit between the section label and the tabs. */}
+      {(() => {
+        const tabActive = {
+          fontFamily: FONT_MONO,
+          fontSize: 11,
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          padding: '6px 14px',
+          borderRadius: 4,
+          border: '1px solid var(--cyan)',
+          background: 'rgba(0,212,232,0.1)',
+          color: 'var(--cyan)',
           cursor: 'pointer',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: FONT_MONO,
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: 'var(--cyan)',
-            flexShrink: 0,
-          }}
-        >
-          COMPETITORS
-        </span>
-        <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-          {COMPETITORS.length}
-        </span>
-        <span style={{ flex: 1 }} />
-        <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-          {competitorsOpen ? '▲' : '▼'}
-        </span>
-      </button>
-      {competitorsOpen && (
-        <div style={{ marginTop: 16 }}>
-          <CustomCompetitors />
-          <CompetitorChart
-            liveCompetitors={liveCompetitors}
-            liveCoverage={liveCoverage}
-            onOpenPanel={onOpenCompetitorPanel}
-          />
-        </div>
-      )}
+          flexShrink: 0,
+        }
+        const tabInactive = {
+          fontFamily: FONT_MONO,
+          fontSize: 11,
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          padding: '6px 14px',
+          borderRadius: 4,
+          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'transparent',
+          color: 'var(--text-muted)',
+          cursor: 'pointer',
+          flexShrink: 0,
+        }
+        const ghostBtn = {
+          fontFamily: FONT_MONO,
+          fontSize: 10,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          background: 'transparent',
+          border: '1px solid var(--border)',
+          borderRadius: 5,
+          padding: '6px 10px',
+          cursor: 'pointer',
+          flexShrink: 0,
+          transition: 'color 0.15s, border-color 0.15s',
+        }
 
-      {/* ALL URLs — collapsible. Header row carries Add URL + Suggest buttons
-          so URL management lives next to the URL list, not in a separate UI. */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          background: 'rgba(0,212,232,0.06)',
-          borderBottom: '1px solid rgba(0,212,232,0.15)',
-          padding: '10px 0',
-          marginTop: 28,
-        }}
-      >
-        <button
-          onClick={() => setUrlsOpen(o => !o)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            flex: 1,
-            textAlign: 'left',
-            background: 'transparent',
-            border: 'none',
-            padding: '4px 0',
-            cursor: 'pointer',
-          }}
-        >
-          <span
-            style={{
-              fontFamily: FONT_MONO,
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              color: 'var(--cyan)',
-              flexShrink: 0,
-            }}
-          >
-            ALL URLs
-          </span>
-          <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-            {TABLE_DATA.length}
-          </span>
-          <span style={{ flex: 1 }} />
-          <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-            {urlsOpen ? '▲' : '▼'}
-          </span>
-        </button>
-        <button
-          onClick={() => setAddUrlOpen(o => !o)}
-          style={{
-            fontFamily: FONT_MONO,
-            fontSize: 10,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color: addUrlOpen ? 'var(--cyan)' : 'var(--text-muted)',
-            background: 'transparent',
-            border: `1px solid ${addUrlOpen ? 'rgba(0,212,232,0.4)' : 'var(--border)'}`,
-            borderRadius: 5,
-            padding: '6px 10px',
-            cursor: 'pointer',
-            flexShrink: 0,
-            transition: 'color 0.15s, border-color 0.15s',
-          }}
-        >
-          + Add URL
-        </button>
-        <button
-          onClick={suggestCandidateUrls}
-          disabled={!onAskQuestion}
-          style={{
-            fontFamily: FONT_MONO,
-            fontSize: 10,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color: onAskQuestion ? 'var(--text-muted)' : 'var(--border)',
-            background: 'transparent',
-            border: '1px solid var(--border)',
-            borderRadius: 5,
-            padding: '6px 10px',
-            cursor: onAskQuestion ? 'pointer' : 'default',
-            flexShrink: 0,
-            transition: 'color 0.15s, border-color 0.15s',
-          }}
-          onMouseEnter={e => {
-            if (!onAskQuestion) return
-            e.currentTarget.style.color = '#c8d0dc'
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'
-          }}
-          onMouseLeave={e => {
-            if (!onAskQuestion) return
-            e.currentTarget.style.color = 'var(--text-muted)'
-            e.currentTarget.style.borderColor = 'var(--border)'
-          }}
-        >
-          Suggest candidate URLs
-        </button>
-      </div>
-      {addUrlOpen && (
-        <div
-          style={{
-            marginTop: 10,
-            display: 'flex',
-            gap: 8,
-            alignItems: 'center',
-          }}
-        >
-          <input
-            type="url"
-            placeholder="https://example.com/page-to-track"
-            value={addUrlValue}
-            onChange={e => setAddUrlValue(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                submitAddUrl()
-              }
-            }}
-            style={{
-              flex: 1,
-              fontFamily: FONT_MONO,
-              fontSize: 12,
-              color: '#ffffff',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 5,
-              padding: '8px 10px',
-              outline: 'none',
-            }}
-          />
-          <button
-            onClick={submitAddUrl}
-            disabled={!addUrlValue.trim() || !onAskQuestion}
-            style={{
-              fontFamily: FONT_MONO,
-              fontSize: 10,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: '#94c864',
-              background: 'transparent',
-              border: '1px solid rgba(148,200,100,0.4)',
-              borderRadius: 5,
-              padding: '7px 12px',
-              cursor: addUrlValue.trim() && onAskQuestion ? 'pointer' : 'default',
-              opacity: addUrlValue.trim() && onAskQuestion ? 1 : 0.4,
-            }}
-          >
-            Add
-          </button>
-        </div>
-      )}
-      {urlsOpen && (
-        <div style={{ marginTop: 16 }}>
-          <SiteTable openWithQuestion={q => onAskIntel(q, { chips: [q] })} />
-        </div>
-      )}
+        return (
+          <>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                background: 'rgba(0,212,232,0.06)',
+                borderBottom: '1px solid rgba(0,212,232,0.15)',
+                padding: '10px 12px',
+                marginTop: 28,
+                flexWrap: 'wrap',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: FONT_MONO,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: 'var(--cyan)',
+                  flexShrink: 0,
+                  marginRight: 6,
+                }}
+              >
+                INTELLIGENCE
+              </span>
+
+              {intelTab === 'competitors' ? (
+                <>
+                  <button
+                    onClick={() => { setAddCompetitorOpen(o => !o); if (!intelOpen) setIntelOpen(true) }}
+                    style={{
+                      ...ghostBtn,
+                      color: addCompetitorOpen ? 'var(--cyan)' : 'var(--text-muted)',
+                      borderColor: addCompetitorOpen ? 'rgba(0,212,232,0.4)' : 'var(--border)',
+                    }}
+                  >
+                    + Add Competitor
+                  </button>
+                  <button
+                    onClick={suggestCompetitors}
+                    disabled={!onAskQuestion}
+                    style={{
+                      ...ghostBtn,
+                      color: onAskQuestion ? 'var(--text-muted)' : 'var(--border)',
+                      cursor: onAskQuestion ? 'pointer' : 'default',
+                    }}
+                    onMouseEnter={e => {
+                      if (!onAskQuestion) return
+                      e.currentTarget.style.color = '#c8d0dc'
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'
+                    }}
+                    onMouseLeave={e => {
+                      if (!onAskQuestion) return
+                      e.currentTarget.style.color = 'var(--text-muted)'
+                      e.currentTarget.style.borderColor = 'var(--border)'
+                    }}
+                  >
+                    Suggest Competitors
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { setAddUrlOpen(o => !o); if (!intelOpen) setIntelOpen(true) }}
+                    style={{
+                      ...ghostBtn,
+                      color: addUrlOpen ? 'var(--cyan)' : 'var(--text-muted)',
+                      borderColor: addUrlOpen ? 'rgba(0,212,232,0.4)' : 'var(--border)',
+                    }}
+                  >
+                    + Add URL
+                  </button>
+                  <button
+                    onClick={suggestCandidateUrls}
+                    disabled={!onAskQuestion}
+                    style={{
+                      ...ghostBtn,
+                      color: onAskQuestion ? 'var(--text-muted)' : 'var(--border)',
+                      cursor: onAskQuestion ? 'pointer' : 'default',
+                    }}
+                    onMouseEnter={e => {
+                      if (!onAskQuestion) return
+                      e.currentTarget.style.color = '#c8d0dc'
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'
+                    }}
+                    onMouseLeave={e => {
+                      if (!onAskQuestion) return
+                      e.currentTarget.style.color = 'var(--text-muted)'
+                      e.currentTarget.style.borderColor = 'var(--border)'
+                    }}
+                  >
+                    Suggest Candidate URLs
+                  </button>
+                </>
+              )}
+
+              <span style={{ flex: 1 }} />
+
+              <button
+                onClick={() => activateTab('competitors')}
+                style={intelTab === 'competitors' ? tabActive : tabInactive}
+              >
+                Competitors
+              </button>
+              <button
+                onClick={() => activateTab('urls')}
+                style={intelTab === 'urls' ? tabActive : tabInactive}
+              >
+                All URLs
+              </button>
+
+              <button
+                onClick={() => setIntelOpen(o => !o)}
+                aria-label={intelOpen ? 'Collapse intelligence' : 'Expand intelligence'}
+                style={{
+                  fontFamily: FONT_MONO,
+                  fontSize: 12,
+                  color: 'var(--text-muted)',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: '6px 4px',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                {intelOpen ? '▲' : '▼'}
+              </button>
+            </div>
+
+            {intelOpen && intelTab === 'competitors' && addCompetitorOpen && (
+              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="Competitor name (e.g. Kraken)"
+                  value={addCompetitorValue}
+                  onChange={e => setAddCompetitorValue(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      submitAddCompetitor()
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    fontFamily: FONT_MONO,
+                    fontSize: 12,
+                    color: '#ffffff',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 5,
+                    padding: '8px 10px',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={submitAddCompetitor}
+                  disabled={!addCompetitorValue.trim() || !onAskQuestion}
+                  style={{
+                    fontFamily: FONT_MONO,
+                    fontSize: 10,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    color: '#94c864',
+                    background: 'transparent',
+                    border: '1px solid rgba(148,200,100,0.4)',
+                    borderRadius: 5,
+                    padding: '7px 12px',
+                    cursor: addCompetitorValue.trim() && onAskQuestion ? 'pointer' : 'default',
+                    opacity: addCompetitorValue.trim() && onAskQuestion ? 1 : 0.4,
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            )}
+
+            {intelOpen && intelTab === 'urls' && addUrlOpen && (
+              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="url"
+                  placeholder="https://example.com/page-to-track"
+                  value={addUrlValue}
+                  onChange={e => setAddUrlValue(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      submitAddUrl()
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    fontFamily: FONT_MONO,
+                    fontSize: 12,
+                    color: '#ffffff',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 5,
+                    padding: '8px 10px',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={submitAddUrl}
+                  disabled={!addUrlValue.trim() || !onAskQuestion}
+                  style={{
+                    fontFamily: FONT_MONO,
+                    fontSize: 10,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    color: '#94c864',
+                    background: 'transparent',
+                    border: '1px solid rgba(148,200,100,0.4)',
+                    borderRadius: 5,
+                    padding: '7px 12px',
+                    cursor: addUrlValue.trim() && onAskQuestion ? 'pointer' : 'default',
+                    opacity: addUrlValue.trim() && onAskQuestion ? 1 : 0.4,
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            )}
+
+            {intelOpen && (
+              <div style={{ marginTop: 16 }}>
+                {intelTab === 'competitors' ? (
+                  <>
+                    <CustomCompetitors />
+                    <CompetitorChart
+                      liveCompetitors={liveCompetitors}
+                      liveCoverage={liveCoverage}
+                      onOpenPanel={onOpenCompetitorPanel}
+                    />
+                  </>
+                ) : (
+                  <SiteTable openWithQuestion={q => onAskIntel(q, { chips: [q] })} />
+                )}
+              </div>
+            )}
+          </>
+        )
+      })()}
     </Card>
   )
 }
