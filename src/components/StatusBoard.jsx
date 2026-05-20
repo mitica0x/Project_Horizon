@@ -12,6 +12,7 @@ import { intelKit } from '../utils/intelKit'
 import { Card, RagDot, AskIntelButton, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
 import SignalPanel, { VERDICT } from './SignalPanel'
 import CompetitorChart from './CompetitorChart'
+import CustomCompetitors from './CustomCompetitors'
 import SiteTable from './SiteTable'
 
 // P2 — Morning Status Board. 90-second daily briefing. Verdict reframed:
@@ -20,10 +21,52 @@ import SiteTable from './SiteTable'
 const VERDICT_KEY = 'horizon_status_verdict'
 const DAY = 86400000
 
-export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
+export default function StatusBoard({
+  onDismiss,
+  onAskIntel,
+  onAskQuestion,
+  onNav,
+  onScan,
+  scanState = 'idle',
+  hasScanData = false,
+  liveCompetitors,
+  liveCoverage,
+  onOpenCompetitorPanel,
+}) {
   const [signalOpen, setSignalOpen] = useState(false)
   const [competitorsOpen, setCompetitorsOpen] = useState(false)
   const [urlsOpen, setUrlsOpen] = useState(false)
+  const [addUrlOpen, setAddUrlOpen] = useState(false)
+  const [addUrlValue, setAddUrlValue] = useState('')
+
+  const handleScan = () => {
+    if (scanState !== 'idle' || !onScan) return
+    onScan()
+  }
+
+  const submitAddUrl = () => {
+    const url = addUrlValue.trim()
+    if (!url || !onAskQuestion) return
+    onAskQuestion(`Please add this URL to tracking: ${url}`)
+    setAddUrlValue('')
+    setAddUrlOpen(false)
+  }
+
+  const suggestCandidateUrls = () => {
+    if (!onAskQuestion) return
+    onAskQuestion('Which URLs should we add to tracking to close our biggest coverage gaps?')
+  }
+
+  const scanLabel =
+    scanState === 'idle'
+      ? hasScanData
+        ? '⟳ SCAN NOW'
+        : '⟳ Run first scan'
+      : scanState === 'complete'
+      ? '✓ Scan complete'
+      : scanState === 'error'
+      ? '⚠ Agent offline'
+      : '⟳ Scanning…'
   const { signals, overall, updatedAt } = useMemo(() => getDayStatus(), [])
   const verdict = statusVerdict(overall)
 
@@ -287,6 +330,38 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
           <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: 'var(--text-muted)' }}>
             Last updated {fmtClock(updatedAt)}
           </span>
+          {onScan && (
+            <button
+              onClick={handleScan}
+              disabled={scanState !== 'idle'}
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color:
+                  scanState === 'error'
+                    ? '#ff4d6d'
+                    : scanState === 'complete'
+                    ? '#94c864'
+                    : scanState === 'idle'
+                    ? '#94c864'
+                    : 'var(--text-muted)',
+                background: 'transparent',
+                border: `1px solid ${
+                  scanState === 'error'
+                    ? 'rgba(255,77,109,0.4)'
+                    : 'rgba(148,200,100,0.4)'
+                }`,
+                borderRadius: 5,
+                padding: '7px 12px',
+                cursor: scanState === 'idle' ? 'pointer' : 'default',
+                transition: 'color 0.15s, border-color 0.15s',
+              }}
+            >
+              {scanLabel}
+            </button>
+          )}
           {onAskIntel && <AskIntelButton onClick={askIntel} />}
           <button
             onClick={onDismiss}
@@ -316,6 +391,26 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
           </button>
         </div>
       </div>
+
+      {/* Empty-state notice — surfaces only when there's truly no scan data.
+          Uses the same hasScanData gate that drives the SCAN NOW label. */}
+      {!hasScanData && (
+        <div
+          style={{
+            marginTop: 14,
+            background: 'rgba(148,200,100,0.06)',
+            border: '1px solid rgba(148,200,100,0.25)',
+            borderRadius: 6,
+            padding: '10px 14px',
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            color: '#c8d0dc',
+            letterSpacing: '0.04em',
+          }}
+        >
+          No scan data yet — run the first crawl to populate live presence, gaps and competitor data.
+        </div>
+      )}
 
       {/* Signal rows */}
       <div>
@@ -476,48 +571,166 @@ export default function StatusBoard({ onDismiss, onAskIntel, onNav }) {
       </button>
       {competitorsOpen && (
         <div style={{ marginTop: 16 }}>
-          <CompetitorChart liveCompetitors={undefined} liveCoverage={undefined} />
+          <CustomCompetitors />
+          <CompetitorChart
+            liveCompetitors={liveCompetitors}
+            liveCoverage={liveCoverage}
+            onOpenPanel={onOpenCompetitorPanel}
+          />
         </div>
       )}
 
-      {/* ALL URLs — collapsible */}
-      <button
-        onClick={() => setUrlsOpen(o => !o)}
+      {/* ALL URLs — collapsible. Header row carries Add URL + Suggest buttons
+          so URL management lives next to the URL list, not in a separate UI. */}
+      <div
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 14,
-          width: '100%',
-          textAlign: 'left',
           background: 'rgba(0,212,232,0.06)',
-          border: 'none',
           borderBottom: '1px solid rgba(0,212,232,0.15)',
-          padding: '14px 0',
+          padding: '10px 0',
           marginTop: 28,
-          cursor: 'pointer',
         }}
       >
-        <span
+        <button
+          onClick={() => setUrlsOpen(o => !o)}
           style={{
-            fontFamily: FONT_MONO,
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: 'var(--cyan)',
-            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            flex: 1,
+            textAlign: 'left',
+            background: 'transparent',
+            border: 'none',
+            padding: '4px 0',
+            cursor: 'pointer',
           }}
         >
-          ALL URLs
-        </span>
-        <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-          {TABLE_DATA.length}
-        </span>
-        <span style={{ flex: 1 }} />
-        <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-          {urlsOpen ? '▲' : '▼'}
-        </span>
-      </button>
+          <span
+            style={{
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: 'var(--cyan)',
+              flexShrink: 0,
+            }}
+          >
+            ALL URLs
+          </span>
+          <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+            {TABLE_DATA.length}
+          </span>
+          <span style={{ flex: 1 }} />
+          <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+            {urlsOpen ? '▲' : '▼'}
+          </span>
+        </button>
+        <button
+          onClick={() => setAddUrlOpen(o => !o)}
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 10,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: addUrlOpen ? 'var(--cyan)' : 'var(--text-muted)',
+            background: 'transparent',
+            border: `1px solid ${addUrlOpen ? 'rgba(0,212,232,0.4)' : 'var(--border)'}`,
+            borderRadius: 5,
+            padding: '6px 10px',
+            cursor: 'pointer',
+            flexShrink: 0,
+            transition: 'color 0.15s, border-color 0.15s',
+          }}
+        >
+          + Add URL
+        </button>
+        <button
+          onClick={suggestCandidateUrls}
+          disabled={!onAskQuestion}
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 10,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: onAskQuestion ? 'var(--text-muted)' : 'var(--border)',
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            borderRadius: 5,
+            padding: '6px 10px',
+            cursor: onAskQuestion ? 'pointer' : 'default',
+            flexShrink: 0,
+            transition: 'color 0.15s, border-color 0.15s',
+          }}
+          onMouseEnter={e => {
+            if (!onAskQuestion) return
+            e.currentTarget.style.color = '#c8d0dc'
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'
+          }}
+          onMouseLeave={e => {
+            if (!onAskQuestion) return
+            e.currentTarget.style.color = 'var(--text-muted)'
+            e.currentTarget.style.borderColor = 'var(--border)'
+          }}
+        >
+          Suggest candidate URLs
+        </button>
+      </div>
+      {addUrlOpen && (
+        <div
+          style={{
+            marginTop: 10,
+            display: 'flex',
+            gap: 8,
+            alignItems: 'center',
+          }}
+        >
+          <input
+            type="url"
+            placeholder="https://example.com/page-to-track"
+            value={addUrlValue}
+            onChange={e => setAddUrlValue(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                submitAddUrl()
+              }
+            }}
+            style={{
+              flex: 1,
+              fontFamily: FONT_MONO,
+              fontSize: 12,
+              color: '#ffffff',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 5,
+              padding: '8px 10px',
+              outline: 'none',
+            }}
+          />
+          <button
+            onClick={submitAddUrl}
+            disabled={!addUrlValue.trim() || !onAskQuestion}
+            style={{
+              fontFamily: FONT_MONO,
+              fontSize: 10,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: '#94c864',
+              background: 'transparent',
+              border: '1px solid rgba(148,200,100,0.4)',
+              borderRadius: 5,
+              padding: '7px 12px',
+              cursor: addUrlValue.trim() && onAskQuestion ? 'pointer' : 'default',
+              opacity: addUrlValue.trim() && onAskQuestion ? 1 : 0.4,
+            }}
+          >
+            Add
+          </button>
+        </div>
+      )}
       {urlsOpen && (
         <div style={{ marginTop: 16 }}>
           <SiteTable openWithQuestion={q => onAskIntel(q, { chips: [q] })} />

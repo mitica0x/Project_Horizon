@@ -5,16 +5,13 @@ import HeroCanvas from './components/HeroCanvas'
 import ScanResultsPanel from './components/ScanResultsPanel'
 import GapCard from './components/GapCard'
 import WinCard from './components/WinCard'
-import CompetitorChart from './components/CompetitorChart'
-import SiteTable from './components/SiteTable'
 import OutreachPanel from './components/OutreachPanel'
 import AskTheBrief from './components/AskTheBrief'
 import ScopePanel from './components/ScopePanel'
-import { GAPS_T1, GAPS_T2, WINS, SCORE, PAGES_PRESENT, PAGES_TRACKED, TABLE_DATA as SITE_TABLE_DATA, COMPETITORS } from './data/staticData'
+import { GAPS_T1, GAPS_T2, WINS, SCORE } from './data/staticData'
 import { sortItems, CRITERIA } from './utils/sortEngine'
 import SortBar from './components/SortBar'
 import CompetitorPanel from './components/CompetitorPanel'
-import CustomCompetitors from './components/CustomCompetitors'
 import AccountMenu from './components/AccountMenu'
 import { computeThreatScore } from './utils/threatScore'
 import HorizonSidebar from './components/HorizonSidebar'
@@ -217,7 +214,6 @@ export default function App() {
   const dayStatus = useState(() => getDayStatus().overall)[0]
   const [scanProgress, setScanProgress] = useState(null)
   const [marketMoves, setMarketMoves] = useState(null)
-  const [scanEmpty, setScanEmpty] = useState(false)
 
   // On load: pull the latest real scan + market moves for this org so the
   // dashboard shows live crawler data, not seeds.
@@ -237,14 +233,10 @@ export default function App() {
           if ((j.results || []).length > 0) {
             setScanData(transformScan(j))
             setScanResultsVisible(true)
-          } else {
-            setScanEmpty(true)
           }
-        } else if (alive) {
-          setScanEmpty(true)
         }
       } catch {
-        if (alive) setScanEmpty(true)
+        /* first load — no data; StatusBoard surfaces the empty state */
       }
       try {
         const m = await fetch(
@@ -382,7 +374,6 @@ export default function App() {
       clearInterval(ticker)
       const data = transformScan(payload)
       setScanData(data)
-      setScanEmpty(false)
       setScanResultsVisible(true)
       setScanState('complete')
       setScanProgress(
@@ -569,53 +560,26 @@ export default function App() {
       />
       <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 48 }}>
 
-        {scanEmpty && !scanResultsVisible && (
-          <div className="container" style={{ paddingTop: 24 }}>
-            <div
-              style={{
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                borderRadius: 10,
-                padding: '28px 30px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 16,
-                flexWrap: 'wrap',
-              }}
-            >
-              <div>
-                <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 18, color: 'var(--white)' }}>
-                  No scan data yet
-                </div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-                  Run the first crawl to populate live presence, gaps and competitor data.
-                </div>
-              </div>
-              <button
-                onClick={runScan}
-                disabled={scanState !== 'idle'}
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 13,
-                  letterSpacing: '0.06em',
-                  color: scanState === 'idle' ? '#94c864' : 'var(--text-muted)',
-                  background: '#131929',
-                  border: '1px solid rgba(148,200,100,0.4)',
-                  borderRadius: 6,
-                  padding: '12px 22px',
-                  cursor: scanState === 'idle' ? 'pointer' : 'default',
-                }}
-              >
-                ⟳ Run first scan
-              </button>
-            </div>
-          </div>
-        )}
-
         {statusOpen && (
           <div id="hz-status" className="container" style={{ paddingTop: 24 }}>
-            <StatusBoard onDismiss={() => setStatusOpen(false)} onAskIntel={openIntel} onNav={handleNav} />
+            <StatusBoard
+              onDismiss={() => setStatusOpen(false)}
+              onAskIntel={openIntel}
+              onAskQuestion={handleAskIntel}
+              onNav={handleNav}
+              onScan={runScan}
+              scanState={scanState}
+              hasScanData={!!dash}
+              liveCompetitors={dash?.competitorBars}
+              liveCoverage={
+                dash && {
+                  present: dash.bybitPresent,
+                  tracked: dash.sitesMonitored,
+                  pct: dash.euScore,
+                }
+              }
+              onOpenCompetitorPanel={handleOpenPanel}
+            />
           </div>
         )}
 
@@ -631,30 +595,6 @@ export default function App() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
               <div>{t1Left.map(g => <GapCard key={g.url} gap={{ ...g, tier: 'T1' }} onDraftOutreach={setActiveSite} />)}</div>
               <div>{t1Right.map(g => <GapCard key={g.url} gap={{ ...g, tier: 'T1' }} onDraftOutreach={setActiveSite} />)}</div>
-            </div>
-          </div>
-        </section>
-
-        {/* Competitor Presence — full width */}
-        <section className="scroll-reveal" style={{ padding: '0 0 48px' }}>
-          <div className="container">
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px 28px' }}>
-              <CustomCompetitors />
-              <CompetitorChart
-                competitors={COMPETITORS}
-                siteData={SITE_TABLE_DATA}
-                gapsT1={GAPS_T1}
-                gapsT2={GAPS_T2}
-                liveCompetitors={dash?.competitorBars}
-                liveCoverage={
-                  dash && {
-                    present: dash.bybitPresent,
-                    tracked: dash.sitesMonitored,
-                    pct: dash.euScore,
-                  }
-                }
-                onOpenPanel={handleOpenPanel}
-              />
             </div>
           </div>
         </section>
@@ -691,17 +631,6 @@ export default function App() {
               <div>{winsLeft.map(w => <WinCard key={w.url} win={w} />)}</div>
               <div>{winsRight.map(w => <WinCard key={w.url} win={w} />)}</div>
             </div>
-          </div>
-        </section>
-
-        {/* Tracked URLs Table — full width */}
-        <section className="scroll-reveal" style={{ padding: '0 0 48px' }}>
-          <div className="container">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <span style={{ fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 16, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-body)' }}>All Tracked URLs</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '1px 8px', borderRadius: 99, background: 'rgba(255,255,255,.05)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{PAGES_TRACKED}</span>
-            </div>
-            <SiteTable openWithQuestion={handleAskIntel} />
           </div>
         </section>
 
