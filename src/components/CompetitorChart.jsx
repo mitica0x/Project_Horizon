@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { COMPETITORS, TABLE_DATA as SITE_TABLE_DATA, GAPS_T1, GAPS_T2 } from '../data/staticData'
 import { computeThreatScore, buildHookSentence } from '../utils/threatScore'
 
-// Absolute-threshold threat colour: red ≥6, amber ≥3, green <3. Replaces the
-// older relative gradient — scores below 3 should always read calm green, not
-// "low-relative-but-still-red".
-function threatColorFor(score) {
-  if (score >= 6) return '#ff4d6d'
-  if (score >= 3) return '#d4a853'
+// Relative-to-max threat colour: top 30% of the field reads red, mid (35–70%)
+// amber, low (<35%) green. Mirrors the original ranking visual so the chart
+// shows field shape, not absolute counts.
+function getThreatColor(score, maxScore) {
+  const pct = maxScore ? score / maxScore : 0
+  if (pct >= 0.7) return '#ff4d6d'
+  if (pct >= 0.35) return '#d4a853'
   return '#94c864'
 }
 
@@ -66,7 +67,7 @@ export default function CompetitorChart({ onOpenPanel, liveCompetitors, liveCove
         }}
       >
         {ranked.map((comp, i) => {
-          const threatColor = threatColorFor(comp.score)
+          const threatColor = getThreatColor(comp.score, maxScore)
           const isHov = hoveredIndex === i
           const barPct = Math.min((comp.score / (maxScore || 1)) * 100, 100)
           return (

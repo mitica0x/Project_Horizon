@@ -2946,27 +2946,32 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           }}
           aria-hidden={!diffOpen}
         >
-          <div style={{ padding: '16px 24px' }}>
-            <div
-              style={{
-                background: HZ.surface,
-                border: `1px solid ${HZ.border}`,
-                borderRadius: 6,
-                padding: '6px 18px',
-                fontFamily: FONT_MONO,
-                fontSize: 12,
-                lineHeight: 1.5,
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              {scanDiff.hasPrevious ? (
-                scanDiff.sections.map((s, idx) => (
+          <div
+            style={{
+              padding: '16px 24px',
+              fontFamily: FONT_MONO,
+              fontSize: 12,
+              lineHeight: 1.5,
+            }}
+          >
+            {scanDiff.hasPrevious ? (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: 12,
+                }}
+              >
+                {scanDiff.sections.map((s) => (
                   <div
                     key={s.id}
                     style={{
-                      padding: '12px 0',
-                      borderTop: idx > 0 ? `1px solid ${HZ.border}` : 'none',
+                      background: 'var(--bg-card)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      borderRadius: 10,
+                      padding: '14px 16px',
+                      gridColumn: s.id === 'competitors' ? '1 / -1' : 'auto',
+                      minWidth: 0,
                     }}
                   >
                     <DiffSection
@@ -2980,13 +2985,21 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                       }
                     />
                   </div>
-                ))
-              ) : (
-                <div style={{ color: HZ.muted, padding: '12px 0' }}>
-                  First scan — no previous data to compare.
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  background: 'var(--bg-card)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 10,
+                  padding: '14px 16px',
+                  color: HZ.muted,
+                }}
+              >
+                First scan — no previous data to compare.
+              </div>
+            )}
           </div>
         </div>
 

@@ -67,33 +67,51 @@ function EventCard({ event, verdict, constraints, dismissed, detected, onDismiss
         borderLeft: detected ? '3px solid var(--amber)' : '1px solid rgba(255,255,255,0.06)',
         borderRadius: 8, opacity: dismissed ? 0.35 : 1,
         transition: 'background 0.15s',
-        wordBreak: 'break-word',
+        minWidth: 0,
         overflow: 'hidden',
       }}
     >
-      <div style={{ display:'flex', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+      {/* Date + score header — score lives on the right edge */}
+      <div style={{ display:'flex', alignItems:'flex-start', gap:10, minWidth:0 }}>
         <div style={{ flexShrink:0 }}>
           <div style={{ ...mono, fontSize:11, color:'var(--text-muted)' }}>{fmtDate(event.date)}</div>
           <div style={{ ...mono, fontSize:12, fontWeight:700, color:'var(--amber)', marginTop:3 }}>{daysLabel}</div>
         </div>
-        <div style={{ flex:'1 1 0', minWidth:0 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            <span style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)', wordBreak:'break-word' }}>{event.name}</span>
-            <span style={{ ...mono, fontSize:9, padding:'2px 6px', borderRadius:3, textTransform:'uppercase', letterSpacing:'0.08em', background:cat.bg, color:cat.color }}>{event.cat}</span>
-            {detected && <span style={{ ...mono, fontSize:9, padding:'2px 6px', borderRadius:3, textTransform:'uppercase', background:'rgba(212,168,83,0.15)', color:'var(--amber)' }}>{detected.confirmed?'CONFIRMED':'DETECTED'} · {detected.confidence}%</span>}
-            {dismissed && <span style={{ ...mono, fontSize:9, textTransform:'uppercase', color:'var(--red)' }}>DISMISSED</span>}
-          </div>
-          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{event.sub}</div>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', flexShrink:0 }}>
-          <div style={{ textAlign:'right' }}>
-            <div style={{ ...mono, fontSize:18, fontWeight:700, color:'var(--text-primary)' }}>{living.adjustedTotal}<span style={{ fontSize:10, color:'var(--text-muted)' }}>/10</span></div>
-            <div style={{ ...mono, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase' }}>relevance</div>
-          </div>
-          {vb && <span style={{ ...mono, fontSize:10, fontWeight:700, letterSpacing:'0.1em', padding:'4px 9px', borderRadius:4, background:vb.bg, color:vb.color, border:`1px solid ${vb.color}` }}>{vb.label}</span>}
-          <span style={{ ...mono, fontSize:9, letterSpacing:'0.08em', padding:'4px 8px', borderRadius:4, background:'rgba(255,255,255,0.05)', color:field.color }}>{field.label}</span>
+        <div style={{ flex:'1 1 0', minWidth:0 }} />
+        <div style={{ textAlign:'right', flexShrink:0 }}>
+          <div style={{ ...mono, fontSize:18, fontWeight:700, color:'var(--text-primary)' }}>{living.adjustedTotal}<span style={{ fontSize:10, color:'var(--text-muted)' }}>/10</span></div>
+          <div style={{ ...mono, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase' }}>relevance</div>
         </div>
       </div>
+
+      {/* Title — single-line ellipsis stops character-by-character wrapping
+          inside narrow 3-col cells. */}
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: 'var(--text-primary)',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          minWidth: 0,
+        }}
+        title={event.name}
+      >
+        {event.name}
+      </div>
+
+      {/* Badges row */}
+      <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', minWidth:0 }}>
+        <span style={{ ...mono, fontSize:9, padding:'2px 6px', borderRadius:3, textTransform:'uppercase', letterSpacing:'0.08em', background:cat.bg, color:cat.color }}>{event.cat}</span>
+        {vb && <span style={{ ...mono, fontSize:10, fontWeight:700, letterSpacing:'0.1em', padding:'4px 9px', borderRadius:4, background:vb.bg, color:vb.color, border:`1px solid ${vb.color}` }}>{vb.label}</span>}
+        <span style={{ ...mono, fontSize:9, letterSpacing:'0.08em', padding:'4px 8px', borderRadius:4, background:'rgba(255,255,255,0.05)', color:field.color }}>{field.label}</span>
+        {detected && <span style={{ ...mono, fontSize:9, padding:'2px 6px', borderRadius:3, textTransform:'uppercase', background:'rgba(212,168,83,0.15)', color:'var(--amber)' }}>{detected.confirmed?'CONFIRMED':'DETECTED'} · {detected.confidence}%</span>}
+        {dismissed && <span style={{ ...mono, fontSize:9, textTransform:'uppercase', color:'var(--red)' }}>DISMISSED</span>}
+      </div>
+
+      {/* Sub line — ellipsizes */}
+      <div style={{ fontSize:12, color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0 }} title={event.sub}>{event.sub}</div>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:10 }}>
         <span style={{ ...mono, fontSize:10, letterSpacing:'0.06em', padding:'3px 8px', borderRadius:3, background:status.bg, color:status.color }}>{alert.label}</span>
         <div style={{ display:'flex', gap:6 }}>
@@ -249,7 +267,7 @@ export default function EventsSection({ orgId }) {
         [...grouped.entries()].map(([month, events]) => (
           <div key={month} style={{ marginBottom:28 }}>
             <div style={{ ...mono, fontSize:11, color:'var(--cyan)', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:10 }}>{month}</div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(240px, 1fr))', gap:16, overflowX:'hidden' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12, overflowX:'hidden' }}>
               {events.map(event => (
                 <EventCard
                   key={event.id}
