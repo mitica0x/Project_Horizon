@@ -193,6 +193,9 @@ export default function App() {
   const scanResultsPanelRef = useRef(null)
   const mainRef = useRef()
   const askBriefRef = useRef(null)
+  // Holds the timeout for the T-key mock scan animation so rapid presses
+  // don't stack multiple deferred injections.
+  const mockScanTimerRef = useRef(null)
   const [sortState, setSortState] = useState(() => {
     try {
       const saved = localStorage.getItem('horizon_sort_state')
@@ -392,24 +395,39 @@ export default function App() {
     }
   }, [scanState])
 
-  // T-key shortcut: injects a local mock fixture into frontend state. No
-  // network call, no scanState transitions, no polling — purely a UI test
-  // harness. The real scan stays gated behind SCAN NOW (sidebar / status
-  // board), which calls runScan above.
+  // T-key shortcut: plays the amber HeroCanvas pulse for ~2.2s, then injects
+  // a local mock fixture into frontend state. No network call, no polling —
+  // purely a UI test harness. The real scan stays gated behind SCAN NOW
+  // (sidebar / status board), which calls runScan above.
+  //
+  // Note: HeroCanvas's amber pulse activates on the in-flight states the
+  // real scan emits — 'sentry' / 'mirror' / 'herald'. We use 'sentry' here
+  // so the same animation fires (there's no literal 'scanning' state).
   const loadMockScan = useCallback(() => {
-    // Seed the prior-scan snapshot ScanResultsPanel reads from localStorage
-    // so VS LAST SCAN renders deterministic deltas (+4 score, +1 gap, +2
-    // wins, +1 alert) instead of synthesising them from seedPriorSnapshot.
-    try {
-      localStorage.setItem(MOCK_SNAPSHOT_KEY, JSON.stringify(MOCK_PREV_SNAPSHOT))
-    } catch { /* localStorage unavailable — diff still works in-memory */ }
-    const data = transformScan(MOCK_SCAN)
-    // transformScan hard-codes brandAlerts to 0 at the top level (the live
-    // dashboard reads dashboard.brandAlerts which IS derived). For the
-    // VS LAST SCAN alert delta to fire, surface the dashboard count here.
-    data.brandAlerts = data.dashboard?.brandAlerts ?? 0
-    setScanData(data)
-    setScanResultsVisible(true)
+    // Cancel any pending mock injection so rapid T-presses don't stack
+    // timers and inject twice.
+    if (mockScanTimerRef.current) {
+      clearTimeout(mockScanTimerRef.current)
+      mockScanTimerRef.current = null
+    }
+    setScanState('sentry')
+    mockScanTimerRef.current = setTimeout(() => {
+      // Seed the prior-scan snapshot ScanResultsPanel reads from localStorage
+      // so VS LAST SCAN renders deterministic deltas (+4 score, +1 gap, +2
+      // wins, +1 alert) instead of synthesising them from seedPriorSnapshot.
+      try {
+        localStorage.setItem(MOCK_SNAPSHOT_KEY, JSON.stringify(MOCK_PREV_SNAPSHOT))
+      } catch { /* localStorage unavailable — diff still works in-memory */ }
+      const data = transformScan(MOCK_SCAN)
+      // transformScan hard-codes brandAlerts to 0 at the top level (the live
+      // dashboard reads dashboard.brandAlerts which IS derived). For the
+      // VS LAST SCAN alert delta to fire, surface the dashboard count here.
+      data.brandAlerts = data.dashboard?.brandAlerts ?? 0
+      setScanData(data)
+      setScanResultsVisible(true)
+      setScanState('idle')
+      mockScanTimerRef.current = null
+    }, 2200)
   }, [])
 
   // T-key shortcut listener. Re-registers when loadMockScan identity changes
