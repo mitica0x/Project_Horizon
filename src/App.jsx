@@ -213,7 +213,7 @@ export default function App() {
 
   // Horiz0n suite navigation. 'dashboard' = the untouched P1 tree.
   const [view, setView] = useState('dashboard')
-  const [statusOpen, setStatusOpen] = useState(false)
+  const [statusOpen, setStatusOpen] = useState(true)
   const [historyTab, setHistoryTab] = useState('decisions')
   const [novaOpen, setNovaOpen] = useState(false)
   const dayStatus = useState(() => getDayStatus().overall)[0]
@@ -228,6 +228,12 @@ export default function App() {
   // scans without closing the panel in between).
   const [scanRevealTick, setScanRevealTick] = useState(0)
   const [marketMoves, setMarketMoves] = useState(null)
+
+  // Always land at the top of the page on mount so the hero header is visible,
+  // regardless of any prior scroll state left over from a previous scan.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [])
 
   // On load: pull the latest real scan + market moves for this org so the
   // dashboard shows live crawler data, not seeds.
@@ -666,8 +672,8 @@ export default function App() {
           marginBottom: '16px',
           letterSpacing: '-0.01em',
         }}>
-          Read the market<br />
-          <span style={{ color: '#00d4e8' }}>before it reads you.</span>
+          Market intelligence.<br />
+          <span style={{ color: '#94c864' }}>0 guess.</span>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           {[
