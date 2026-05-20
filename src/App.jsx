@@ -19,7 +19,6 @@ import AccountMenu from './components/AccountMenu'
 import { computeThreatScore } from './utils/threatScore'
 import HorizonSidebar from './components/HorizonSidebar'
 import StatusBoard from './components/StatusBoard'
-import EventsSection from './components/EventsSection'
 import HorizonView from './components/HorizonView'
 import Nova from './components/Nova'
 import { getDayStatus } from './utils/horizonData'
@@ -213,7 +212,6 @@ export default function App() {
   // Horiz0n suite navigation. 'dashboard' = the untouched P1 tree.
   const [view, setView] = useState('dashboard')
   const [statusOpen, setStatusOpen] = useState(false)
-  const [eventsOpen, setEventsOpen] = useState(false)
   const [historyTab, setHistoryTab] = useState('decisions')
   const [novaOpen, setNovaOpen] = useState(false)
   const dayStatus = useState(() => getDayStatus().overall)[0]
@@ -268,10 +266,6 @@ export default function App() {
 
   // S8 — single section-aware INTEL entry point.
   const openIntel = (ctx, intel) => askBriefRef.current?.openWithContext(ctx, intel)
-  const onScanFromNav = () => {
-    setView('dashboard')
-    requestAnimationFrame(() => runScan())
-  }
 
   // Auto-open the Morning Status board once per day (first visit).
   useEffect(() => {
@@ -294,7 +288,6 @@ export default function App() {
     }
     if (id === 'status') {
       setView('dashboard')
-      setEventsOpen(false)
       setStatusOpen(true)
       requestAnimationFrame(() =>
         setTimeout(() => {
@@ -307,11 +300,7 @@ export default function App() {
       return
     }
     if (id === 'events') {
-      setView('dashboard')
       setStatusOpen(false)
-      setEventsOpen(true)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
     }
     if (id === 'history' && params?.tab) {
       setHistoryTab(params.tab)
@@ -552,8 +541,6 @@ export default function App() {
             'You are the C0insiglieri operations assistant. The operator opened you from the sidebar — answer across the full intelligence suite (status, windows, outcomes, ledger, signal, brief, network).',
           )
         }
-        onScan={onScanFromNav}
-        scanState={scanState}
         compactStatus={statusOpen ? null : dayStatus}
       />
 
@@ -629,12 +616,6 @@ export default function App() {
         {statusOpen && (
           <div id="hz-status" className="container" style={{ paddingTop: 24 }}>
             <StatusBoard onDismiss={() => setStatusOpen(false)} onAskIntel={openIntel} onNav={handleNav} />
-          </div>
-        )}
-
-        {eventsOpen && (
-          <div id="hz-events">
-            <EventsSection orgId={getActiveOrgId()} />
           </div>
         )}
 
@@ -738,7 +719,13 @@ export default function App() {
       </div>
       ) : (
       <div className="hz-shell">
-        <HorizonView view={view} onNav={handleNav} onAskIntel={openIntel} historyTab={historyTab} />
+        <HorizonView
+          view={view}
+          onNav={handleNav}
+          onAskIntel={openIntel}
+          historyTab={historyTab}
+          orgId={getActiveOrgId()}
+        />
       </div>
       )}
 

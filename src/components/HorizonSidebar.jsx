@@ -10,7 +10,8 @@ const STATUS_MICRO = {
 }
 
 // Left nav for the Horiz0n suite. Collapsible (persisted), full-height (top:0).
-// "Ask C0insiglieri" (intel) and SCAN NOW sit below the divider as nav items.
+// "Ask C0insiglieri" (intel) sits below the divider as a nav item.
+// SCAN NOW lives inside StatusBoard, not the sidebar.
 // N0VA pinned at the bottom in lime.
 
 const NAV = [
@@ -93,8 +94,6 @@ export default function HorizonSidebar({
   onNova,
   onTrace,
   onIntel,
-  onScan,
-  scanState = 'idle',
   compactStatus,
 }) {
   const [collapsed, setCollapsed] = useState(() => {
@@ -123,14 +122,6 @@ export default function HorizonSidebar({
   const verdict = compactStatus ? statusVerdict(compactStatus) : null
   const statusMicro =
     STATUS_MICRO[(verdict || statusVerdict(getDayStatus().overall)).label] || null
-  const scanLabel =
-    scanState === 'idle'
-      ? 'SCAN NOW'
-      : scanState === 'complete'
-      ? 'SCAN DONE'
-      : scanState === 'error'
-      ? 'AGENT OFFLINE'
-      : 'SCANNING…'
 
   return (
     <nav
@@ -253,13 +244,6 @@ export default function HorizonSidebar({
         <Divider />
 
         <NavRow glyph="⬡" label="Ask C0insiglieri" collapsed={collapsed} onClick={onIntel} />
-        <NavRow
-          glyph="⟳"
-          label={scanLabel}
-          collapsed={collapsed}
-          onClick={onScan}
-          active={scanState !== 'idle'}
-        />
       </div>
 
       {/* N0VA — always visible, lime */}

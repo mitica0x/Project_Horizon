@@ -5,6 +5,7 @@ import LedgerPanel from './LedgerPanel'
 import SignalPanel from './SignalPanel'
 import BriefPanel from './BriefPanel'
 import NetworkPanel from './NetworkPanel'
+import EventsSection from './EventsSection'
 
 // Content region for the non-dashboard suite views. Sits inside .hz-shell
 // (sidebar offset). Same <main>/.container chrome as the P1 dashboard so
@@ -18,9 +19,10 @@ const PANELS = {
   signal: SignalPanel,
   brief: BriefPanel,
   network: NetworkPanel,
+  events: EventsSection,
 }
 
-export default function HorizonView({ view, onNav, onAskIntel, historyTab }) {
+export default function HorizonView({ view, onNav, onAskIntel, historyTab, orgId }) {
   const Panel = PANELS[view]
   return (
     <main
@@ -31,7 +33,14 @@ export default function HorizonView({ view, onNav, onAskIntel, historyTab }) {
       }}
     >
       <div className="container" style={{ padding: '36px 40px 72px' }}>
-        {Panel ? <Panel onNav={onNav} onAskIntel={onAskIntel} initialTab={historyTab} /> : null}
+        {Panel ? (
+          <Panel
+            onNav={onNav}
+            onAskIntel={onAskIntel}
+            initialTab={historyTab}
+            orgId={orgId}
+          />
+        ) : null}
       </div>
     </main>
   )
