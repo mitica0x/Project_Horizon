@@ -621,6 +621,48 @@ function getThreatColor(score, maxScore) {
   return '#60a5fa'
 }
 
+// Live competitor shape (from App.jsx transformScan):
+//   { name: string, blocksOnGaps: number, threatScore: number }
+// mockScan fixtures use: { name: string, blocksOnGaps: number }
+// On a live scan where no qualifying row has Bybit absent + competitors present,
+// blocksOnGaps stays 0 → threatScore stays 0 → the threat bars render empty.
+// Walk the priority chain for whichever field carries a non-zero signal, then
+// fall back to a synthetic count derived from the gap cards themselves.
+function effectiveCompetitorScore(comp, allGaps) {
+  const keys = [
+    'blocksOnGaps',
+    'threatScore',
+    'score',
+    'presenceCount',
+    'pagesPresent',
+    'blocksOnT1',
+  ]
+  for (const k of keys) {
+    const v = comp?.[k]
+    if (typeof v === 'number' && v > 0) return v
+  }
+  if (typeof comp?.gapCount === 'number' && comp.gapCount > 0) return comp.gapCount
+  if (typeof comp?.count === 'number' && comp.count > 0) return comp.count
+  // Synthetic: count how many gap cards list this competitor in their
+  // competitors array (via competitorsForGap which honours gap.description).
+  let n = 0
+  for (const g of allGaps || []) {
+    if (competitorsForGap(g).includes(comp?.name)) n++
+  }
+  return n
+}
+
+// Build the target URL for a gap card link. Prefers the live `gap.url` (which
+// may already include https://), falling back to domain+path. Guards against
+// double-prefixing when the source already carries a scheme.
+function buildGapHref(gap) {
+  const raw = String(
+    gap?.url || `${gap?.domain || ''}${gap?.path || ''}` || ''
+  ).trim()
+  if (!raw) return '#'
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+}
+
 // §3a — top-3 OPP gaps; T1 closed = +4, T2 = +2, T3 = +1.
 function projectionFor(sortedByOpp, currentScore) {
   const top3 = sortedByOpp.slice(0, 3)
@@ -2598,10 +2640,16 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     if (!baseComps.some((c) => c.name === n))
       baseComps.push({ name: n, threatScore: 0, blocksOnGaps: 0 })
   })
-  const sortedCompetitors = baseComps
-    .sort((a, b) => b.threatScore - a.threatScore)
+  // Stamp every competitor with an effective score that survives empty live
+  // data — see effectiveCompetitorScore for the fallback chain.
+  const compsWithScore = baseComps.map((c) => ({
+    ...c,
+    _effectiveScore: effectiveCompetitorScore(c, gapsWithOpp),
+  }))
+  const sortedCompetitors = compsWithScore
+    .sort((a, b) => b._effectiveScore - a._effectiveScore)
     .slice(0, 8)
-  const maxThreatScore = sortedCompetitors[0]?.threatScore || 100
+  const maxThreatScore = sortedCompetitors[0]?._effectiveScore || 100
   const visibleCompetitors = competitorsExpanded
     ? sortedCompetitors
     : sortedCompetitors.slice(0, 5)
@@ -2993,7 +3041,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                   const slug = gapSlug(gap)
                   const opp = gap._opp ?? oppScore(gap)
                   const comps = competitorsForGap(gap)
-                  const href = `https://${gap.domain || ''}${gap.path || ''}`
+                  const href = buildGapHref(gap)
                   return (
                     <div
                       key={`${gap.domain}-${gap.path}-${i}`}
@@ -3047,7 +3095,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{
-                                color: 'var(--cyan)',
+                                color: '#00d4e8',
                                 textDecoration: 'underline',
                                 cursor: 'pointer',
                               }}
@@ -3061,14 +3109,24 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                               style={{
                                 fontFamily: FONT_MONO,
                                 fontSize: 10,
-                                color: 'rgba(255,255,255,0.35)',
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 marginTop: 2,
                               }}
                             >
-                              {gap.path}
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: '#00d4e8',
+                                  textDecoration: 'underline',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {gap.path}
+                              </a>
                             </div>
                           )}
                         </div>
@@ -3253,9 +3311,10 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                   const tier = i === 0 ? 1 : i <= 2 ? 2 : 3
                   const dotColor =
                     tier === 1 ? '#94c864' : tier === 2 ? '#00d4e8' : '#8892a4'
-                  const color = getThreatColor(c.threatScore, maxThreatScore)
+                  const score = c._effectiveScore ?? c.threatScore ?? 0
+                  const color = getThreatColor(score, maxThreatScore)
                   const pct =
-                    maxThreatScore > 0 ? (c.threatScore / maxThreatScore) * 100 : 0
+                    maxThreatScore > 0 ? (score / maxThreatScore) * 100 : 0
                   return (
                     <div
                       key={c.name}
@@ -3344,7 +3403,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                           textAlign: 'right',
                         }}
                       >
-                        {c.threatScore}
+                        {score}
                       </span>
                     </div>
                   )
