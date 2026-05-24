@@ -1,4 +1,6 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronDown } from 'lucide-react'
 import { CONTACT_EMAIL } from '../config'
 import { COMPETITOR_COLORS } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
@@ -2416,6 +2418,334 @@ const closeBtnStyle = {
   lineHeight: 1,
 }
 
+// ─── Grouped gap-list helpers ─────────────────────────────────────────────────
+// renderScanGapCard returns the priority-gap card JSX used inside the new
+// collapsible sections. The card visual is unchanged from the pre-refactor
+// flat list — only the wrapping structure (section header + collapse) is new.
+function renderScanGapCard(gap, i, highlightGapId) {
+  const slug = gapSlug(gap)
+  const opp = gap._opp ?? oppScore(gap)
+  const comps = competitorsForGap(gap)
+  const href = buildGapHref(gap)
+  return (
+    <motion.div
+      key={`${gap.domain}-${gap.path}-${i}`}
+      id={`gap-row-${slug}`}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: i * 0.04, duration: 0.2 }}
+      style={{
+        background: '#0f1422',
+        border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: 3,
+        padding: 12,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        minWidth: 0,
+        transition: 'border-color 0.15s',
+        animation:
+          highlightGapId === `gap-row-${slug}`
+            ? 'srpGapPulse 0.5s ease-out 1'
+            : undefined,
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(24,180,212,0.25)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)' }}
+    >
+      {/* Top row — domain + path | tier + country */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div
+            title={gap.domain}
+            style={{
+              fontFamily: FONT_MONO,
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#fff',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#ffffff', textDecoration: 'underline', cursor: 'pointer' }}
+            >
+              {gap.domain}
+            </a>
+          </div>
+          {gap.path && (
+            <div
+              title={gap.path}
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 10,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                marginTop: 2,
+              }}
+            >
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#18b4d4', textDecoration: 'underline', cursor: 'pointer' }}
+              >
+                {gap.path}
+              </a>
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+          <TierBadge tier={gap.tier} />
+          {gap.country && (
+            <span
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 10,
+                fontWeight: 600,
+                padding: '2px 6px',
+                borderRadius: 3,
+                background: 'rgba(255,255,255,0.04)',
+                color: HZ.muted,
+                border: '1px solid rgba(255,255,255,0.08)',
+                letterSpacing: '0.04em',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {gap.country}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Competitor chips */}
+      {comps.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {comps.map((name) => {
+            const m = competitorMeta(name)
+            return (
+              <span
+                key={name}
+                style={{
+                  fontFamily: FONT_MONO,
+                  fontSize: 10,
+                  padding: '2px 6px',
+                  background: 'rgba(255,255,255,0.05)',
+                  borderLeft: `2px solid ${m.color}`,
+                  color: HZ.text,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {name}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Footer — Draft Outreach | OPP */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 4 }}>
+        <a
+          href={buildOutreachMailto(gap)}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            color: HZ.teal,
+            letterSpacing: '0.06em',
+            textDecoration: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          → Draft Outreach
+        </a>
+        <span style={{ fontFamily: FONT_MONO, fontSize: 10, color: HZ.muted, letterSpacing: '0.04em' }}>
+          OPP {opp}
+        </span>
+      </div>
+    </motion.div>
+  )
+}
+
+// GroupedGapSection — one collapsible section header + body with show-more.
+// Owns its own open + expanded state. Open == header expanded → body
+// visible. Expanded == "show all" (one-way after click).
+function GroupedGapSection({
+  label,
+  color,
+  rgb,
+  items,
+  defaultOpen = false,
+  renderItem,
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  const [expanded, setExpanded] = useState(false)
+  const [hover, setHover] = useState(false)
+  const visible = expanded ? items : items.slice(0, 3)
+  const remaining = items.length - visible.length
+
+  return (
+    <div>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setOpen((o) => !o)
+          }
+        }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'auto 1fr auto',
+          alignItems: 'center',
+          gap: 12,
+          padding: '10px 14px',
+          cursor: 'pointer',
+          userSelect: 'none',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          background: hover ? `rgba(${rgb},0.03)` : 'transparent',
+          transition: 'background 0.15s',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: color,
+              boxShadow: `0 0 6px ${color}`,
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontFamily: FONT_MONO,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {label}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <span
+            style={{
+              fontFamily: FONT_MONO,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              padding: '2px 8px',
+              borderRadius: 3,
+              color,
+              border: `1px solid rgba(${rgb},0.35)`,
+              background: `rgba(${rgb},0.06)`,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {items.length}
+          </span>
+        </div>
+        <motion.div
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          style={{ display: 'inline-flex', color: HZ.muted }}
+        >
+          <ChevronDown size={14} strokeWidth={1.75} />
+        </motion.div>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {open && items.length > 0 && (
+          <motion.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{ padding: '8px 0 12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {visible.map((item, i) => renderItem(item, i))}
+              </div>
+              {!expanded && remaining > 0 && (
+                <button
+                  onClick={() => setExpanded(true)}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    marginTop: 8,
+                    padding: 8,
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: 3,
+                    color: '#8892a4',
+                    fontFamily: FONT_MONO,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'color 0.15s, border-color 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#b8c4d4'
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.16)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#8892a4'
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
+                  }}
+                >
+                  + {remaining} more
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+        {open && items.length === 0 && (
+          <motion.div
+            key="empty"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{
+              padding: '14px 16px',
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              color: HZ.muted,
+              textAlign: 'center',
+              letterSpacing: '0.06em',
+            }}>
+              No items in this group.
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const ScanResultsPanel = forwardRef(function ScanResultsPanel(
@@ -3011,240 +3341,76 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
             })}
           </div>
 
-          {sortedGaps.length === 0 ? (
-            <div
-              style={{
-                padding: '32px 16px',
-                textAlign: 'center',
-                fontFamily: FONT_BODY,
-                fontSize: 13,
-                color: HZ.muted,
-              }}
-            >
-              <div style={{ fontSize: 24, color: HZ.teal, marginBottom: 6 }}>✓</div>
-              No new gaps detected this scan
-            </div>
-          ) : (
-            <>
-              <div
-                key={`gaps-${openCount}`}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 10,
-                }}
-              >
-                {visibleGaps.map((gap, i) => {
-                  const slug = gapSlug(gap)
-                  const opp = gap._opp ?? oppScore(gap)
-                  const comps = competitorsForGap(gap)
-                  const href = buildGapHref(gap)
-                  return (
-                    <div
-                      key={`${gap.domain}-${gap.path}-${i}`}
-                      id={`gap-row-${slug}`}
-                      style={{
-                        background: '#131929',
-                        border: '1px solid rgba(255,255,255,0.07)',
-                        borderRadius: 3,
-                        padding: 12,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 8,
-                        minWidth: 0,
-                        transition: 'border-color 0.15s',
-                        animation:
-                          highlightGapId === `gap-row-${slug}`
-                            ? 'srpGapPulse 0.5s ease-out 1'
-                            : `srpRowFade 380ms cubic-bezier(0.16,1,0.3,1) ${i * 50}ms both`,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(24,180,212,0.25)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
-                      }}
-                    >
-                      {/* Top row — domain + path | tier + country */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start',
-                          gap: 8,
-                        }}
-                      >
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div
-                            title={gap.domain}
-                            style={{
-                              fontFamily: FONT_MONO,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              color: '#fff',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            <a
-                              href={href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{
-                                color: '#ffffff',
-                                textDecoration: 'underline',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {gap.domain}
-                            </a>
-                          </div>
-                          {gap.path && (
-                            <div
-                              title={gap.path}
-                              style={{
-                                fontFamily: FONT_MONO,
-                                fontSize: 10,
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                marginTop: 2,
-                              }}
-                            >
-                              <a
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  color: '#18b4d4',
-                                  textDecoration: 'underline',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                {gap.path}
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            gap: 4,
-                            flexShrink: 0,
-                            alignItems: 'center',
-                          }}
-                        >
-                          <TierBadge tier={gap.tier} />
-                          {gap.country && (
-                            <span
-                              style={{
-                                fontFamily: FONT_MONO,
-                                fontSize: 10,
-                                fontWeight: 600,
-                                padding: '2px 6px',
-                                borderRadius: 3,
-                                background: 'rgba(255,255,255,0.04)',
-                                color: HZ.muted,
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                letterSpacing: '0.04em',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {gap.country}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+          {(() => {
+            // Group sortedGaps by tier for the new collapsible sections.
+            // T1 GAPS = tier 'T1', T2 GAPS = tier 'T2', OPPORTUNITY = T3 or
+            // unclassified gaps, CONFIRMED WINS = resolved gaps from the
+            // prev→current diff (Bybit now listed where it wasn't before).
+            const tier1Gaps = sortedGaps.filter((g) => g.tier === 'T1')
+            const tier2Gaps = sortedGaps.filter((g) => g.tier === 'T2')
+            const oppGaps = sortedGaps.filter((g) => !g.tier || (g.tier !== 'T1' && g.tier !== 'T2'))
+            const winGaps = (diffData?.newWins || []).map((g) => ({
+              ...g, _opp: oppScore(g),
+            }))
+            const total = tier1Gaps.length + tier2Gaps.length + oppGaps.length + winGaps.length
 
-                      {/* Competitor chips */}
-                      {comps.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                          {comps.map((name) => {
-                            const m = competitorMeta(name)
-                            return (
-                              <span
-                                key={name}
-                                style={{
-                                  fontFamily: FONT_MONO,
-                                  fontSize: 10,
-                                  padding: '2px 6px',
-                                  background: 'rgba(255,255,255,0.05)',
-                                  borderLeft: `2px solid ${m.color}`,
-                                  color: HZ.text,
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                {name}
-                              </span>
-                            )
-                          })}
-                        </div>
-                      )}
-
-                      {/* Footer — Draft Outreach | OPP */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginTop: 'auto',
-                          paddingTop: 4,
-                        }}
-                      >
-                        <a
-                          href={buildOutreachMailto(gap)}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            fontFamily: FONT_MONO,
-                            fontSize: 10,
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            color: HZ.teal,
-                            letterSpacing: '0.06em',
-                            textDecoration: 'none',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          → Draft Outreach
-                        </a>
-                        <span
-                          style={{
-                            fontFamily: FONT_MONO,
-                            fontSize: 10,
-                            color: HZ.muted,
-                            letterSpacing: '0.04em',
-                          }}
-                        >
-                          OPP {opp}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              {!expanded && remainingGaps > 0 && (
-                <button
-                  onClick={() => setExpanded(true)}
+            if (total === 0) {
+              return (
+                <div
                   style={{
-                    marginTop: 8,
-                    padding: '8px 12px',
-                    width: '100%',
-                    background: 'transparent',
-                    border: 'none',
-                    fontFamily: FONT_MONO,
-                    fontSize: 11,
-                    color: HZ.teal,
-                    cursor: 'pointer',
+                    padding: '32px 16px',
                     textAlign: 'center',
-                    letterSpacing: '0.05em',
+                    fontFamily: FONT_BODY,
+                    fontSize: 13,
+                    color: HZ.muted,
                   }}
                 >
-                  + {remainingGaps} more ↓
-                </button>
-              )}
-            </>
-          )}
+                  <div style={{ fontSize: 24, color: HZ.teal, marginBottom: 6 }}>✓</div>
+                  No new gaps detected this scan
+                </div>
+              )
+            }
+
+            const itemRenderer = (gap, i) => renderScanGapCard(gap, i, highlightGapId)
+
+            return (
+              <div key={`gaps-${openCount}`}>
+                <GroupedGapSection
+                  label="T1 Gaps"
+                  color="#e8703a"
+                  rgb="232,112,58"
+                  items={tier1Gaps}
+                  defaultOpen
+                  renderItem={itemRenderer}
+                />
+                <GroupedGapSection
+                  label="T2 Gaps"
+                  color="#18b4d4"
+                  rgb="24,180,212"
+                  items={tier2Gaps}
+                  defaultOpen={false}
+                  renderItem={itemRenderer}
+                />
+                <GroupedGapSection
+                  label="Opportunity"
+                  color="#70a848"
+                  rgb="112,168,72"
+                  items={oppGaps}
+                  defaultOpen={false}
+                  renderItem={itemRenderer}
+                />
+                <GroupedGapSection
+                  label="Confirmed Wins"
+                  color="#0dbe82"
+                  rgb="13,190,130"
+                  items={winGaps}
+                  defaultOpen={false}
+                  renderItem={itemRenderer}
+                />
+              </div>
+            )
+          })()}
+
         </div>
 
         {/* ─── VS LAST SCAN — always-open delta intelligence panel ───────── */}

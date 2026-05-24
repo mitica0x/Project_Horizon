@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import * as Dialog from '@radix-ui/react-dialog'
 import { ChevronDown, Radar, Hexagon } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -87,6 +86,10 @@ const sectionLabel = {
 }
 
 export default function StatusBoard({
+  // onDismiss kept in the prop API for App.jsx compatibility but no longer
+  // consumed — the dismiss-the-whole-board UX was replaced by an inline
+  // collapse toggle on the HIGH PRESSURE section.
+  // eslint-disable-next-line no-unused-vars
   onDismiss,
   onAskIntel,
   onAskQuestion,
@@ -104,7 +107,18 @@ export default function StatusBoard({
   const [intelOpen, setIntelOpen] = useState(false)
   const [addUrlOpen, setAddUrlOpen] = useState(false)
   const [addUrlValue, setAddUrlValue] = useState('')
-  const [dismissOpen, setDismissOpen] = useState(false)
+  // HIGH PRESSURE collapse state — persisted under 'hp_open'. Default: expanded.
+  const [highPressureOpen, setHighPressureOpen] = useState(() => {
+    try {
+      const raw = localStorage.getItem('hp_open')
+      return raw === null ? true : raw === '1'
+    } catch {
+      return true
+    }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('hp_open', highPressureOpen ? '1' : '0') } catch { /* ignore */ }
+  }, [highPressureOpen])
 
   const tableData = TABLE_DATA
   const gapData = GAPS_T1
@@ -570,236 +584,238 @@ export default function StatusBoard({
       )}
 
       {/* ── 4. HIGH PRESSURE block ───────────────────────────────────── */}
+      {/* New behaviour: persistent collapse toggle (state in localStorage
+          under 'hp_open'). The DISMISS button + Radix AlertDialog have been
+          removed entirely — collapse replaces the hide-for-today UX. */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, ease: 'easeOut', delay: 0.4 }}
         style={{
-          background: 'linear-gradient(135deg, rgba(232,112,58,0.06) 0%, rgba(15,20,34,0.97) 55%)',
+          background: highPressureOpen
+            ? 'linear-gradient(135deg, rgba(232,112,58,0.06) 0%, rgba(15,20,34,0.97) 55%)'
+            : 'rgba(15,20,34,0.65)',
           border: '1px solid rgba(232,112,58,0.15)',
           boxShadow: 'inset 0 1px 0 rgba(232,112,58,0.08)',
           borderRadius: 3,
-          padding: 14,
+          overflow: 'hidden',
         }}
       >
-        {/* Headline row */}
+        {/* Slim collapse header — always visible, 40px tall, click to toggle. */}
         <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={highPressureOpen}
+          aria-controls="hp-body"
+          onClick={() => setHighPressureOpen(o => !o)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setHighPressureOpen(o => !o)
+            }
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(232,112,58,0.04)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 16,
-            flexWrap: 'wrap',
-            paddingBottom: 14,
-            borderBottom: '1px solid rgba(255,255,255,0.04)',
-            marginBottom: 16,
+            gap: 12,
+            height: 40,
+            padding: '10px 14px',
+            cursor: 'pointer',
+            userSelect: 'none',
+            borderBottom: highPressureOpen
+              ? '1px solid rgba(255,255,255,0.06)'
+              : '1px solid transparent',
+            transition: 'background 0.15s, border-color 0.2s',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Left — dot + HIGH PRESSURE label */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <span
               style={{
-                width: 9,
-                height: 9,
+                width: 8,
+                height: 8,
                 borderRadius: '50%',
-                background: 'var(--rust)',
+                background: '#e8703a',
                 animation: 'novaPulse 1.5s ease-in-out infinite',
                 flexShrink: 0,
               }}
             />
-            <div>
-              <div
-                style={{
-                  fontFamily: FONT_HEAD,
-                  fontWeight: 800,
-                  fontSize: 22,
-                  letterSpacing: '0.06em',
-                  color: 'var(--rust)',
-                  textShadow: '0 0 16px rgba(232,112,58,0.25)',
-                }}
-              >
-                {verdict.label}
-              </div>
-              <div
-                style={{
-                  fontFamily: FONT_BODY,
-                  fontSize: 12,
-                  color: 'var(--text-muted)',
-                  marginTop: 2,
-                }}
-              >
-                90-second operational read · five signals
-              </div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: FONT_MONO, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
-              UPDATED {fmtClock(updatedAt)}
+            <span
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                color: '#e8703a',
+                textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              HIGH PRESSURE
             </span>
-            {onScan && (
-              <motion.button
-                onClick={handleScanClick}
-                disabled={scanState !== 'idle'}
-                whileHover={scanState === 'idle' ? { scale: 1.01, boxShadow: '0 0 20px rgba(13,190,130,0.25)' } : {}}
-                transition={{ duration: 0.15 }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontFamily: FONT_MONO,
-                  fontSize: 10,
-                  fontWeight: 600,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  color: scanState === 'error' ? 'var(--red)' : 'var(--emerald)',
-                  background: 'transparent',
-                  border: `1px solid ${scanState === 'error' ? 'rgba(255,77,109,0.4)' : 'rgba(13,190,130,0.4)'}`,
-                  borderRadius: 3,
-                  padding: '7px 12px',
-                  cursor: scanState === 'idle' ? 'pointer' : 'default',
-                  boxShadow: '0 0 14px rgba(13,190,130,0.15)',
-                  opacity: scanState === 'idle' ? 1 : 0.7,
-                }}
-              >
-                <Radar size={11} strokeWidth={2} />
-                {scanState === 'idle' ? 'SCAN NOW' : scanState === 'complete' ? 'COMPLETE' : scanState === 'error' ? 'OFFLINE' : 'SCANNING…'}
-              </motion.button>
-            )}
-            {onAskIntel && (
-              <motion.button
-                onClick={askIntel}
-                title="Ask C0insiglieri about this section"
-                whileHover={{ borderColor: 'rgba(24,180,212,0.55)' }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontFamily: FONT_MONO,
-                  fontSize: 10,
-                  fontWeight: 600,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  color: 'var(--cyan)',
-                  background: 'transparent',
-                  border: '1px solid rgba(24,180,212,0.35)',
-                  borderRadius: 3,
-                  padding: '7px 12px',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'color 0.15s',
-                }}
-              >
-                <Hexagon size={11} strokeWidth={2} />
-                Ask C0insiglieri
-              </motion.button>
-            )}
-            <Dialog.Root open={dismissOpen} onOpenChange={setDismissOpen}>
-              <Dialog.Trigger asChild>
-                <button
-                  style={{
-                    fontFamily: FONT_MONO,
-                    fontSize: 10,
-                    fontWeight: 600,
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: 'var(--text-muted)',
-                    background: 'transparent',
-                    border: '1px solid var(--border)',
-                    borderRadius: 3,
-                    padding: '7px 12px',
-                    cursor: 'pointer',
-                    transition: 'color 0.15s, border-color 0.15s',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.color = '#c8d0dc'
-                    e.currentTarget.style.borderColor = 'var(--border-active)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.color = 'var(--text-muted)'
-                    e.currentTarget.style.borderColor = 'var(--border)'
-                  }}
-                >
-                  Dismiss
-                </button>
-              </Dialog.Trigger>
-              <Dialog.Portal>
-                <Dialog.Overlay
-                  style={{
-                    position: 'fixed', inset: 0, zIndex: 5000,
-                    background: 'rgba(0,0,0,0.55)',
-                    backdropFilter: 'blur(2px)',
-                  }}
-                />
-                <Dialog.Content
-                  role="alertdialog"
-                  style={{
-                    position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-                    zIndex: 5001,
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-active)',
-                    borderRadius: 3,
-                    padding: 18,
-                    maxWidth: 380,
-                    width: '90vw',
-                    boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
-                  }}
-                >
-                  <Dialog.Title
-                    style={{
-                      fontFamily: FONT_MONO, fontSize: 11, fontWeight: 700,
-                      letterSpacing: '0.14em', textTransform: 'uppercase',
-                      color: 'var(--rust)', marginBottom: 10,
-                    }}
-                  >
-                    Dismiss STATUS?
-                  </Dialog.Title>
-                  <Dialog.Description
-                    style={{
-                      fontFamily: FONT_BODY, fontSize: 13,
-                      color: 'var(--text-body)', lineHeight: 1.5, marginBottom: 16,
-                    }}
-                  >
-                    The board will hide for the rest of today. It will re-open tomorrow on first visit.
-                  </Dialog.Description>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                    <Dialog.Close asChild>
-                      <button
-                        style={{
-                          fontFamily: FONT_MONO, fontSize: 10, fontWeight: 600,
-                          letterSpacing: '0.12em', textTransform: 'uppercase',
-                          color: 'var(--text-muted)',
-                          background: 'transparent',
-                          border: '1px solid var(--border)',
-                          borderRadius: 3,
-                          padding: '7px 14px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </Dialog.Close>
-                    <button
-                      onClick={() => { setDismissOpen(false); onDismiss?.() }}
-                      style={{
-                        fontFamily: FONT_MONO, fontSize: 10, fontWeight: 600,
-                        letterSpacing: '0.12em', textTransform: 'uppercase',
-                        color: 'var(--rust)',
-                        background: 'transparent',
-                        border: '1px solid rgba(232,112,58,0.45)',
-                        borderRadius: 3,
-                        padding: '7px 14px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </Dialog.Content>
-              </Dialog.Portal>
-            </Dialog.Root>
+          </div>
+
+          {/* Centre — count badge */}
+          <span
+            style={{
+              fontFamily: FONT_MONO,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              padding: '3px 8px',
+              borderRadius: 3,
+              color: '#e8703a',
+              border: '1px solid rgba(232,112,58,0.35)',
+              background: 'rgba(232,112,58,0.06)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {signals.length} signals
+          </span>
+
+          {/* Right — chevron + collapse/expand label */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <span
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 9,
+                fontWeight: 600,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: '#8892a4',
+              }}
+            >
+              {highPressureOpen ? 'Collapse' : 'Expand'}
+            </span>
+            <motion.span
+              animate={{ rotate: highPressureOpen ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+              style={{ display: 'inline-flex', color: '#8892a4' }}
+            >
+              <ChevronDown size={14} strokeWidth={1.75} />
+            </motion.span>
           </div>
         </div>
 
-        {/* Two-column body: signals (left) + intel stack (right) */}
+        {/* Collapsible body — verdict subheading + actions row + 2-col content. */}
+        <AnimatePresence initial={false}>
+          {highPressureOpen && (
+            <motion.div
+              key="hp-body"
+              id="hp-body"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div style={{ padding: 14 }}>
+                {/* Verdict subheading + actions row (SCAN NOW + ASK kept; DISMISS removed). */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 16,
+                    flexWrap: 'wrap',
+                    paddingBottom: 14,
+                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    marginBottom: 16,
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: FONT_HEAD,
+                        fontWeight: 800,
+                        fontSize: 22,
+                        letterSpacing: '0.06em',
+                        color: 'var(--rust)',
+                        textShadow: '0 0 16px rgba(232,112,58,0.25)',
+                      }}
+                    >
+                      {verdict.label}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: FONT_BODY,
+                        fontSize: 12,
+                        color: 'var(--text-muted)',
+                        marginTop: 2,
+                      }}
+                    >
+                      90-second operational read · five signals
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: FONT_MONO, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
+                      UPDATED {fmtClock(updatedAt)}
+                    </span>
+                    {onScan && (
+                      <motion.button
+                        onClick={handleScanClick}
+                        disabled={scanState !== 'idle'}
+                        whileHover={scanState === 'idle' ? { scale: 1.01, boxShadow: '0 0 20px rgba(13,190,130,0.25)' } : {}}
+                        transition={{ duration: 0.15 }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontFamily: FONT_MONO,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: '0.12em',
+                          textTransform: 'uppercase',
+                          color: scanState === 'error' ? 'var(--red)' : 'var(--emerald)',
+                          background: 'transparent',
+                          border: `1px solid ${scanState === 'error' ? 'rgba(255,77,109,0.4)' : 'rgba(13,190,130,0.4)'}`,
+                          borderRadius: 3,
+                          padding: '7px 12px',
+                          cursor: scanState === 'idle' ? 'pointer' : 'default',
+                          boxShadow: '0 0 14px rgba(13,190,130,0.15)',
+                          opacity: scanState === 'idle' ? 1 : 0.7,
+                        }}
+                      >
+                        <Radar size={11} strokeWidth={2} />
+                        {scanState === 'idle' ? 'SCAN NOW' : scanState === 'complete' ? 'COMPLETE' : scanState === 'error' ? 'OFFLINE' : 'SCANNING…'}
+                      </motion.button>
+                    )}
+                    {onAskIntel && (
+                      <motion.button
+                        onClick={askIntel}
+                        title="Ask C0insiglieri about this section"
+                        whileHover={{ borderColor: 'rgba(24,180,212,0.55)' }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontFamily: FONT_MONO,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: '0.12em',
+                          textTransform: 'uppercase',
+                          color: 'var(--cyan)',
+                          background: 'transparent',
+                          border: '1px solid rgba(24,180,212,0.35)',
+                          borderRadius: 3,
+                          padding: '7px 12px',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          transition: 'color 0.15s',
+                        }}
+                      >
+                        <Hexagon size={11} strokeWidth={2} />
+                        Ask C0insiglieri
+                      </motion.button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Two-column body: signals (left) + intel stack (right) */}
         <div
           style={{
             display: 'grid',
@@ -921,6 +937,10 @@ export default function StatusBoard({
             <IntelActions label="RECOMMENDED ACTIONS TODAY" actions={intel.actions} onNav={onNav} />
           </div>
         </div>
+              </div>{/* close padding wrapper */}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </Card>
     </Tooltip.Provider>
