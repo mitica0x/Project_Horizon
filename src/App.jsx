@@ -3,7 +3,7 @@ import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
-import { Circle } from 'lucide-react'
+import { Circle, ChevronDown } from 'lucide-react'
 import { Toaster } from 'sonner'
 import HeroCanvas from './components/HeroCanvas'
 import ScanResultsPanel from './components/ScanResultsPanel'
@@ -236,7 +236,6 @@ export default function App() {
   // bar that frames the dashboard. Derived from existing helpers; no new state.
   const overallVerdict = useMemo(() => statusVerdict(dayStatus).label, [dayStatus])
   const fieldPressure = useMemo(() => assessCompetitors().pressure, [])
-  const [radarOpen, setRadarOpen] = useState(false)
   const [scanProgress, setScanProgress] = useState(null)
   // Increments every time a scan completes so the scroll-to-results effect
   // refires even when scanResultsVisible was already true (back-to-back
@@ -346,7 +345,6 @@ export default function App() {
 
   const runScan = useCallback(async () => {
     if (scanState !== 'idle') return
-    setRadarOpen(true)
     const orgId = getActiveOrgId()
     if (!orgId) {
       setScanState('error')
@@ -450,7 +448,6 @@ export default function App() {
   // real scan emits — 'sentry' / 'mirror' / 'herald'. We use 'sentry' here
   // so the same animation fires (there's no literal 'scanning' state).
   const loadMockScan = useCallback(() => {
-    setRadarOpen(true)
     // Cancel any pending mock injection so rapid T-presses don't stack
     // timers and inject twice.
     if (mockScanTimerRef.current) {
@@ -671,99 +668,114 @@ export default function App() {
 
       {view === 'dashboard' ? (
       <div className="hz-shell">
-      {/* Hero — ALL SIGNAL. / 0 NOISE. (left) + permanent radar (right).
-          Stats bar — FIELD | PRESSURE | T1 GAPS | WINDOW (rust + emerald).
-          Motion: staggered entrance; counter animations on PRESSURE + T1 GAPS. */}
-      <div style={{
-        padding: '52px 32px 22px 32px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-      }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)',
-          gap: 32,
-          alignItems: 'center',
-          marginBottom: 28,
-        }}>
-          <div style={{
+      {/* HERO — full-viewport radar background with overlay copy top-left
+          and a bouncing scroll indicator at bottom-center.
+          The HeroCanvas <section> is natively width:100% / height:100vh, so
+          it fills this wrapper without any sizing CSS from our side.
+          pointer-events:none on the overlay keeps blip hover targets clickable. */}
+      <section
+        id="hz-hero"
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100vh',
+        }}
+      >
+        {/* Radar — always visible, fills the hero. No wrapper, no scale,
+            no condition. Internal logic, mouse interactivity, animations,
+            dot colours, sweeps, and the centre data cards all untouched. */}
+        <HeroCanvas
+          scanState={scanState}
+          targetScore={dash?.euScore}
+          metrics={
+            dash && {
+              sitesMonitored: dash.sitesMonitored,
+              bybitPresent: dash.bybitPresent,
+              tier1Gaps: dash.tier1Gaps,
+              brandAlerts: dash.brandAlerts,
+            }
+          }
+        />
+
+        {/* Hero copy — absolute top-left, padded 32px, sitting above the radar.
+            76px top-padding = 44px topbar clearance + spec-mandated 32px. */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            padding: '76px 32px 32px 32px',
+            zIndex: 10,
+            pointerEvents: 'none',
             fontWeight: 800,
             color: '#ffffff',
             lineHeight: 1.0,
             letterSpacing: '-0.03em',
             textTransform: 'uppercase',
             fontFamily: "'Geist', sans-serif",
-          }}>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: 'easeOut' }}
-              style={{ fontSize: 'clamp(40px, 6vw, 72px)' }}
-            >
-              All signal.
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
-              style={{ fontSize: 'clamp(40px, 6vw, 72px)' }}
-            >
-              <span
-                style={{
-                  color: 'var(--emerald)',
-                  textShadow: '0 0 24px rgba(13,190,130,0.4)',
-                }}
-              >
-                0
-              </span>
-              <span style={{ color: '#ffffff' }}> noise.</span>
-            </motion.div>
-          </div>
-          {/* Permanent radar — always visible. The HeroCanvas section is
-              hard-coded to 100vh and contains a 780×780 absolutely-centered
-              radar. To fit it inline without touching its internals:
-                - .hz-radar-inline forces the <section> to fill its parent
-                - the inner 780×780 box is centered and scaled down via CSS
-                  transform, so the whole radar (incl. outer ring) is visible. */}
+          }}
+        >
           <motion.div
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, ease: 'easeOut', delay: 0.15 }}
-            style={{
-              position: 'relative',
-              width: '100%',
-              maxWidth: 520,
-              aspectRatio: '1 / 1',
-              margin: '0 auto',
-              overflow: 'hidden',
-            }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            style={{ fontSize: 72 }}
           >
-            <div
-              className="hz-radar-inline"
+            All signal.
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
+            style={{ fontSize: 72 }}
+          >
+            <span
               style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                width: 780,
-                height: 780,
-                transform: 'translate(-50%, -50%) scale(0.62)',
-                transformOrigin: 'center center',
+                color: 'var(--emerald)',
+                textShadow: '0 0 24px rgba(13,190,130,0.4)',
               }}
             >
-              <HeroCanvas
-                scanState={scanState}
-                targetScore={dash?.euScore}
-                metrics={
-                  dash && {
-                    sitesMonitored: dash.sitesMonitored,
-                    bybitPresent: dash.bybitPresent,
-                    tier1Gaps: dash.tier1Gaps,
-                    brandAlerts: dash.brandAlerts,
-                  }
-                }
-              />
-            </div>
+              0
+            </span>
+            <span style={{ color: '#ffffff' }}> noise.</span>
           </motion.div>
         </div>
+
+        {/* Scroll indicator — bottom-center, gentle bounce, scrolls to stats. */}
+        <button
+          onClick={() => {
+            document.getElementById('hz-stats')?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            })
+          }}
+          aria-label="Scroll to status"
+          style={{
+            position: 'absolute',
+            bottom: 24,
+            left: '50%',
+            zIndex: 10,
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 6,
+            color: 'var(--text-muted)',
+            animation: 'scrollBounce 2s ease-in-out infinite',
+          }}
+        >
+          <ChevronDown size={22} strokeWidth={1.75} />
+        </button>
+      </section>
+
+      {/* Stats bar — moved below the hero per spec. Pills are unchanged
+          (FIELD / PRESSURE / T1 GAPS / WINDOW, counter animations). */}
+      <div
+        id="hz-stats"
+        style={{
+          padding: '32px',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
         <div style={{ display: 'flex', gap: 8 }}>
           {(() => {
             const pressureNum = Number(fieldPressure) || 0
