@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
+import { Circle } from 'lucide-react'
+import { Toaster } from 'sonner'
 import HeroCanvas from './components/HeroCanvas'
 import ScanResultsPanel from './components/ScanResultsPanel'
 import GapCard from './components/GapCard'
@@ -184,6 +187,18 @@ function transformScan(payload) {
     _verified: verified,
     _failed: failed,
   }
+}
+
+// Number-counter primitive — counts 0→target on mount via framer-motion's
+// imperative `animate`. `suffix` lets the PRESSURE pill emit "/100" inline.
+function Counter({ target, duration = 0.8, suffix = '' }) {
+  const mv = useMotionValue(0)
+  const rendered = useTransform(mv, v => `${Math.round(v)}${suffix}`)
+  useEffect(() => {
+    const ctl = animate(mv, target, { duration, ease: 'easeOut' })
+    return () => ctl.stop()
+  }, [mv, target, duration])
+  return <motion.span>{rendered}</motion.span>
 }
 
 export default function App() {
@@ -591,21 +606,20 @@ export default function App() {
 
   return (
     <>
-      {/* Fixed top bar — tracks the sidebar's right edge via
-          left:var(--hz-sidebar) (210 expanded / 52 collapsed) to right:0, so
-          it never overlaps the sidebar. Frosted semi-transparent dark + blur,
-          LIVE + account right-aligned. Both content roots pad 48 to clear it. */}
+      {/* Fixed top bar — 44px, sits right of the sidebar.
+          LIVE dot (lucide Circle, emerald, pulse animation) + account right-aligned. */}
       <div
         style={{
           position: 'fixed',
           top: 0,
           left: 'var(--hz-sidebar)',
           right: 0,
-          height: 48,
+          height: 44,
           zIndex: 200,
-          background: 'rgba(10, 14, 26, 0.85)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          background: 'rgba(0, 0, 0, 0.2)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
@@ -614,22 +628,23 @@ export default function App() {
           boxSizing: 'border-box',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <Circle
+            size={7}
+            fill="var(--emerald)"
+            strokeWidth={0}
             style={{
-              display: 'inline-block',
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: '#94c864',
+              color: 'var(--emerald)',
               animation: 'livePulse 2s ease-in-out infinite',
+              flexShrink: 0,
             }}
           />
           <span
             style={{
               fontFamily: "'Geist Mono', monospace",
               fontSize: 10,
-              color: '#94c864',
+              fontWeight: 600,
+              color: 'var(--emerald)',
               letterSpacing: '0.15em',
             }}
           >
@@ -656,43 +671,97 @@ export default function App() {
 
       {view === 'dashboard' ? (
       <div className="hz-shell">
-      {/* Hero — always visible at the top of the STATUS area. Title + four
-          stat pills (FIELD / PRESSURE / T1 GAPS / WINDOW). Independent of
-          scan state and radar visibility. */}
+      {/* Hero — MARKET INTELLIGENCE. / 0 GUESS.
+          Stats bar — FIELD | PRESSURE | T1 GAPS | WINDOW (rust + emerald).
+          Motion: staggered entrance; counter animations on PRESSURE + T1 GAPS. */}
       <div style={{
         padding: '52px 32px 22px 32px',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
         <div style={{
-          fontSize: '72px',
           fontWeight: 800,
           color: '#ffffff',
           lineHeight: 1.0,
           letterSpacing: '-0.03em',
           textTransform: 'uppercase',
-          marginBottom: '24px',
+          marginBottom: '28px',
+          fontFamily: "'Geist', sans-serif",
         }}>
-          Market intelligence.<br />
-          <span style={{ color: '#94c864' }}>0 guess.</span>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            style={{ fontSize: 'clamp(40px, 7vw, 72px)' }}
+          >
+            Market intelligence.
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
+            style={{ fontSize: 'clamp(40px, 7vw, 72px)' }}
+          >
+            <span
+              style={{
+                color: 'var(--emerald)',
+                textShadow: '0 0 24px rgba(13,190,130,0.4)',
+              }}
+            >
+              0
+            </span>
+            <span style={{ color: '#ffffff' }}> guess.</span>
+          </motion.div>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {[
-            { label: 'FIELD',    value: overallVerdict || 'MONITORING', color: '#d4a853' },
-            { label: 'PRESSURE', value: `${fieldPressure ?? 0}/100`,    color: '#d4a853' },
-            { label: 'T1 GAPS',  value: String(t1Source.length ?? 0),   color: '#d4a853' },
-            { label: 'WINDOW',   value: '14 DAYS',                      color: '#94c864' },
-          ].map(({ label, value, color }) => (
-            <div key={label} style={{
-              flex: 1,
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: '3px',
-              padding: '10px 14px',
-            }}>
-              <div style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '5px' }}>{label}</div>
-              <div style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 700, color }}>{value}</div>
-            </div>
-          ))}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(() => {
+            const pressureNum = Number(fieldPressure) || 0
+            const t1Count = Number(t1Source.length) || 0
+            const pills = [
+              { label: 'FIELD',    color: 'var(--rust)',    node: <span>{overallVerdict || 'MONITORING'}</span> },
+              { label: 'PRESSURE', color: 'var(--rust)',    node: <Counter target={pressureNum} duration={0.8} suffix="/100" /> },
+              { label: 'T1 GAPS',  color: 'var(--rust)',    node: <Counter target={t1Count} duration={0.6} /> },
+              { label: 'WINDOW',   color: 'var(--emerald)', node: <span>14 DAYS</span> },
+            ]
+            return pills.map(({ label, color, node }, i) => (
+              <motion.div
+                key={label}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.35, ease: 'easeOut', delay: 0.15 + i * 0.08 }}
+                whileHover={{
+                  borderColor: 'rgba(255,255,255,0.18)',
+                  backgroundColor: 'rgba(255,255,255,0.04)',
+                }}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.09)',
+                  borderRadius: 3,
+                  padding: '10px 14px',
+                  cursor: 'default',
+                }}
+              >
+                <div style={{
+                  fontFamily: "'Geist Mono', monospace",
+                  fontSize: 10,
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.12em',
+                  marginBottom: 5,
+                }}>
+                  {label}
+                </div>
+                <div style={{
+                  fontFamily: "'Geist Mono', monospace",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color,
+                }}>
+                  {node}
+                </div>
+              </motion.div>
+            ))
+          })()}
         </div>
       </div>
       <div
@@ -847,6 +916,22 @@ export default function App() {
       <AskTheBrief ref={askBriefRef} onSortStrategy={handleSortStrategy} />
 
       {novaOpen && <Nova onExit={() => setNovaOpen(false)} onAskIntel={openIntel} />}
+
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: '#0f1422',
+            color: '#ffffff',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderLeft: '2px solid #0dbe82',
+            borderRadius: 3,
+            fontFamily: "'Geist Mono', monospace",
+            fontSize: 12,
+            letterSpacing: '0.04em',
+          },
+        }}
+      />
 
       {scanProgress && (
         <div

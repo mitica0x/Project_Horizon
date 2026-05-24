@@ -1,31 +1,28 @@
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { Activity, CalendarDays, MessageCircle, History, Radar, Zap } from 'lucide-react'
 import { FONT_HEAD, FONT_MONO } from './horizonUI'
 import { statusVerdict, getDayStatus } from '../utils/horizonData'
 
-// S6 — sidebar micro-line under the STATUS label, derived from the day verdict.
 const STATUS_MICRO = {
   'HIGH PRESSURE': '3 actions · market moving',
   'ELEVATED WATCH': '1 action · monitor market',
   'ALL CLEAR': 'Market clear',
 }
 
-// Left nav for the Horiz0n suite. Collapsible (persisted), full-height (top:0).
-// "Ask C0insiglieri" (intel) sits below the divider as a nav item.
-// SCAN NOW lives inside StatusBoard, not the sidebar.
-// N0VA pinned at the bottom in lime.
-
 const NAV = [
-  { id: 'status',   label: 'STATUS',   glyph: '◴' },
-  { id: 'events',   label: 'EVENTS',   glyph: '◇' },
-  { id: 'history', label: 'HISTORY', glyph: '◎' },
+  { id: 'status',  label: 'STATUS',           Icon: Activity },
+  { id: 'events',  label: 'EVENTS',           Icon: CalendarDays },
+  { id: 'brief',   label: 'Ask C0insiglieri', Icon: MessageCircle },
+  { id: 'history', label: 'HISTORY',          Icon: History },
 ]
 
 const COLLAPSE_KEY = 'horizon_sidebar_collapsed'
 
-function NavRow({ glyph, label, active, onClick, collapsed, tone, subLine }) {
+function NavRow({ Icon, label, active, onClick, collapsed, subLine }) {
   const [hover, setHover] = useState(false)
   const lit = active || hover
-  const color = active ? (tone || 'var(--cyan)') : lit ? '#c8d0dc' : 'var(--text-muted)'
+  const color = active ? '#ffffff' : lit ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'
   return (
     <button
       onClick={onClick}
@@ -35,36 +32,49 @@ function NavRow({ glyph, label, active, onClick, collapsed, tone, subLine }) {
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
+        gap: 10,
         width: '100%',
         textAlign: 'left',
         justifyContent: collapsed ? 'center' : 'flex-start',
-        background: active ? `${tone || '#00d4e8'}14` : 'transparent',
+        background: active
+          ? 'linear-gradient(90deg, rgba(13,190,130,0.08), transparent)'
+          : 'transparent',
         border: 'none',
-        borderLeft: `3px solid ${active ? tone || 'var(--cyan)' : 'transparent'}`,
-        padding: collapsed ? '12px 0' : '11px 16px 11px 17px',
+        borderLeft: `2px solid ${active ? 'var(--emerald)' : 'transparent'}`,
+        padding: collapsed ? '11px 0' : '10px 14px 10px 13px',
         cursor: 'pointer',
         color,
         fontFamily: FONT_MONO,
-        fontSize: 12,
+        fontSize: 9,
+        fontWeight: 600,
         letterSpacing: '0.12em',
+        textTransform: 'uppercase',
         transition: 'color 0.15s, background 0.15s, border-color 0.15s',
       }}
     >
-      <span style={{ fontSize: 14, width: 16, textAlign: 'center', flexShrink: 0 }}>
-        {glyph}
-      </span>
+      <Icon
+        size={13}
+        strokeWidth={1.75}
+        style={{
+          flexShrink: 0,
+          color: active ? 'var(--emerald)' : color,
+          transition: 'color 0.15s',
+        }}
+      />
       {!collapsed && (
         <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-          <span>{label}</span>
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {label}
+          </span>
           {subLine && (
             <span
               style={{
                 fontFamily: FONT_MONO,
-                fontSize: 10,
+                fontSize: 8,
                 letterSpacing: '0.04em',
                 textTransform: 'none',
                 color: 'var(--text-muted)',
+                fontWeight: 400,
               }}
             >
               {subLine}
@@ -82,7 +92,7 @@ function Divider() {
       style={{
         height: 1,
         background: 'var(--border)',
-        margin: '10px 14px',
+        margin: '8px 12px',
       }}
     />
   )
@@ -92,11 +102,14 @@ export default function HorizonSidebar({
   view,
   onNav,
   onNova,
-  onTrace,
   onIntel,
   onScan,
   scanState = 'idle',
   compactStatus,
+  // onTrace kept in the prop API for compatibility with App.jsx, though the
+  // sidebar no longer renders a TRACE row (ScopePanel still reachable elsewhere).
+  // eslint-disable-next-line no-unused-vars
+  onTrace,
 }) {
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -107,17 +120,13 @@ export default function HorizonSidebar({
   })
   const [novaHover, setNovaHover] = useState(false)
   const [scanHover, setScanHover] = useState(false)
-  // scanState values from App.jsx's runScan: idle | sentry | mirror | herald
-  // | complete | error. Treat anything between idle and a terminal state as
-  // "scanning" for the sidebar button's two-state UI.
   const isScanning =
     scanState && scanState !== 'idle' && scanState !== 'complete' && scanState !== 'error'
 
-  // Keep the content offset (.hz-shell) in sync with the actual width.
   useEffect(() => {
     document.documentElement.style.setProperty(
       '--hz-sidebar',
-      collapsed ? '52px' : '210px',
+      collapsed ? '52px' : '160px',
     )
     try {
       localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0')
@@ -141,13 +150,13 @@ export default function HorizonSidebar({
         bottom: 0,
         zIndex: 150,
         background: 'var(--bg-panel)',
-        borderRight: '1px solid var(--border)',
+        borderRight: '1px solid rgba(255,255,255,0.05)',
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
       }}
     >
-      {/* Wordmark → P1 dashboard */}
+      {/* Wordmark — C / 0 (emerald) / IN / SIGLIERI (cyan) */}
       <button
         onClick={() => onNav('dashboard')}
         title="C0insiglieri — dashboard"
@@ -155,27 +164,30 @@ export default function HorizonSidebar({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 2,
+          gap: 0,
           background: 'none',
           border: 'none',
-          borderBottom: '1px solid var(--border)',
-          padding: '16px 12px',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          padding: '14px 10px',
           cursor: 'pointer',
           fontFamily: FONT_HEAD,
           fontWeight: 800,
-          fontSize: 18,
-          letterSpacing: '0.14em',
-          color: view === 'dashboard' ? '#94c864' : '#7e9a5a',
+          fontSize: collapsed ? 16 : 14,
+          letterSpacing: '0.10em',
           transition: 'color 0.15s',
         }}
       >
         {collapsed ? (
           <>
-            <span style={{color:'#ffffff'}}>C</span><span style={{color:'#94c864'}}>0</span>
+            <span style={{ color: '#ffffff' }}>C</span>
+            <span style={{ color: 'var(--emerald)' }}>0</span>
           </>
         ) : (
           <>
-            <span style={{color:'#ffffff'}}>C</span><span style={{color:'#94c864'}}>0</span><span style={{color:'#ffffff'}}>IN</span><span style={{color:'#00d4e8'}}>SIGLIERI</span>
+            <span style={{ color: '#ffffff' }}>C</span>
+            <span style={{ color: 'var(--emerald)' }}>0</span>
+            <span style={{ color: '#ffffff' }}>IN</span>
+            <span style={{ color: 'var(--cyan)' }}>SIGLIERI</span>
           </>
         )}
       </button>
@@ -190,11 +202,11 @@ export default function HorizonSidebar({
           justifyContent: collapsed ? 'center' : 'flex-end',
           background: 'none',
           border: 'none',
-          padding: '6px 14px',
-          marginTop: 56,
+          padding: '4px 12px',
+          marginTop: 40,
           cursor: 'pointer',
           color: 'var(--text-muted)',
-          fontSize: 14,
+          fontSize: 11,
           fontFamily: FONT_MONO,
         }}
       >
@@ -214,18 +226,18 @@ export default function HorizonSidebar({
             background: 'rgba(255,255,255,0.02)',
             border: 'none',
             borderBottom: '1px solid var(--border)',
-            padding: '10px 12px',
+            padding: '8px 10px',
             cursor: 'pointer',
             fontFamily: FONT_MONO,
-            fontSize: 10,
+            fontSize: 9,
             letterSpacing: '0.1em',
             color: verdict.color,
           }}
         >
           <span
             style={{
-              width: 7,
-              height: 7,
+              width: 6,
+              height: 6,
               borderRadius: '50%',
               background: verdict.color,
               boxShadow: `0 0 6px ${verdict.color}`,
@@ -236,11 +248,11 @@ export default function HorizonSidebar({
         </button>
       )}
 
-      <div style={{ flex: 1, overflowY: 'auto', paddingTop: 8 }}>
-        {NAV.map(it => (
+      <div style={{ flex: 1, overflowY: 'auto', paddingTop: 6 }}>
+        {NAV.slice(0, 2).map(it => (
           <NavRow
             key={it.id}
-            glyph={it.glyph}
+            Icon={it.Icon}
             label={it.label}
             active={view === it.id}
             collapsed={collapsed}
@@ -251,49 +263,68 @@ export default function HorizonSidebar({
 
         <Divider />
 
-        <NavRow glyph="⬡" label="Ask C0insiglieri" collapsed={collapsed} onClick={onIntel} />
+        <NavRow
+          Icon={NAV[2].Icon}
+          label={NAV[2].label}
+          active={false}
+          collapsed={collapsed}
+          onClick={onIntel}
+        />
+
+        <NavRow
+          Icon={NAV[3].Icon}
+          label={NAV[3].label}
+          active={view === 'history'}
+          collapsed={collapsed}
+          onClick={() => onNav('history')}
+        />
       </div>
 
-      {/* SCAN NOW — standalone action button anchored at the bottom, directly
-          above N0VA. Triggers App-level runScan (scroll-to-hero, GSAP, polling,
-          dashboard refresh). Sits outside the scrollable nav column so it
-          stays pinned regardless of nav-item growth. */}
+      {/* SCAN NOW — emerald, anchored above N0VA */}
       {onScan && (
-        <button
+        <motion.button
           onClick={onScan}
           disabled={isScanning}
           onMouseEnter={() => setScanHover(true)}
           onMouseLeave={() => setScanHover(false)}
           title={isScanning ? 'Scan in progress' : 'Run scan now'}
+          animate={{
+            scale: scanHover && !isScanning ? 1.01 : 1,
+            boxShadow: scanHover && !isScanning
+              ? '0 0 20px rgba(13,190,130,0.25)'
+              : '0 0 14px rgba(13,190,130,0.15)',
+          }}
+          transition={{ duration: 0.15 }}
           style={{
-            display: 'block',
-            marginTop: 8,
-            marginBottom: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 7,
+            marginTop: 6,
+            marginBottom: 8,
             marginLeft: 12,
             width: 'calc(100% - 24px)',
-            padding: '6px 12px',
+            padding: '7px 10px',
             background: 'transparent',
-            border: `1px solid ${
-              scanHover && !isScanning
-                ? 'rgba(148,200,100,0.7)'
-                : 'rgba(148,200,100,0.3)'
-            }`,
-            borderRadius: 4,
-            color: scanHover && !isScanning ? '#b8e88a' : '#94c864',
+            border: '1px solid rgba(13,190,130,0.45)',
+            borderRadius: 3,
+            color: 'var(--emerald)',
             fontFamily: FONT_MONO,
-            fontSize: 11,
-            letterSpacing: '1px',
+            fontSize: 9,
+            fontWeight: 600,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
             cursor: isScanning ? 'default' : 'pointer',
             opacity: isScanning ? 0.6 : 1,
             transition: 'color 0.15s, border-color 0.15s, opacity 0.15s',
-            textAlign: 'center',
           }}
         >
-          {collapsed ? '⟳' : isScanning ? '⟳ Scanning…' : '⟳ SCAN NOW'}
-        </button>
+          <Radar size={11} strokeWidth={2} style={{ flexShrink: 0 }} />
+          {!collapsed && (isScanning ? 'Scanning…' : 'SCAN NOW')}
+        </motion.button>
       )}
 
-      {/* N0VA — always visible, lime */}
+      {/* N0VA — rust, pinned bottom with pulse dot */}
       <button
         onClick={onNova}
         title="Activate N0VA"
@@ -303,21 +334,35 @@ export default function HorizonSidebar({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 10,
-          background: novaHover ? 'rgba(148,200,100,0.14)' : 'rgba(148,200,100,0.06)',
+          gap: 8,
+          background: novaHover ? 'rgba(232,112,58,0.12)' : 'rgba(232,112,58,0.05)',
           border: 'none',
-          borderTop: '1px solid rgba(148,200,100,0.25)',
-          padding: '15px 12px',
+          borderTop: '1px solid rgba(232,112,58,0.3)',
+          padding: '14px 10px',
           cursor: 'pointer',
-          color: '#94c864',
+          color: 'var(--rust)',
           fontFamily: FONT_MONO,
-          fontSize: 12,
-          fontWeight: 600,
+          fontSize: 10,
+          fontWeight: 700,
           letterSpacing: '0.14em',
-          transition: 'background 0.15s',
+          boxShadow: novaHover
+            ? 'inset 0 1px 0 rgba(196,97,42,0.4), 0 -4px 14px rgba(232,112,58,0.12)'
+            : 'inset 0 1px 0 rgba(196,97,42,0.25)',
+          transition: 'background 0.15s, box-shadow 0.15s',
         }}
       >
-        <span style={{ fontSize: 14 }}>◆</span>
+        <span
+          style={{
+            display: 'inline-block',
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: 'var(--rust)',
+            animation: 'novaPulse 1.5s ease-in-out infinite',
+            flexShrink: 0,
+          }}
+        />
+        <Zap size={11} strokeWidth={2.25} style={{ flexShrink: 0 }} />
         {!collapsed && <span>N0VA</span>}
       </button>
     </nav>
