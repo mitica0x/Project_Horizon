@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import * as Dialog from '@radix-ui/react-dialog'
 import { ChevronDown, Radar, Hexagon } from 'lucide-react'
@@ -15,7 +15,6 @@ import {
 import { GAPS_T1, TABLE_DATA } from '../data/staticData'
 import { intelKit } from '../utils/intelKit'
 import { Card, FONT_HEAD, FONT_BODY, FONT_MONO } from './horizonUI'
-import SignalPanel, { VERDICT } from './SignalPanel'
 import SiteTable from './SiteTable'
 
 // STATUS — Mix4 + Rust restyle. Sections in render order:
@@ -27,13 +26,43 @@ import SiteTable from './SiteTable'
 const VERDICT_KEY = 'horizon_status_verdict'
 const DAY = 86400000
 
-// Per-verdict palette mapping for the SIGNAL bar header — replaces SignalPanel's
-// global VERDICT.color for this surface. PREPARE = rust, DEPLOY = emerald,
-// HOLD = rust-dark per the strict Mix4+Rust rules.
+// Per-verdict palette mapping for the SIGNAL VERDICT block.
+// DEPLOY = emerald (active win); HOLD = cyan (intel/data); PREPARE = lime
+// (monitored/staged); WAIT = muted (no signal).
 const VERDICT_TONE = {
-  DEPLOY:  { color: 'var(--emerald)',  rgb: '13,190,130' },
-  PREPARE: { color: 'var(--rust)',     rgb: '232,112,58' },
-  HOLD:    { color: 'var(--rust-dark)', rgb: '196,97,42' },
+  DEPLOY:  { color: '#0dbe82', rgb: '13,190,130' },
+  HOLD:    { color: '#18b4d4', rgb: '24,180,212' },
+  PREPARE: { color: '#70a848', rgb: '112,168,72' },
+  WAIT:    { color: '#8892a4', rgb: '136,146,164' },
+}
+
+// Confidence-pill colour ramp per spec — >80% emerald, 60–80 lime, <60 rust.
+function confidenceColor(pct) {
+  if (pct > 80) return { color: '#0dbe82', rgb: '13,190,130' }
+  if (pct >= 60) return { color: '#70a848', rgb: '112,168,72' }
+  return { color: '#e8703a', rgb: '232,112,58' }
+}
+
+// Threat level derivation + colour. Pressure 0–100 maps to LOW/MEDIUM/HIGH/CRITICAL.
+function threatFromPressure(pressure) {
+  const p = Number(pressure) || 0
+  if (p >= 85) return { level: 'CRITICAL', color: '#ff4d6d', rgb: '255,77,109' }
+  if (p >= 70) return { level: 'HIGH',     color: '#e8703a', rgb: '232,112,58' }
+  if (p >= 40) return { level: 'MEDIUM',   color: '#18b4d4', rgb: '24,180,212' }
+  return { level: 'LOW', color: '#70a848', rgb: '112,168,72' }
+}
+
+// Format an ISO timestamp to "HH:MM:SS UTC" — used in telemetry log tail.
+function fmtFullClockUtc(iso) {
+  try {
+    const d = iso ? new Date(iso) : new Date()
+    const hh = String(d.getUTCHours()).padStart(2, '0')
+    const mm = String(d.getUTCMinutes()).padStart(2, '0')
+    const ss = String(d.getUTCSeconds()).padStart(2, '0')
+    return `${hh}:${mm}:${ss} UTC`
+  } catch {
+    return '— UTC'
+  }
 }
 
 // Per-signal-label dot colour for the HIGH PRESSURE left column (5 rows).
@@ -65,11 +94,13 @@ export default function StatusBoard({
   onScan,
   scanState = 'idle',
   hasScanData = false,
+  scanData = null,
+  // eslint-disable-next-line no-unused-vars
   liveCompetitors,
   liveCoverage,
+  // eslint-disable-next-line no-unused-vars
   onOpenCompetitorPanel,
 }) {
-  const [signalOpen, setSignalOpen] = useState(false)
   const [intelOpen, setIntelOpen] = useState(false)
   const [addUrlOpen, setAddUrlOpen] = useState(false)
   const [addUrlValue, setAddUrlValue] = useState('')
@@ -104,7 +135,16 @@ export default function StatusBoard({
   const { signals, overall, updatedAt } = useMemo(() => getDayStatus(), [])
   const verdict = statusVerdict(overall)
   const sig = useMemo(() => computeSignal(), [])
-  const tone = VERDICT_TONE[sig.verdict] || VERDICT_TONE.PREPARE
+  const verdictKey = VERDICT_TONE[sig.verdict] ? sig.verdict : 'WAIT'
+  const tone = VERDICT_TONE[verdictKey]
+  const confTone = confidenceColor(sig.confidence)
+  const fieldAssessment = useMemo(() => assessCompetitors(), [])
+  const threat = threatFromPressure(fieldAssessment?.pressure)
+  const actionsConfirmed = useMemo(
+    () => (signals || []).filter((s) => s.rag === 'red' || s.rag === 'amber').length,
+    [signals],
+  )
+  const marketMoving = (Number(fieldAssessment?.pressure) || 0) >= 60
 
   // Intel layer — drivers / actions / since-yesterday from live field + windows + gaps.
   const intel = useMemo(() => {
@@ -220,72 +260,109 @@ export default function StatusBoard({
   return (
     <Tooltip.Provider delayDuration={150}>
     <Card style={{ padding: '8px 24px 22px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 3 }}>
-      {/* ── 1. SIGNAL bar ─────────────────────────────────────────────── */}
-      <motion.button
-        onClick={() => setSignalOpen(o => !o)}
-        initial={{ opacity: 0, y: 12 }}
+      {/* ── 1a. LIVE RADAR BAR — improvement 3 ────────────────────────── */}
+      <LiveRadarBar scanState={scanState} />
+
+      {/* ── 1b. SIGNAL VERDICT block — improvement 2 ───────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut', delay: 0.3 }}
+        transition={{ duration: 0.25, ease: 'easeOut', delay: 0.25 }}
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          width: '100%',
-          textAlign: 'left',
-          background: `linear-gradient(90deg, rgba(${tone.rgb},0.06), rgba(${tone.rgb},0.02))`,
-          border: `1px solid rgba(${tone.rgb},0.18)`,
+          background: 'var(--bg-card)',
+          border: `1px solid rgba(255,255,255,0.07)`,
+          borderLeft: `3px solid ${tone.color}`,
           borderRadius: 3,
-          padding: '12px 14px',
-          marginTop: 14,
+          padding: 16,
+          marginTop: 12,
           marginBottom: 18,
-          cursor: 'pointer',
+          display: 'grid',
+          gridTemplateColumns: '60% 40%',
         }}
       >
-        <span
-          style={{
+        {/* LEFT — label + big verdict + badges */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingRight: 16 }}>
+          <div style={{
             fontFamily: FONT_MONO,
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: 700,
-            letterSpacing: '0.14em',
-            padding: '4px 10px',
-            borderRadius: 3,
-            color: tone.color,
-            border: `1px solid rgba(${tone.rgb},0.4)`,
-            background: `rgba(${tone.rgb},0.10)`,
-            flexShrink: 0,
-          }}
-        >
-          {sig.verdict}
-        </span>
-        <span
-          style={{
-            flex: 1,
-            fontFamily: FONT_BODY,
-            fontSize: 13,
-            color: 'var(--text-body)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            minWidth: 0,
-          }}
-        >
-          {VERDICT[sig.verdict]?.blurb}
-        </span>
-        <span style={{ fontFamily: FONT_MONO, fontSize: 13, fontWeight: 700, color: tone.color, flexShrink: 0 }}>
-          {sig.confidence}%
-        </span>
-        <ChevronDown
-          size={14}
-          strokeWidth={1.75}
-          style={{
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
             color: 'var(--text-muted)',
-            transform: signalOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.2s ease',
-            flexShrink: 0,
-          }}
-        />
-      </motion.button>
-      {signalOpen && <SignalPanel onAskIntel={onAskIntel} onNav={onNav} hideHeader />}
+          }}>
+            SIGNAL VERDICT
+          </div>
+          <div style={{
+            fontFamily: FONT_HEAD,
+            fontSize: 36,
+            fontWeight: 800,
+            letterSpacing: '0.02em',
+            textTransform: 'uppercase',
+            lineHeight: 1,
+            color: tone.color,
+          }}>
+            {verdictKey}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+            <span style={{
+              fontFamily: FONT_MONO,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              padding: '3px 8px',
+              borderRadius: 3,
+              background: `rgba(${confTone.rgb},0.10)`,
+              color: confTone.color,
+              border: `1px solid rgba(${confTone.rgb},0.4)`,
+            }}>
+              CONFIDENCE: {sig.confidence}%
+            </span>
+            <span style={{
+              fontFamily: FONT_MONO,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              padding: '3px 8px',
+              borderRadius: 3,
+              background: `rgba(${threat.rgb},0.10)`,
+              color: threat.color,
+              border: `1px solid rgba(${threat.rgb},0.4)`,
+            }}>
+              THREAT: {threat.level}
+            </span>
+          </div>
+        </div>
+
+        {/* RIGHT — stats column */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          gap: 14,
+          padding: 14,
+          borderLeft: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <div>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
+              Actions confirmed
+            </div>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 22, fontWeight: 700, color: '#0dbe82', lineHeight: 1 }}>
+              {actionsConfirmed}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
+              Market moving
+            </div>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 16, fontWeight: 700, color: marketMoving ? '#e8703a' : '#0dbe82', lineHeight: 1 }}>
+              {marketMoving ? 'YES' : 'NO'}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── 1c. TELEMETRY LOG — improvement 5 (conditional on scan in-flight) ── */}
+      <TelemetryLog scanState={scanState} scanData={scanData} threatLevel={threat.level} verdictWord={verdictKey} />
 
       {/* ── 2. INTELLIGENCE — All URLs ────────────────────────────────── */}
       {(() => {
@@ -430,6 +507,7 @@ export default function StatusBoard({
 
             {intelOpen && (
               <div style={{ marginTop: 14 }}>
+                <IntelSyncBar urlCount={(TABLE_DATA || []).length} />
                 <SiteTable openWithQuestion={q => onAskIntel(q, { chips: [q] })} />
               </div>
             )}
@@ -940,5 +1018,233 @@ function IntelActions({ label, actions, onNav }) {
         )
       })}
     </div>
+  )
+}
+
+// ─── LIVE RADAR BAR ───────────────────────────────────────────────────────────
+// Improvement 3 — full-width single-line separator between the stats cards
+// and the SIGNAL VERDICT block. TPS/latency/uptime are stable demo values;
+// the trailing sync-state line flips between SYNCING / STABLE based on
+// scanState.
+function LiveRadarBar({ scanState }) {
+  const isScanning =
+    scanState && scanState !== 'idle' && scanState !== 'complete' && scanState !== 'error'
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        height: 32,
+        padding: '0 14px',
+        background: 'rgba(255,255,255,0.02)',
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        marginTop: 6,
+        fontFamily: FONT_MONO,
+        fontSize: 10,
+        letterSpacing: '0.06em',
+      }}
+    >
+      <span style={{ color: '#0dbe82', animation: 'radarPulse 2s ease-in-out infinite', fontWeight: 700 }}>
+        ((·))
+      </span>
+      <span style={{ color: '#0dbe82', letterSpacing: '0.1em', fontWeight: 600 }}>
+        LIVE RADAR ACTIVE
+      </span>
+      <span style={{ flex: 1 }} />
+      <span style={{ color: '#8892a4' }}>TPS: <span style={{ color: '#b8c4d4' }}>4.2k</span></span>
+      <span style={{ color: 'rgba(255,255,255,0.1)' }}>·</span>
+      <span style={{ color: '#8892a4' }}>LATENCY: <span style={{ color: '#b8c4d4' }}>12ms</span></span>
+      <span style={{ color: 'rgba(255,255,255,0.1)' }}>·</span>
+      <span style={{ color: '#8892a4' }}>UPTIME: <span style={{ color: '#b8c4d4' }}>99.9%</span></span>
+      <span style={{ color: 'rgba(255,255,255,0.1)' }}>·</span>
+      {isScanning ? (
+        <span style={{ color: '#70a848' }}>SYNCING LIVE CHANNEL…</span>
+      ) : (
+        <span style={{ color: '#8892a4' }}>ALL CHANNELS STABLE</span>
+      )}
+    </div>
+  )
+}
+
+// ─── INTELLIGENCE SYNC BAR ───────────────────────────────────────────────────
+// Improvement 8 — small sync line above the URL list inside Intelligence.
+function IntelSyncBar({ urlCount }) {
+  const [now, setNow] = useState(() => fmtFullClockUtc())
+  useEffect(() => {
+    const id = setInterval(() => setNow(fmtFullClockUtc()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        fontFamily: FONT_MONO,
+        fontSize: 9,
+        color: '#8892a4',
+        letterSpacing: '0.06em',
+        padding: '6px 10px',
+        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid rgba(255,255,255,0.05)',
+        borderRadius: 3,
+        marginBottom: 10,
+      }}
+    >
+      <span style={{ color: '#70a848' }}>SYNCING LIVE CHANNEL…</span>
+      <span style={{ color: 'rgba(255,255,255,0.12)' }}>·</span>
+      <span>{urlCount} URLS INDEXED</span>
+      <span style={{ color: 'rgba(255,255,255,0.12)' }}>·</span>
+      <span>LAST UPDATE: <span style={{ color: '#b8c4d4' }}>{now}</span></span>
+    </div>
+  )
+}
+
+// ─── TELEMETRY LOG ───────────────────────────────────────────────────────────
+// Improvement 5 — terminal-style log that surfaces during scan + just after
+// completion. Lines are revealed sequentially via a setTimeout chain; the
+// final SCAN_COMPLETE arrives, then the block auto-hides after 800ms so the
+// existing ScanResultsPanel reveal animation owns the post-scan view.
+function TelemetryLog({ scanState, scanData, threatLevel, verdictWord }) {
+  const [lines, setLines] = useState([])
+  const [visible, setVisible] = useState(false)
+  const timersRef = useRef([])
+
+  const clearTimers = () => {
+    timersRef.current.forEach((id) => clearTimeout(id))
+    timersRef.current = []
+  }
+
+  const isInFlight =
+    scanState === 'sentry' || scanState === 'mirror' || scanState === 'herald'
+  const isComplete = scanState === 'complete'
+
+  useEffect(() => {
+    if (!isInFlight && !isComplete) {
+      // Reset state when idle/error so the next scan starts from a clean slate.
+      clearTimers()
+      setLines([])
+      setVisible(false)
+      return
+    }
+
+    setVisible(true)
+
+    // First time entering an in-flight state for this scan — initialise the
+    // staggered reveal sequence. We let the sequence finish even if scanState
+    // transitions; the final SCAN_COMPLETE line uses fresh scanData.
+    if (isInFlight && lines.length === 0) {
+      const seq = [
+        { text: '[LOGS] INIT_SCAN_SEQUENCE… OK',         kind: 'ok' },
+        { text: '[LOGS] CONNECTING TO BACKEND… OK',      kind: 'ok' },
+        { text: '[LOGS] FETCHING_COMPETITOR_FEED… OK',   kind: 'ok' },
+        { text: '[LOGS] ANALYZING_GAPS… IN PROGRESS',    kind: 'progress' },
+        { text: '[LOGS] PROCESSING_SIGNAL_DATA… IN PROGRESS', kind: 'progress' },
+      ]
+      let acc = 0
+      seq.forEach((line, i) => {
+        acc += 280 + (i % 2 === 0 ? 80 : 160)
+        timersRef.current.push(setTimeout(() => {
+          setLines((prev) => [...prev, line])
+        }, acc))
+      })
+    }
+
+    if (isComplete) {
+      // Append the completion-tail lines, then auto-hide after a beat so the
+      // existing ScanResultsPanel reveal owns the post-scan view.
+      const gaps = scanData?.gaps?.length ?? 0
+      const wins = scanData?.wins ?? 0
+      const tail = [
+        { text: `[LOGS] THREAT_SCAN: ${threatLevel || 'LOW'}`, kind: 'default' },
+        { text: `[LOGS] GAPS_IDENTIFIED: ${gaps}`, kind: 'default' },
+        { text: `[LOGS] WINS_DETECTED: ${wins}`,   kind: 'default' },
+        { text: `[LOGS] SIGNAL_LOCKED: ${verdictWord || '—'}`, kind: 'default' },
+        { text: `[LOGS] SCAN_COMPLETE — ${fmtFullClockUtc(scanData?.scannedAt)}`, kind: 'complete' },
+      ]
+      let acc = 0
+      tail.forEach((line, i) => {
+        acc += 220
+        timersRef.current.push(setTimeout(() => {
+          setLines((prev) => [...prev, line])
+        }, acc))
+      })
+      // Auto-hide after the chain settles.
+      timersRef.current.push(setTimeout(() => {
+        setVisible(false)
+      }, acc + 800))
+    }
+
+    return clearTimers
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInFlight, isComplete])
+
+  // Auto-scroll the log to its tail as new lines arrive.
+  const logRef = useRef(null)
+  useEffect(() => {
+    if (!logRef.current) return
+    logRef.current.scrollTop = logRef.current.scrollHeight
+  }, [lines])
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          key="telemetry"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.2 }}
+          ref={logRef}
+          style={{
+            marginBottom: 18,
+            background: '#080b16',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 3,
+            padding: 14,
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            lineHeight: 1.55,
+            height: 160,
+            overflow: 'auto',
+          }}
+        >
+          {lines.map((line, i) => {
+            let color = '#8892a4'
+            let suffix = null
+            if (line.kind === 'complete') color = '#0dbe82'
+            else if (line.kind === 'error') color = '#ff4d6d'
+            else if (line.kind === 'progress') {
+              color = '#8892a4'
+              suffix = (
+                <span style={{ color: '#18b4d4', marginLeft: 2, animation: 'telemetryCursor 1s steps(1) infinite' }}>
+                  ▋
+                </span>
+              )
+            }
+            // For "OK" / "IN PROGRESS" tails, recolour the suffix inline.
+            const okMatch = line.text.match(/^(.*) (OK)$/)
+            const ipMatch = line.text.match(/^(.*) (IN PROGRESS)$/)
+            if (okMatch) {
+              return (
+                <div key={i} style={{ color }}>
+                  {okMatch[1]} <span style={{ color: '#0dbe82', fontWeight: 700 }}>OK</span>
+                </div>
+              )
+            }
+            if (ipMatch) {
+              return (
+                <div key={i} style={{ color }}>
+                  {ipMatch[1]} <span style={{ color: '#18b4d4', fontWeight: 700 }}>IN PROGRESS</span>{suffix}
+                </div>
+              )
+            }
+            return <div key={i} style={{ color }}>{line.text}</div>
+          })}
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

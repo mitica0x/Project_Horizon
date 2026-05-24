@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { toast } from 'sonner'
 import { fetchDecisions } from '../lib/horizonStore'
 import { assessCompetitors } from '../utils/horizonData'
 import { intelKit } from '../utils/intelKit'
@@ -8,10 +9,15 @@ import { Card, Badge, PanelHeader, EmptyState, AskIntelButton, FONT_HEAD, FONT_B
 // first. Skipped events that the field has since contested are flagged
 // COMPETITORS MOVED (heuristic: current field pressure > pressure at decision).
 
+// Event-type badge palette per spec — locked Mix4+Rust+Lime.
+//   ACTIVATED ('RECOMMENDED' axis) → cyan
+//   SKIPPED   ('ROUTINE')          → muted
+//   DEFERRED  ('ELEVATED')         → lime
+//   CRITICAL  (revisit-due / moves)→ red (true alert) — handled inline below
 const DECISION_META = {
-  activate: { label: 'ACTIVATED', color: '#94c864', bg: 'rgba(148,200,100,0.12)', border: 'rgba(148,200,100,0.35)' },
-  skip:     { label: 'SKIPPED',   color: '#8892a4', bg: 'rgba(255,255,255,0.04)', border: 'var(--border)' },
-  defer:    { label: 'DEFERRED',  color: '#D4A853', bg: 'rgba(212,168,83,0.12)', border: 'rgba(212,168,83,0.35)' },
+  activate: { label: 'RECOMMENDED', color: '#18b4d4', bg: 'rgba(24,180,212,0.10)', border: 'rgba(24,180,212,0.35)' },
+  skip:     { label: 'ROUTINE',     color: '#8892a4', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.07)' },
+  defer:    { label: 'ELEVATED',    color: '#70a848', bg: 'rgba(112,168,72,0.10)', border: 'rgba(112,168,72,0.35)' },
 }
 
 const FILTERS = [
@@ -21,15 +27,18 @@ const FILTERS = [
   { id: 'defer', label: 'Deferred', match: d => d.decision === 'defer' },
 ]
 
+// Archival-log timestamp format: 2026.05.24_14:22_UTC (cyan monospace at the
+// row level — colour is applied where it renders, not in the formatter).
 function fmtWhen(ts) {
   if (!ts) return '—'
-  return new Date(ts).toLocaleString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const d = new Date(ts)
+  if (Number.isNaN(d.getTime())) return '—'
+  const y = d.getUTCFullYear()
+  const mo = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  const hh = String(d.getUTCHours()).padStart(2, '0')
+  const mm = String(d.getUTCMinutes()).padStart(2, '0')
+  return `${y}.${mo}.${day}_${hh}:${mm}_UTC`
 }
 
 function competitorsMoved(d, currentPressure) {
@@ -86,13 +95,39 @@ function LedgerRow({ d, currentPressure }) {
           </Badge>
         )}
         {revisitDue && (
-          <Badge color="#D4A853" bg="rgba(212,168,83,0.12)" border="rgba(212,168,83,0.35)">
-            Revisit due
+          <Badge color="#ff4d6d" bg="rgba(255,77,109,0.10)" border="rgba(255,77,109,0.35)">
+            CRITICAL · Revisit due
           </Badge>
         )}
-        <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: 'var(--text-muted)' }}>
+        <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: '#18b4d4', letterSpacing: '0.04em' }}>
           {fmtWhen(d.decided_at)}
         </span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            const scanId = d.id || d.decision_id || (d.decided_at ? new Date(d.decided_at).getTime().toString(36) : 'archive')
+            toast(`PARAMETERS RESTORED · ${scanId}`)
+          }}
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 9,
+            fontWeight: 600,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: '#8892a4',
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 3,
+            padding: '5px 10px',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            transition: 'color 0.15s, border-color 0.15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#b8c4d4'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = '#8892a4'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+        >
+          Restore Parameters
+        </button>
         <span style={{ color: meta.color, fontSize: 12 }}>{open ? '▾' : '▸'}</span>
       </button>
 
@@ -235,7 +270,7 @@ export default function LedgerPanel({ onAskIntel, hideHeader = false }) {
     <>
       {!hideHeader && <PanelHeader
         title="Decision Ledger"
-        accent="#00d4e8"
+        accent="#18b4d4"
         count={list.length}
         sub="Every activate / skip / defer — the audit trail behind the moves"
         right={onAskIntel && <AskIntelButton onClick={askIntel} />}
@@ -263,8 +298,8 @@ export default function LedgerPanel({ onAskIntel, hideHeader = false }) {
                   fontSize: 11,
                   letterSpacing: '0.06em',
                   color: active ? 'var(--cyan)' : 'var(--text-muted)',
-                  background: active ? 'rgba(0,212,232,0.08)' : 'transparent',
-                  border: `1px solid ${active ? 'rgba(0,212,232,0.35)' : 'var(--border)'}`,
+                  background: active ? 'rgba(24,180,212,0.08)' : 'transparent',
+                  border: `1px solid ${active ? 'rgba(24,180,212,0.35)' : 'var(--border)'}`,
                   borderRadius: 5,
                   padding: '7px 13px',
                   cursor: 'pointer',
@@ -293,7 +328,7 @@ export default function LedgerPanel({ onAskIntel, hideHeader = false }) {
             color: 'var(--white)',
             outline: 'none',
           }}
-          onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,212,232,0.4)')}
+          onFocus={e => (e.currentTarget.style.borderColor = 'rgba(24,180,212,0.4)')}
           onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
         />
       </div>

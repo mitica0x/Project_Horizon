@@ -4,7 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
 import { Circle, ChevronDown } from 'lucide-react'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import HeroCanvas from './components/HeroCanvas'
 import ScanResultsPanel from './components/ScanResultsPanel'
 import GapCard from './components/GapCard'
@@ -199,6 +199,98 @@ function Counter({ target, duration = 0.8, suffix = '' }) {
     return () => ctl.stop()
   }, [mv, target, duration])
   return <motion.span>{rendered}</motion.span>
+}
+
+// Live UTC clock — ticks every 1s. Format "HH:MM:SS UTC".
+function LiveClock() {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const hh = String(now.getUTCHours()).padStart(2, '0')
+  const mm = String(now.getUTCMinutes()).padStart(2, '0')
+  const ss = String(now.getUTCSeconds()).padStart(2, '0')
+  return <>{hh}:{mm}:{ss} UTC</>
+}
+
+// Format an ISO timestamp to "HH:MM UTC" (last-scan label).
+function fmtClockUtc(iso) {
+  if (!iso) return 'PENDING'
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return 'PENDING'
+    const hh = String(d.getUTCHours()).padStart(2, '0')
+    const mm = String(d.getUTCMinutes()).padStart(2, '0')
+    return `${hh}:${mm} UTC`
+  } catch {
+    return 'PENDING'
+  }
+}
+
+// Stat card with progress-bar fill at the bottom + optional delta indicator.
+// `pct` is the bar fill 0–100; bar colour derived from the card role.
+function StatPill({ label, value, color, barColor, pct, delta, deltaIsGood, animationDelay }) {
+  const safePct = Math.max(0, Math.min(100, pct ?? 0))
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.35, ease: 'easeOut', delay: animationDelay ?? 0 }}
+      whileHover={{ borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.04)' }}
+      style={{
+        flex: 1,
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.09)',
+        borderRadius: 3,
+        cursor: 'default',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <div style={{ padding: '10px 14px' }}>
+        <div style={{
+          fontFamily: "'Geist Mono', monospace",
+          fontSize: 10,
+          color: 'var(--text-muted)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          marginBottom: 5,
+        }}>
+          {label}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <div style={{
+            fontFamily: "'Geist Mono', monospace",
+            fontSize: 15,
+            fontWeight: 700,
+            color,
+          }}>
+            {value}
+          </div>
+          {delta != null && delta !== 0 && (
+            <span style={{
+              fontFamily: "'Geist Mono', monospace",
+              fontSize: 10,
+              fontWeight: 600,
+              color: deltaIsGood ? '#0dbe82' : '#e8703a',
+            }}>
+              {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
+            </span>
+          )}
+        </div>
+      </div>
+      <div style={{ height: 3, background: 'rgba(255,255,255,0.06)' }}>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${safePct}%` }}
+          transition={{ duration: 0.6, ease: 'easeOut', delay: (animationDelay ?? 0) + 0.2 }}
+          style={{ height: '100%', background: barColor }}
+        />
+      </div>
+    </motion.div>
+  )
 }
 
 export default function App() {
@@ -439,6 +531,18 @@ export default function App() {
     }
   }, [scanState])
 
+  // Stats-delta tracker. Holds the previous (gaps, score) snapshot so each
+  // pill can surface a one-character delta indicator next to its value. We
+  // intentionally update via useEffect (not during render) to avoid
+  // mid-render mutation.
+  const prevStatsRef = useRef({ gaps: null, score: null })
+  // novaPrevRef + lastScanRef power the once-per-event toast triggers
+  // (improvement 6). Refs (not state) so flipping them doesn't cause
+  // additional renders.
+  const novaPrevRef = useRef(false)
+  const lastScanCompletionRef = useRef(null)
+  const lastHighPressureRef = useRef(false)
+
   // T-key shortcut: plays the amber HeroCanvas pulse for ~2.2s, then injects
   // a local mock fixture into frontend state. No network call, no polling —
   // purely a UI test harness. The real scan stays gated behind SCAN NOW
@@ -551,6 +655,60 @@ export default function App() {
     localStorage.setItem('horizon_sort_state', JSON.stringify(sortState))
   }, [sortState])
 
+  // Update prev-stats ref AFTER each render so the next render's delta is
+  // calculated against the value the user is seeing now (not against itself).
+  useEffect(() => {
+    const t1Count = Number(t1Source?.length) || 0
+    const euScore = Number(dash?.euScore ?? scanData?.score ?? 0)
+    prevStatsRef.current = { gaps: t1Count, score: euScore }
+  }, [t1Source, dash, scanData])
+
+  // Toast triggers (improvement 6) — sonner-driven notifications.
+  // SCAN COMPLETE: fires once per scan completion (debounced via scannedAt ref).
+  useEffect(() => {
+    if (scanState !== 'complete' || !scanData) return
+    const completionKey = scanData.scannedAt || String(Date.now())
+    if (lastScanCompletionRef.current === completionKey) return
+    lastScanCompletionRef.current = completionKey
+    const gaps = scanData.gaps?.length ?? 0
+    const wins = scanData.wins ?? 0
+    const t = fmtClockUtc(scanData.scannedAt || new Date().toISOString())
+    toast.success(`SCAN COMPLETE · ${gaps} gaps · ${wins} wins · ${t}`)
+    // Win toasts — fire one per fresh win, capped at 2 to avoid flood.
+    const winGaps = (scanData.gaps || []).filter((g) => g._win || g.bybit_present).slice(0, 2)
+    winGaps.forEach((g, i) => {
+      setTimeout(() => {
+        const comp = (g.competitors_present || g.competitors || [])[0] || 'competitor'
+        toast.success(`WIN CONFIRMED · ${comp} · ${g.domain}`)
+      }, 600 * (i + 1))
+    })
+  }, [scanState, scanData])
+
+  // High-pressure crossing toast — only fires on the LOW→HIGH transition.
+  useEffect(() => {
+    const pressureNum = Number(fieldPressure) || 0
+    const isHigh = pressureNum >= 70
+    if (isHigh && !lastHighPressureRef.current) {
+      toast(`HIGH PRESSURE DETECTED · ${overallVerdict || 'MARKET'}`, {
+        style: {
+          background: '#0f1422',
+          color: '#e8703a',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderLeft: '2px solid #e8703a',
+        },
+      })
+    }
+    lastHighPressureRef.current = isHigh
+  }, [fieldPressure, overallVerdict])
+
+  // N0VA-activation toast — fires once per open transition.
+  useEffect(() => {
+    if (novaOpen && !novaPrevRef.current) {
+      toast.error(`N0VA ALERT · ${overallVerdict || 'OPERATIONAL OVERRIDE'} ENGAGED`)
+    }
+    novaPrevRef.current = novaOpen
+  }, [novaOpen, overallVerdict])
+
   const handleToggle = (sectionId, key) => {
     setSortState(prev => {
       const current = prev[sectionId]
@@ -603,8 +761,9 @@ export default function App() {
 
   return (
     <>
-      {/* Fixed top bar — 44px, sits right of the sidebar.
-          LIVE dot (lucide Circle, emerald, pulse animation) + account right-aligned. */}
+      {/* Fixed top bar — 44px persistent status line visible on every page.
+          Content (left→right): LIVE · LAST SCAN · GAPS · LATENCY · live clock.
+          AccountMenu sits to the far right. */}
       <div
         style={{
           position: 'fixed',
@@ -619,34 +778,58 @@ export default function App() {
           borderBottom: '1px solid rgba(255,255,255,0.04)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'flex-end',
+          justifyContent: 'space-between',
           gap: 14,
           padding: '0 24px',
           boxSizing: 'border-box',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <Circle
-            size={7}
-            fill="var(--emerald)"
-            strokeWidth={0}
-            style={{
-              color: 'var(--emerald)',
-              animation: 'livePulse 2s ease-in-out infinite',
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "'Geist Mono', monospace",
-              fontSize: 10,
-              fontWeight: 600,
-              color: 'var(--emerald)',
-              letterSpacing: '0.15em',
-            }}
-          >
-            LIVE
-          </span>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0,
+            fontFamily: "'Geist Mono', monospace",
+            fontSize: 10,
+            letterSpacing: '0.06em',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+          }}
+        >
+          {(() => {
+            const gapsCount = Number(t1Source?.length) || 0
+            const lastScanIso = scanData?.scannedAt || null
+            const sep = (
+              <span style={{ color: 'var(--text-muted)', margin: '0 8px' }}>·</span>
+            )
+            return (
+              <>
+                <Circle
+                  size={7}
+                  fill="#0dbe82"
+                  strokeWidth={0}
+                  style={{ color: '#0dbe82', animation: 'livePulse 2s ease-in-out infinite', flexShrink: 0, marginRight: 6 }}
+                />
+                <span style={{ color: '#0dbe82', fontWeight: 600 }}>LIVE</span>
+                {sep}
+                <span style={{ color: '#8892a4' }}>
+                  LAST SCAN: <span style={{ color: lastScanIso ? '#b8c4d4' : '#8892a4' }}>{fmtClockUtc(lastScanIso)}</span>
+                </span>
+                {sep}
+                <span style={{ color: gapsCount > 0 ? '#e8703a' : '#8892a4', fontWeight: 600 }}>
+                  {gapsCount} GAPS
+                </span>
+                {sep}
+                <span style={{ color: '#8892a4' }}>
+                  LATENCY: <span style={{ color: '#b8c4d4' }}>12ms</span>
+                </span>
+                {sep}
+                <span style={{ color: '#b8c4d4', fontVariantNumeric: 'tabular-nums' }}>
+                  <LiveClock />
+                </span>
+              </>
+            )
+          })()}
         </div>
         <AccountMenu />
       </div>
@@ -767,67 +950,69 @@ export default function App() {
         </button>
       </section>
 
-      {/* Stats bar — moved below the hero per spec. Pills are unchanged
-          (FIELD / PRESSURE / T1 GAPS / WINDOW, counter animations). */}
-      <div
-        id="hz-stats"
-        style={{
-          padding: '32px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 8 }}>
-          {(() => {
-            const pressureNum = Number(fieldPressure) || 0
-            const t1Count = Number(t1Source.length) || 0
-            const pills = [
-              { label: 'FIELD',    color: 'var(--rust)',    node: <span>{overallVerdict || 'MONITORING'}</span> },
-              { label: 'PRESSURE', color: 'var(--rust)',    node: <Counter target={pressureNum} duration={0.8} suffix="/100" /> },
-              { label: 'T1 GAPS',  color: 'var(--rust)',    node: <Counter target={t1Count} duration={0.6} /> },
-              { label: 'WINDOW',   color: 'var(--emerald)', node: <span>14 DAYS</span> },
-            ]
-            return pills.map(({ label, color, node }, i) => (
-              <motion.div
-                key={label}
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.35, ease: 'easeOut', delay: 0.15 + i * 0.08 }}
-                whileHover={{
-                  borderColor: 'rgba(255,255,255,0.18)',
-                  backgroundColor: 'rgba(255,255,255,0.04)',
-                }}
-                style={{
-                  flex: 1,
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.09)',
-                  borderRadius: 3,
-                  padding: '10px 14px',
-                  cursor: 'default',
-                }}
-              >
-                <div style={{
-                  fontFamily: "'Geist Mono', monospace",
-                  fontSize: 10,
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.12em',
-                  marginBottom: 5,
-                }}>
-                  {label}
-                </div>
-                <div style={{
-                  fontFamily: "'Geist Mono', monospace",
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color,
-                }}>
-                  {node}
-                </div>
-              </motion.div>
-            ))
-          })()}
-        </div>
-      </div>
+      {/* Stats bar — 4 cards (FIELD / T1 GAPS / WINDOW / EU SCORE) each with
+          a bottom progress bar + delta indicator. PRESSURE replaced by EU
+          SCORE per the v3 layout spec; FIELD bar derives from pressure level. */}
+      {(() => {
+        const pressureNum = Number(fieldPressure) || 0
+        const t1Count = Number(t1Source.length) || 0
+        const euScore = Number(dash?.euScore ?? scanData?.score ?? 0)
+        const pressureLevel = pressureNum >= 70 ? 'HIGH' : pressureNum >= 40 ? 'MEDIUM' : 'LOW'
+        const pressurePct = pressureLevel === 'HIGH' ? 85 : pressureLevel === 'MEDIUM' ? 50 : 20
+        const gapsPct = Math.min(100, (t1Count / 20) * 100)
+        const windowPct = (14 / 30) * 100
+        const prev = prevStatsRef.current
+        const gapsDelta = prev.gaps != null ? t1Count - prev.gaps : null
+        const scoreDelta = prev.score != null ? euScore - prev.score : null
+        return (
+          <div
+            id="hz-stats"
+            style={{
+              padding: '32px',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            <div style={{ display: 'flex', gap: 8 }}>
+              <StatPill
+                label="FIELD"
+                value={overallVerdict || 'MONITORING'}
+                color="#e8703a"
+                barColor="#e8703a"
+                pct={pressurePct}
+                animationDelay={0.15}
+              />
+              <StatPill
+                label="T1 GAPS"
+                value={<Counter target={t1Count} duration={0.6} />}
+                color="#e8703a"
+                barColor="#e8703a"
+                pct={gapsPct}
+                delta={gapsDelta}
+                deltaIsGood={gapsDelta != null && gapsDelta < 0}
+                animationDelay={0.23}
+              />
+              <StatPill
+                label="WINDOW"
+                value="14 DAYS"
+                color="#18b4d4"
+                barColor="#18b4d4"
+                pct={windowPct}
+                animationDelay={0.31}
+              />
+              <StatPill
+                label="EU SCORE"
+                value={<><Counter target={euScore} duration={0.8} /><span style={{ color: '#8892a4', fontSize: 11, marginLeft: 2 }}>%</span></>}
+                color="#0dbe82"
+                barColor="#0dbe82"
+                pct={euScore}
+                delta={scoreDelta}
+                deltaIsGood={scoreDelta != null && scoreDelta > 0}
+                animationDelay={0.39}
+              />
+            </div>
+          </div>
+        )
+      })()}
       <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 0 }}>
 
         {statusOpen && (
@@ -839,6 +1024,7 @@ export default function App() {
               onNav={handleNav}
               onScan={runScan}
               scanState={scanState}
+              scanData={scanData}
               hasScanData={!!dash}
               liveCompetitors={dash?.competitorBars}
               liveCoverage={
@@ -917,7 +1103,7 @@ export default function App() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 16 }}>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 300, color: 'var(--text-muted)' }}>C<span style={{ color: '#5BA8B5' }}>0</span>insiglieri</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--cyan)' }}>{dash?.euScore ?? SCORE}% EU Presence</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 300, color: 'var(--text-muted)', textAlign: 'right' }}>Project Horiz<span style={{ color: '#94c864' }}>0</span>n v4 · Sentry · Mirror · Herald</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 300, color: 'var(--text-muted)', textAlign: 'right' }}>Project Horiz<span style={{ color: '#0dbe82' }}>0</span>n v4 · Sentry · Mirror · Herald</span>
             </div>
           </div>
         </footer>
@@ -961,16 +1147,23 @@ export default function App() {
 
       <Toaster
         position="bottom-right"
+        theme="dark"
+        duration={4000}
+        visibleToasts={3}
         toastOptions={{
           style: {
             background: '#0f1422',
-            color: '#ffffff',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderLeft: '2px solid #0dbe82',
+            color: '#b8c4d4',
+            border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: 3,
             fontFamily: "'Geist Mono', monospace",
-            fontSize: 12,
+            fontSize: 11,
             letterSpacing: '0.04em',
+          },
+          classNames: {
+            success: 'gsd-toast-success',
+            error:   'gsd-toast-error',
+            default: 'gsd-toast-default',
           },
         }}
       />
@@ -983,15 +1176,15 @@ export default function App() {
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 2000,
-            background: '#131929',
+            background: '#0f1422',
             border: `1px solid ${
               scanState === 'error'
                 ? 'rgba(255,77,109,0.4)'
                 : scanState === 'complete'
-                ? 'rgba(148,200,100,0.4)'
-                : 'rgba(0,212,232,0.35)'
+                ? 'rgba(13,190,130,0.4)'
+                : 'rgba(24,180,212,0.35)'
             }`,
-            borderRadius: 8,
+            borderRadius: 3,
             padding: '12px 22px',
             fontFamily: 'var(--font-mono)',
             fontSize: 12,
@@ -999,8 +1192,8 @@ export default function App() {
               scanState === 'error'
                 ? '#ff4d6d'
                 : scanState === 'complete'
-                ? '#94c864'
-                : '#00d4e8',
+                ? '#0dbe82'
+                : '#18b4d4',
             boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
             maxWidth: '90vw',
           }}

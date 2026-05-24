@@ -2,21 +2,82 @@ import { useState, useEffect } from 'react'
 import LedgerPanel from './LedgerPanel'
 import OutcomesPanel from './OutcomesPanel'
 
-const mono = { fontFamily: 'var(--font-mono)' }
+const mono = { fontFamily: "'Geist Mono', monospace" }
 
-export default function HistoryPanel({ onAskIntel, initialTab = "decisions" }) {
+// Tab chip styling — active = cyan (intel/data axis), inactive = muted.
+const active = {
+  ...mono,
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: '0.1em',
+  padding: '6px 16px',
+  borderRadius: 3,
+  border: '1px solid #18b4d4',
+  background: 'rgba(24,180,212,0.10)',
+  color: '#18b4d4',
+  cursor: 'pointer',
+}
+const inactive = {
+  ...mono,
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: '0.1em',
+  padding: '6px 16px',
+  borderRadius: 3,
+  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'transparent',
+  color: '#8892a4',
+  cursor: 'pointer',
+}
+
+export default function HistoryPanel({ onAskIntel, initialTab = 'decisions' }) {
   const [tab, setTab] = useState(initialTab)
-  useEffect(() => { setTab(initialTab) }, [initialTab])
-  const active = { ...mono, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', padding: '6px 16px', borderRadius: 4, border: '1px solid var(--cyan)', background: 'rgba(0,212,232,0.1)', color: 'var(--cyan)', cursor: 'pointer' }
-  const inactive = { ...mono, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', padding: '6px 16px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }
+  useEffect(() => {
+    setTab(initialTab)
+  }, [initialTab])
+
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '20px 32px 0', borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 0 }}>
-        <span style={{ ...mono, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', marginRight: 16 }}>HISTORY</span>
-        <button onClick={() => setTab('decisions')} style={tab === 'decisions' ? active : inactive}>Decisions</button>
-        <button onClick={() => setTab('outcomes')} style={tab === 'outcomes' ? active : inactive}>Outcomes</button>
+      <div
+        style={{
+          padding: '20px 32px 14px',
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+        }}
+      >
+        <div style={{
+          fontFamily: "'Geist', sans-serif",
+          fontSize: 18,
+          fontWeight: 700,
+          color: '#ffffff',
+          letterSpacing: '-0.01em',
+        }}>
+          ARCHIVAL SESSION LOGS
+        </div>
+        <div style={{
+          ...mono,
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: '#8892a4',
+          marginTop: 4,
+        }}>
+          HISTORIC DIAGNOSTICS ARCHIVE
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}>
+          <button onClick={() => setTab('decisions')} style={tab === 'decisions' ? active : inactive}>
+            Decisions
+          </button>
+          <button onClick={() => setTab('outcomes')} style={tab === 'outcomes' ? active : inactive}>
+            Outcomes
+          </button>
+        </div>
       </div>
-      {tab === 'decisions' ? <LedgerPanel onAskIntel={onAskIntel} hideHeader /> : <OutcomesPanel onAskIntel={onAskIntel} hideHeader />}
+      {tab === 'decisions' ? (
+        <LedgerPanel onAskIntel={onAskIntel} hideHeader />
+      ) : (
+        <OutcomesPanel onAskIntel={onAskIntel} hideHeader />
+      )}
     </div>
   )
 }

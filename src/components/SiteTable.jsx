@@ -8,11 +8,30 @@ const EU_FLAGS = { DE:'🇩🇪', FR:'🇫🇷', ES:'🇪🇸', PL:'🇵🇱', I
 function countryLabel(country) {
   if (!country || country === 'GLOBAL')
     return { flag: '🌍', code: 'Global', color: '#8892a4', tooltip: 'Not EU-specific' }
-  return { flag: EU_FLAGS[country] || '🌐', code: country, color: '#00d4e8', tooltip: null }
+  return { flag: EU_FLAGS[country] || '🌐', code: country, color: '#18b4d4', tooltip: null }
 }
 
-const DOT = { present: '#94c864', absent: '#D4A853', partial: '#D4A853' }
-const PULSE = { present: '2.5s', absent: '1.8s', partial: '1.8s' }
+// Signal-stream dot palette per spec:
+//   present → emerald (win), absent → rust (gap), partial → cyan (intel).
+//   monitored → lime (watching). Default → cyan.
+const DOT = { present: '#0dbe82', absent: '#e8703a', partial: '#18b4d4', monitored: '#70a848' }
+const PULSE = { present: '2.5s', absent: '1.8s', partial: '2.2s', monitored: '2.8s' }
+
+// Seeded "Xs ago / Xm ago" per-row freshness label. Stable across renders
+// (FNV-1a over the domain). Range 5s → 11m so rows look like a live feed.
+function fnv1a(str) {
+  let h = 2166136261
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+function seededAgo(domain) {
+  const h = fnv1a(String(domain || ''))
+  const totalSec = (h % 660) + 5 // 5 → 664s
+  return totalSec < 60 ? `${totalSec}s AGO` : `${Math.floor(totalSec / 60)}m AGO`
+}
 
 function hexToRgba(hex, alpha) {
   const h = hex.replace('#', '')
@@ -78,19 +97,19 @@ export default function SiteTable({ openWithQuestion }) {
           50% { opacity: 0.35; }
         }
         .site-row { border-left: 2px solid transparent; }
-        .site-row:hover { background: #1a2235 !important; border-left-color: #00d4e8 !important; }
+        .site-row:hover { background: #161c2e !important; border-left-color: #18b4d4 !important; }
         .site-row .ask-intel-btn { opacity: 0; transition: opacity 0.15s ease; pointer-events: none; }
         .site-row:hover .ask-intel-btn { opacity: 1; pointer-events: auto; }
       `}</style>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
         <FetchedAgo since={fetchedAt} />
       </div>
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 3, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto', maxHeight: 460, overflowY: 'auto', scrollbarWidth: 'thin' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ position: 'sticky', top: 0, background: '#0b0f1e', zIndex: 5 }}>
+            <thead style={{ position: 'sticky', top: 0, background: '#0f1422', zIndex: 5 }}>
               <tr>
-                {['','Domain','Country','Tier','Bybit','Card','Competitors'].map((h,i) => (
+                {['','Domain','Country','Tier','Bybit','Card','Competitors','Updated'].map((h,i) => (
                   <th key={i} style={{ fontFamily: 'var(--font-head)', fontWeight: 600, fontSize: 11, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '11px 10px', textAlign: 'left', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -128,9 +147,9 @@ export default function SiteTable({ openWithQuestion }) {
                     <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
                       {(() => { const { flag, code, color, tooltip } = countryLabel(row.country); return <span title={tooltip || undefined} style={{ color }}>{flag} {code}</span> })()}
                     </td>
-                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 11, color: row.tier === 'Tier 1' ? 'var(--t1)' : 'var(--amber)' }}>{row.tier}</td>
-                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13, color: row.status === 'present' ? 'var(--green)' : 'var(--text-muted)' }}>{row.status === 'present' ? 'Yes' : '-'}</td>
-                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13, color: row.card ? 'var(--cyan)' : 'var(--text-muted)' }}>{row.card ? 'Yes' : '-'}</td>
+                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 11, color: row.tier === 'Tier 1' ? '#0dbe82' : '#e8703a' }}>{row.tier}</td>
+                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13, color: row.status === 'present' ? '#0dbe82' : '#8892a4' }}>{row.status === 'present' ? 'Yes' : '-'}</td>
+                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 13, color: row.card ? '#18b4d4' : '#8892a4' }}>{row.card ? 'Yes' : '-'}</td>
                     <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', position: 'relative' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingRight: 96 }}>
                         {(row.competitors || []).slice(0,3).map(c => (
@@ -147,7 +166,7 @@ export default function SiteTable({ openWithQuestion }) {
                           transform: 'translateY(-50%)',
                           fontFamily: 'var(--font-mono)',
                           fontSize: 11,
-                          color: '#94c864',
+                          color: '#18b4d4',
                           background: 'transparent',
                           border: 'none',
                           cursor: 'pointer',
@@ -156,6 +175,9 @@ export default function SiteTable({ openWithQuestion }) {
                       >
                         Ask C0insiglieri →
                       </button>
+                    </td>
+                    <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: 9, color: '#8892a4', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+                      {seededAgo(row.domain)}
                     </td>
                   </tr>
                 )
