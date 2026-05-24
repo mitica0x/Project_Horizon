@@ -91,6 +91,21 @@ body::before {
   .hz-nav-label { display: none; }
 }
 
+/* HeroCanvas inline wrapper — radar lives in the hero's 2-col grid now.
+   HeroCanvas's <section> is hard-coded to height:100vh so it can't fit
+   inside an inline column. These two rules only shape its outer box —
+   internal logic, blips, interactivity, and active/idle states untouched. */
+.hz-radar-inline {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  isolation: isolate;
+}
+.hz-radar-inline > section {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
 /* Pulse animation */
 @keyframes pulse {
   0%,100% { opacity:1; box-shadow:0 0 8px rgba(0,212,232,.7); }

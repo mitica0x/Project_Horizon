@@ -671,7 +671,7 @@ export default function App() {
 
       {view === 'dashboard' ? (
       <div className="hz-shell">
-      {/* Hero — MARKET INTELLIGENCE. / 0 GUESS.
+      {/* Hero — ALL SIGNAL. / 0 NOISE. (left) + permanent radar (right).
           Stats bar — FIELD | PRESSURE | T1 GAPS | WINDOW (rust + emerald).
           Motion: staggered entrance; counter animations on PRESSURE + T1 GAPS. */}
       <div style={{
@@ -679,37 +679,89 @@ export default function App() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
         <div style={{
-          fontWeight: 800,
-          color: '#ffffff',
-          lineHeight: 1.0,
-          letterSpacing: '-0.03em',
-          textTransform: 'uppercase',
-          marginBottom: '28px',
-          fontFamily: "'Geist', sans-serif",
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)',
+          gap: 32,
+          alignItems: 'center',
+          marginBottom: 28,
         }}>
+          <div style={{
+            fontWeight: 800,
+            color: '#ffffff',
+            lineHeight: 1.0,
+            letterSpacing: '-0.03em',
+            textTransform: 'uppercase',
+            fontFamily: "'Geist', sans-serif",
+          }}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+              style={{ fontSize: 'clamp(40px, 6vw, 72px)' }}
+            >
+              All signal.
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
+              style={{ fontSize: 'clamp(40px, 6vw, 72px)' }}
+            >
+              <span
+                style={{
+                  color: 'var(--emerald)',
+                  textShadow: '0 0 24px rgba(13,190,130,0.4)',
+                }}
+              >
+                0
+              </span>
+              <span style={{ color: '#ffffff' }}> noise.</span>
+            </motion.div>
+          </div>
+          {/* Permanent radar — always visible. The HeroCanvas section is
+              hard-coded to 100vh and contains a 780×780 absolutely-centered
+              radar. To fit it inline without touching its internals:
+                - .hz-radar-inline forces the <section> to fill its parent
+                - the inner 780×780 box is centered and scaled down via CSS
+                  transform, so the whole radar (incl. outer ring) is visible. */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-            style={{ fontSize: 'clamp(40px, 7vw, 72px)' }}
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, ease: 'easeOut', delay: 0.15 }}
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: 520,
+              aspectRatio: '1 / 1',
+              margin: '0 auto',
+              overflow: 'hidden',
+            }}
           >
-            Market intelligence.
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
-            style={{ fontSize: 'clamp(40px, 7vw, 72px)' }}
-          >
-            <span
+            <div
+              className="hz-radar-inline"
               style={{
-                color: 'var(--emerald)',
-                textShadow: '0 0 24px rgba(13,190,130,0.4)',
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                width: 780,
+                height: 780,
+                transform: 'translate(-50%, -50%) scale(0.62)',
+                transformOrigin: 'center center',
               }}
             >
-              0
-            </span>
-            <span style={{ color: '#ffffff' }}> guess.</span>
+              <HeroCanvas
+                scanState={scanState}
+                targetScore={dash?.euScore}
+                metrics={
+                  dash && {
+                    sitesMonitored: dash.sitesMonitored,
+                    bybitPresent: dash.bybitPresent,
+                    tier1Gaps: dash.tier1Gaps,
+                    brandAlerts: dash.brandAlerts,
+                  }
+                }
+              />
+            </div>
           </motion.div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -763,28 +815,6 @@ export default function App() {
             ))
           })()}
         </div>
-      </div>
-      <div
-        style={{
-          overflow: 'hidden',
-          maxHeight: radarOpen ? '820px' : '0px',
-          opacity: radarOpen ? 1 : 0,
-          transition: 'max-height 0.55s cubic-bezier(0.4,0,0.2,1), opacity 0.45s ease',
-          pointerEvents: radarOpen ? 'auto' : 'none',
-        }}
-      >
-        <HeroCanvas
-          scanState={scanState}
-          targetScore={dash?.euScore}
-          metrics={
-            dash && {
-              sitesMonitored: dash.sitesMonitored,
-              bybitPresent: dash.bybitPresent,
-              tier1Gaps: dash.tier1Gaps,
-              brandAlerts: dash.brandAlerts,
-            }
-          }
-        />
       </div>
       <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 0 }}>
 
