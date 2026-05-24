@@ -655,14 +655,6 @@ export default function App() {
     localStorage.setItem('horizon_sort_state', JSON.stringify(sortState))
   }, [sortState])
 
-  // Update prev-stats ref AFTER each render so the next render's delta is
-  // calculated against the value the user is seeing now (not against itself).
-  useEffect(() => {
-    const t1Count = Number(t1Source?.length) || 0
-    const euScore = Number(dash?.euScore ?? scanData?.score ?? 0)
-    prevStatsRef.current = { gaps: t1Count, score: euScore }
-  }, [t1Source, dash, scanData])
-
   // Toast triggers (improvement 6) — sonner-driven notifications.
   // SCAN COMPLETE: fires once per scan completion (debounced via scannedAt ref).
   useEffect(() => {
@@ -758,6 +750,17 @@ export default function App() {
   const sortedWins = sortState.wins.length > 0
     ? sortItems(WINS, sortState.wins)
     : [...WINS].sort((a,b) => new Date(b.last_scanned||0) - new Date(a.last_scanned||0))
+
+  // Update prev-stats ref after each render so the next render's delta is
+  // calculated against the value the user is seeing now. Must be declared
+  // AFTER `t1Source` and `dash` (line 749–750) because those are referenced
+  // in the dep array — declaring the effect earlier would put the deps in
+  // the TDZ and crash with "Cannot access 't1Source' before initialization".
+  useEffect(() => {
+    const t1Count = Number(t1Source?.length) || 0
+    const euScore = Number(dash?.euScore ?? scanData?.score ?? 0)
+    prevStatsRef.current = { gaps: t1Count, score: euScore }
+  }, [t1Source, dash, scanData])
 
   return (
     <>
