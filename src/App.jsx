@@ -731,13 +731,13 @@ export default function App() {
           >
             <span
               style={{
-                color: 'var(--emerald)',
-                textShadow: '0 0 24px rgba(13,190,130,0.4)',
+                color: '#0dbe82',
+                textShadow: '0 0 24px rgba(13,190,130,0.5)',
               }}
             >
-              0
+              0{' '}
             </span>
-            <span style={{ color: '#ffffff' }}> noise.</span>
+            <span style={{ color: '#ffffff' }}>guess.</span>
           </motion.div>
         </div>
 

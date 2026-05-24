@@ -12,18 +12,23 @@ function buildOutreachMailto(gap) {
   return `mailto:${gap.contactEmail || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
-// ─── Design tokens (Horizon N0va) ─────────────────────────────────────────────
+// ─── Design tokens — Mix4+Rust+Lime locked palette ────────────────────────────
+// `teal` retained as a key for backwards-compat with existing call sites; value
+// is now the locked cyan (#18b4d4 — intel/data role). `amber` retained likewise
+// but now resolves to rust (#e8703a — threat/gap/pressure). Add `emerald` (win)
+// and `lime` (monitored/passive) as first-class roles.
 const HZ = {
-  bg:        '#060a10',
-  surface:   '#0a0e1a',
-  elevated:  '#161b22',
-  border:    'rgba(255,255,255,0.06)',
-  teal:      '#00d4e8',
-  amber:     '#D4A853',
-  red:       '#9E1B1B',
-  redText:   '#ff6b6b',
-  muted:     'rgba(255,255,255,0.35)',
-  text:      '#e6edf3',
+  bg:        '#080b16',
+  surface:   '#0f1422',
+  elevated:  '#161c2e',
+  border:    'rgba(255,255,255,0.07)',
+  teal:      '#18b4d4', // intel / data / urls / crawling
+  amber:     '#e8703a', // threat / gap / pressure / danger (rust)
+  emerald:   '#0dbe82', // win / confirmed / positive / success
+  lime:      '#70a848', // monitored / passive / watching / neutral
+  redText:   '#ff4d6d', // true alert / error only
+  muted:     '#8892a4',
+  text:      '#b8c4d4',
 }
 const FONT_BODY = "'Geist', system-ui, sans-serif"
 const FONT_MONO = "'Geist Mono', monospace"
@@ -80,10 +85,10 @@ function useCountUp(target, isActive, duration = 800) {
 // rather than current-vs-itself.
 const SNAPSHOT_KEY = 'horizon_last_scan_snapshot'
 
-// Diff arrow colours — no red anywhere (per design spec).
-const DIFF_LIME = '#94c864'   // positive / good change
-const DIFF_AMBER = '#f59e0b'  // neutral / non-positive change
-// informational (zero delta) uses HZ.teal (#00d4e8)
+// Diff arrow colours — locked palette. Positive change = emerald (win);
+// non-positive change = rust (threat); informational (zero delta) = cyan via HZ.teal.
+const DIFF_LIME = '#0dbe82'   // emerald — positive / good change (mapped to "win" role)
+const DIFF_AMBER = '#e8703a'  // rust — non-positive / threat change
 
 const gapKey = (g) => `${g.domain || ''}${g.path || ''}`
 
@@ -606,9 +611,9 @@ function oppScore(gap) {
 }
 
 function oppColor(opp) {
-  if (opp >= 80) return '#94c864' // lime
-  if (opp >= 50) return '#f59e0b' // amber
-  return '#00d4e8' // cyan
+  if (opp >= 80) return '#0dbe82' // emerald — high opportunity = win-grade
+  if (opp >= 50) return '#18b4d4' // cyan — intel
+  return '#b8c4d4'                 // body text — unclassified
 }
 
 // Live competitor shape (from App.jsx transformScan):
@@ -725,16 +730,16 @@ function momentumFor(comp, prevSnapshot) {
   let glyph, color
   if (delta >= 2) {
     glyph = '↑↑'
-    color = '#ef4444' // competitor threat — red is intentional here
+    color = '#e8703a' // rust — competitor threat
   } else if (delta === 1) {
     glyph = '↑'
-    color = '#ef4444'
+    color = '#e8703a'
   } else if (delta <= -1) {
     glyph = '↓'
-    color = '#94c864' // they lost ground — good for us
+    color = '#0dbe82' // emerald — they lost ground = win for us
   } else {
     glyph = '→'
-    color = 'rgba(255,255,255,0.45)'
+    color = '#8892a4' // muted — no change
   }
   return { delta, glyph, color }
 }
@@ -832,7 +837,7 @@ function Tooltip({ label, children }) {
             transform: 'translateX(-50%)',
             background: '#0d1320',
             border: `1px solid ${HZ.border}`,
-            borderRadius: 4,
+            borderRadius: 3,
             padding: '6px 9px',
             fontFamily: FONT_MONO,
             fontSize: 10,
@@ -877,7 +882,7 @@ function OppBadge({ opp }) {
 }
 
 function CompChip({ name, count, tier, geo, lime }) {
-  const meta = lime ? { abbr: 'BY', color: '#94c864' } : competitorMeta(name)
+  const meta = lime ? { abbr: 'BY', color: '#0dbe82' } : competitorMeta(name)
   const chip = (
     <span
       style={{
@@ -920,7 +925,8 @@ function PulseDot() {
 }
 
 function TierBadge({ tier }) {
-  const teal = tier === 'T1'
+  // T1 = rust (threat — highest priority page); T2 = cyan (intel/data).
+  const t1 = tier === 'T1'
   return (
     <span
       style={{
@@ -929,9 +935,9 @@ function TierBadge({ tier }) {
         fontWeight: 600,
         padding: '2px 8px',
         borderRadius: 3,
-        background: teal ? 'rgba(0,212,232,0.1)' : 'rgba(212,168,83,0.1)',
-        color: teal ? HZ.teal : HZ.amber,
-        border: `1px solid ${teal ? 'rgba(0,212,232,0.2)' : 'rgba(212,168,83,0.2)'}`,
+        background: t1 ? 'rgba(232,112,58,0.10)' : 'rgba(24,180,212,0.10)',
+        color: t1 ? HZ.amber : HZ.teal,
+        border: `1px solid ${t1 ? 'rgba(232,112,58,0.20)' : 'rgba(24,180,212,0.20)'}`,
         letterSpacing: '0.05em',
       }}
     >
@@ -943,19 +949,20 @@ function TierBadge({ tier }) {
 function SeverityBadge({ severity }) {
   let bg, fg, bd, label
   if (severity === 'high') {
-    bg = 'rgba(158,27,27,0.15)'
+    // True alert → keep red token (locked rule: red ONLY for true alerts/errors).
+    bg = 'rgba(255,77,109,0.12)'
     fg = HZ.redText
-    bd = 'rgba(158,27,27,0.3)'
+    bd = 'rgba(255,77,109,0.30)'
     label = 'HIGH'
   } else if (severity === 'medium') {
-    bg = 'rgba(212,168,83,0.1)'
+    bg = 'rgba(232,112,58,0.10)' // rust — threat
     fg = HZ.amber
-    bd = 'rgba(212,168,83,0.2)'
+    bd = 'rgba(232,112,58,0.20)'
     label = 'MED'
   } else {
-    bg = 'rgba(0,212,232,0.08)'
+    bg = 'rgba(24,180,212,0.08)' // cyan — intel
     fg = HZ.teal
-    bd = 'rgba(0,212,232,0.15)'
+    bd = 'rgba(24,180,212,0.15)'
     label = 'LOW'
   }
   return (
@@ -984,9 +991,9 @@ function DeltaChip({ label, delta, positiveIsGood }) {
   const positive = delta > 0
   const negative = delta < 0
   const good = (positive && positiveIsGood) || (negative && !positiveIsGood)
-  const bg = good ? 'rgba(0,212,232,0.08)' : 'rgba(158,27,27,0.15)'
-  const fg = good ? HZ.teal : HZ.redText
-  const bd = good ? 'rgba(0,212,232,0.15)' : 'rgba(158,27,27,0.3)'
+  const bg = good ? 'rgba(13,190,130,0.10)' : 'rgba(232,112,58,0.12)'
+  const fg = good ? HZ.emerald : HZ.amber
+  const bd = good ? 'rgba(13,190,130,0.25)' : 'rgba(232,112,58,0.25)'
   const arrow = positive ? '↑' : negative ? '↓' : '·'
   return (
     <span
@@ -1105,7 +1112,7 @@ function DiffSection({ section, open, onToggle, staticOpen = false }) {
                         onClick={(e) => e.stopPropagation()}
                         title={`Open ${r.url} — verify Bybit ${isWin ? 'presence' : 'absence'}`}
                         style={{
-                          color: isWin ? 'var(--green)' : 'var(--cyan)',
+                          color: isWin ? '#0dbe82' : '#18b4d4',
                           textDecoration: 'underline',
                           cursor: 'pointer',
                         }}
@@ -1150,7 +1157,7 @@ function StatCard({
       style={{
         background: HZ.surface,
         border: `1px solid ${HZ.border}`,
-        borderRadius: 6,
+        borderRadius: 3,
         padding: '16px 18px',
         display: 'flex',
         flexDirection: 'column',
@@ -1225,10 +1232,11 @@ function StatCard({
 // §5b — real-world market-move block, rendered below the placement narrative.
 // Amber 3px left border + ↑↑ for brand-expanding moves; neutral → no border.
 function MarketMoveBlock({ mm }) {
-  const amber = '#D4A853'
+  // Competitor brand-expanding move → rust (threat). Neutral → muted line.
+  const rust = '#e8703a'
   const isNeutral = !!mm.neutral
   const glyph = isNeutral ? '→' : mm.expanding ? '↑↑' : '↑'
-  const accent = isNeutral ? HZ.muted : amber
+  const accent = isNeutral ? HZ.muted : rust
   return (
     <div
       style={{
@@ -1236,7 +1244,7 @@ function MarketMoveBlock({ mm }) {
         paddingLeft: 10,
         borderLeft: isNeutral
           ? '3px solid rgba(255,255,255,0.08)'
-          : `3px solid ${amber}`,
+          : `3px solid ${rust}`,
       }}
     >
       <div
@@ -1351,7 +1359,7 @@ function BattlePlan({ comp, gaps, onDraft }) {
                   cursor: 'pointer',
                   background: 'transparent',
                   color: HZ.teal,
-                  border: '1px solid rgba(0,212,232,0.4)',
+                  border: '1px solid rgba(24,180,212,0.4)',
                 }}
               >
                 DRAFT OUTREACH
@@ -1540,7 +1548,7 @@ function FieldMap({ matrix, onGapCell }) {
       style={{
         background: HZ.surface,
         border: `1px solid ${HZ.border}`,
-        borderRadius: 6,
+        borderRadius: 3,
         padding: '14px 16px',
       }}
     >
@@ -1638,7 +1646,7 @@ function FieldMapTierRow({ tier, matrix, onGapCell }) {
             title={clickable ? 'Jump to this gap below' : undefined}
             style={{
               minHeight: 46,
-              borderRadius: 5,
+              borderRadius: 3,
               padding: '8px 6px',
               display: 'flex',
               flexWrap: 'wrap',
@@ -1646,11 +1654,11 @@ function FieldMapTierRow({ tier, matrix, onGapCell }) {
               alignItems: 'center',
               justifyContent: 'center',
               cursor: clickable ? 'pointer' : 'default',
-              background: isBybit ? 'rgba(148,200,100,0.06)' : 'rgba(255,255,255,0.015)',
+              background: isBybit ? 'rgba(13,190,130,0.06)' : 'rgba(255,255,255,0.015)',
               border: isGap
                 ? '1px dashed rgba(255,255,255,0.18)'
                 : isBybit
-                  ? '1px solid rgba(148,200,100,0.3)'
+                  ? '1px solid rgba(13,190,130,0.3)'
                   : `1px solid ${HZ.border}`,
             }}
           >
@@ -1788,7 +1796,7 @@ function ScoreProjectionPanel({ projection }) {
         margin: '0 24px 16px',
         background: HZ.surface,
         border: `1px solid ${HZ.border}`,
-        borderRadius: 6,
+        borderRadius: 3,
         padding: '14px 18px',
         fontFamily: FONT_MONO,
         fontSize: 12,
@@ -1807,7 +1815,7 @@ function ScoreProjectionPanel({ projection }) {
         </div>
       ))}
       <div style={{ borderTop: `1px solid ${HZ.border}`, margin: '10px 0' }} />
-      <div style={{ color: '#94c864', fontWeight: 700 }}>
+      <div style={{ color: '#0dbe82', fontWeight: 700 }}>
         PROJECTED SCORE: {projection.projected}%
       </div>
       <div style={{ color: HZ.muted, marginTop: 2 }}>ESTIMATED TIMELINE: 30 days</div>
@@ -1840,9 +1848,9 @@ function PlanItem({ gap, onDraft }) {
             padding: '3px 9px',
             borderRadius: 3,
             cursor: 'pointer',
-            background: hover ? 'rgba(0,212,232,0.16)' : 'transparent',
+            background: hover ? 'rgba(24,180,212,0.16)' : 'transparent',
             color: HZ.teal,
-            border: '1px solid rgba(0,212,232,0.4)',
+            border: '1px solid rgba(24,180,212,0.4)',
             transition: 'background 0.15s',
           }}
         >
@@ -1886,7 +1894,7 @@ function BuildPlanPanel({ open, plan, onClose, onDraft }) {
           style={{
             background: HZ.surface,
             border: `1px solid ${HZ.border}`,
-            borderRadius: 6,
+            borderRadius: 3,
             padding: '18px 20px',
             fontFamily: FONT_MONO,
             fontSize: 12,
@@ -1931,7 +1939,7 @@ function BuildPlanPanel({ open, plan, onClose, onDraft }) {
             onDraft={onDraft}
           />
           <div style={{ borderTop: `1px solid ${HZ.border}`, margin: '8px 0 12px' }} />
-          <div style={{ color: '#94c864', fontWeight: 700 }}>
+          <div style={{ color: '#0dbe82', fontWeight: 700 }}>
             IF EXECUTED: score moves {plan.fromScore}% → {plan.toScore}% in 30 days.
           </div>
         </div>
@@ -1953,9 +1961,9 @@ function CmoBriefPanel({ open, brief, mode, setMode, onClose, onCopy, copied }) 
         padding: '5px 12px',
         borderRadius: 3,
         cursor: 'pointer',
-        background: mode === id ? 'rgba(0,212,232,0.14)' : 'transparent',
+        background: mode === id ? 'rgba(24,180,212,0.14)' : 'transparent',
         color: mode === id ? HZ.teal : HZ.muted,
-        border: `1px solid ${mode === id ? 'rgba(0,212,232,0.4)' : HZ.border}`,
+        border: `1px solid ${mode === id ? 'rgba(24,180,212,0.4)' : HZ.border}`,
         transition: 'all 0.15s',
       }}
     >
@@ -1986,7 +1994,7 @@ function CmoBriefPanel({ open, brief, mode, setMode, onClose, onCopy, copied }) 
           height: '100vh',
           width: 'min(650px, 100vw)',
           background: '#0d1320',
-          borderLeft: '1px solid rgba(148,200,100,0.18)',
+          borderLeft: '1px solid rgba(13,190,130,0.18)',
           transform: open ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.4s cubic-bezier(0.16,1,0.3,1)',
           zIndex: 121,
@@ -2010,7 +2018,7 @@ function CmoBriefPanel({ open, brief, mode, setMode, onClose, onCopy, copied }) 
               fontWeight: 700,
               fontSize: 13,
               letterSpacing: '0.1em',
-              color: '#94c864',
+              color: '#0dbe82',
               textTransform: 'uppercase',
             }}
           >
@@ -2053,7 +2061,7 @@ function CmoBriefPanel({ open, brief, mode, setMode, onClose, onCopy, copied }) 
                   fontSize: 11,
                   fontWeight: 700,
                   letterSpacing: '0.12em',
-                  color: '#94c864',
+                  color: '#0dbe82',
                   marginBottom: 6,
                 }}
               >
@@ -2082,10 +2090,10 @@ function CmoBriefPanel({ open, brief, mode, setMode, onClose, onCopy, copied }) 
               fontWeight: 700,
               letterSpacing: '0.06em',
               padding: '8px 16px',
-              borderRadius: 4,
+              borderRadius: 3,
               cursor: 'pointer',
-              background: '#94c864',
-              color: '#0b1f0b',
+              background: '#0dbe82',
+              color: '#062017',
               border: 'none',
             }}
           >
@@ -2095,7 +2103,7 @@ function CmoBriefPanel({ open, brief, mode, setMode, onClose, onCopy, copied }) 
             style={{
               fontFamily: FONT_MONO,
               fontSize: 11,
-              color: '#94c864',
+              color: '#0dbe82',
               opacity: copied ? 1 : 0,
               transition: 'opacity 0.2s ease',
             }}
@@ -2117,7 +2125,7 @@ function GapRow({ gap, index, highlighted, isOpen, onToggle, onAskIntel }) {
   const site = gapUrl(gap)
   const clos = closabilityFor(gap)
   const closLabel = clos >= 0.85 ? 'HIGH' : clos >= 0.6 ? 'MED' : 'LOW'
-  const closColor = clos >= 0.85 ? '#94c864' : clos >= 0.6 ? '#f59e0b' : '#00d4e8'
+  const closColor = clos >= 0.85 ? '#0dbe82' : clos >= 0.6 ? '#18b4d4' : '#8892a4'
 
   const stop = (e) => e.stopPropagation()
 
@@ -2379,11 +2387,11 @@ function GapRow({ gap, index, highlighted, isOpen, onToggle, onAskIntel }) {
                 fontWeight: 700,
                 letterSpacing: '0.06em',
                 padding: '8px 14px',
-                borderRadius: 4,
+                borderRadius: 3,
                 cursor: 'pointer',
                 background: 'transparent',
                 color: HZ.teal,
-                border: `1px solid rgba(0,212,232,0.4)`,
+                border: `1px solid rgba(24,180,212,0.4)`,
                 textDecoration: 'none',
               }}
             >
@@ -2568,8 +2576,8 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
     overflow: 'hidden',
     background: HZ.bg,
     borderTop: errorState
-      ? '1px solid rgba(158,27,27,0.4)'
-      : '1px solid rgba(0,212,232,0.15)',
+      ? '1px solid rgba(255,77,109,0.4)'
+      : '1px solid rgba(24,180,212,0.15)',
     transition: 'max-height 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease',
   }
 
@@ -2767,10 +2775,10 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
               fontWeight: 700,
               letterSpacing: '0.08em',
               padding: '6px 13px',
-              borderRadius: 4,
+              borderRadius: 3,
               cursor: 'pointer',
-              background: '#94c864',
-              color: '#0b1f0b',
+              background: '#0dbe82',
+              color: '#062017',
               border: 'none',
             }}
           >
@@ -2784,7 +2792,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
               fontWeight: 700,
               letterSpacing: '0.08em',
               padding: '6px 13px',
-              borderRadius: 4,
+              borderRadius: 3,
               cursor: 'pointer',
               background: 'transparent',
               color: HZ.teal,
@@ -2850,7 +2858,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                   fontFamily: FONT_MONO,
                   fontSize: 11,
                   fontWeight: 600,
-                  color: '#94c864',
+                  color: '#0dbe82',
                 }}
               >
                 <span>
@@ -2916,7 +2924,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           style={{
             background: HZ.surface,
             border: `1px solid ${HZ.border}`,
-            borderRadius: 6,
+            borderRadius: 3,
             padding: '14px 16px',
           }}
         >
@@ -2948,9 +2956,9 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                   fontWeight: 600,
                   padding: '2px 8px',
                   borderRadius: 3,
-                  background: 'rgba(212,168,83,0.1)',
+                  background: 'rgba(232,112,58,0.1)',
                   color: HZ.amber,
-                  border: '1px solid rgba(212,168,83,0.2)',
+                  border: '1px solid rgba(232,112,58,0.2)',
                   letterSpacing: '0.05em',
                 }}
               >
@@ -2989,10 +2997,10 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                     padding: '4px 10px',
                     borderRadius: 3,
                     cursor: 'pointer',
-                    background: active ? 'rgba(0,212,232,0.08)' : 'transparent',
-                    color: active ? '#00d4e8' : '#8892a4',
+                    background: active ? 'rgba(24,180,212,0.08)' : 'transparent',
+                    color: active ? '#18b4d4' : '#8892a4',
                     border: active
-                      ? '1px solid rgba(0,212,232,0.4)'
+                      ? '1px solid rgba(24,180,212,0.4)'
                       : '1px solid rgba(255,255,255,0.1)',
                     transition: 'all 0.15s',
                   }}
@@ -3051,7 +3059,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                             : `srpRowFade 380ms cubic-bezier(0.16,1,0.3,1) ${i * 50}ms both`,
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(0,212,232,0.25)'
+                        e.currentTarget.style.borderColor = 'rgba(24,180,212,0.25)'
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
@@ -3109,7 +3117,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{
-                                  color: '#00d4e8',
+                                  color: '#18b4d4',
                                   textDecoration: 'underline',
                                   cursor: 'pointer',
                                 }}
@@ -3262,8 +3270,8 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                 </div>
                 <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                   {[
-                    { value: `+${deltaGaps}`, label: 'gaps', color: deltaGaps > 0 ? '#ff4d6d' : '#94c864' },
-                    { value: `+${deltaWins}`, label: 'wins', color: '#94c864' },
+                    { value: `+${deltaGaps}`, label: 'gaps', color: deltaGaps > 0 ? '#ff4d6d' : '#0dbe82' },
+                    { value: `+${deltaWins}`, label: 'wins', color: '#0dbe82' },
                     { value: String(deltaAlerts), label: 'alerts', color: deltaAlerts > 0 ? '#d4a853' : '#8892a4' },
                     { value: String(deltaCompetitors), label: 'competitor moves', color: deltaCompetitors > 0 ? '#d4a853' : '#8892a4' },
                   ].map(({ value, label, color }) => (
@@ -3300,8 +3308,8 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                     padding: '10px 16px',
                     background: 'none',
                     border: 'none',
-                    borderBottom: vsTab === tab ? '2px solid #00d4e8' : '2px solid transparent',
-                    color: vsTab === tab ? '#00d4e8' : '#8892a4',
+                    borderBottom: vsTab === tab ? '2px solid #18b4d4' : '2px solid transparent',
+                    color: vsTab === tab ? '#18b4d4' : '#8892a4',
                     cursor: 'pointer',
                     marginBottom: '-1px',
                   }}
@@ -3325,18 +3333,18 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                           {g.tier && <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4' }}>{g.tier}</span>}
                         </div>
                         <a href={buildGapHref(g)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', textDecoration: 'none' }}>
-                          {g.domain}<span style={{ color: '#00d4e8' }}>{g.path || ''}</span>
+                          {g.domain}<span style={{ color: '#18b4d4' }}>{g.path || ''}</span>
                         </a>
                       </div>
                     ))}
                     {(diffData?.resolvedGaps || []).map((g, i) => (
                       <div key={`closed-${i}`} style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '3px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontFamily: 'monospace', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94c864' }}>CLOSED</span>
+                          <span style={{ fontFamily: 'monospace', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#0dbe82' }}>CLOSED</span>
                           {g.tier && <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4' }}>{g.tier}</span>}
                         </div>
                         <a href={buildGapHref(g)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', textDecoration: 'none' }}>
-                          {g.domain}<span style={{ color: '#00d4e8' }}>{g.path || ''}</span>
+                          {g.domain}<span style={{ color: '#18b4d4' }}>{g.path || ''}</span>
                         </a>
                       </div>
                     ))}
@@ -3352,11 +3360,11 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                     {diffData.newWins.map((w, i) => (
                       <div key={i} style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '3px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontFamily: 'monospace', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94c864' }}>WIN</span>
+                          <span style={{ fontFamily: 'monospace', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#0dbe82' }}>WIN</span>
                           {w.tier && <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8892a4' }}>{w.tier}</span>}
                         </div>
                         <a href={buildGapHref(w)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', textDecoration: 'none' }}>
-                          {w.domain}<span style={{ color: '#00d4e8' }}>{w.path || ''}</span>
+                          {w.domain}<span style={{ color: '#18b4d4' }}>{w.path || ''}</span>
                         </a>
                       </div>
                     ))}
@@ -3461,7 +3469,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
               {visibleCompetitors.map((c, i) => {
                   const tier = i === 0 ? 1 : i <= 2 ? 2 : 3
                   const dotColor =
-                    tier === 1 ? '#94c864' : tier === 2 ? '#00d4e8' : '#8892a4'
+                    tier === 1 ? '#0dbe82' : tier === 2 ? '#18b4d4' : '#8892a4'
                   const score = c._effectiveScore ?? c.threatScore ?? 0
                   const color = c.color || '#8892a4'
                   const pct = allCompetitorScoresZero
@@ -3490,7 +3498,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                           padding: '5px 10px',
                           background: 'rgba(255,255,255,0.03)',
                           border: '1px solid rgba(255,255,255,0.06)',
-                          borderRadius: 5,
+                          borderRadius: 3,
                           width: '100%',
                           justifyContent: 'flex-end',
                           boxSizing: 'border-box',
@@ -3572,7 +3580,7 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
                     border: 'none',
                     fontFamily: FONT_MONO,
                     fontSize: 11,
-                    color: '#00d4e8',
+                    color: '#18b4d4',
                     cursor: 'pointer',
                     textAlign: 'center',
                     letterSpacing: '0.05em',
@@ -3607,8 +3615,8 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           100% { opacity: 1; transform: translateY(0); }
         }
         @keyframes srpGapPulse {
-          0%   { background: rgba(0,212,232,0.28); box-shadow: inset 0 0 0 1px rgba(0,212,232,0.6); }
-          100% { background: transparent;          box-shadow: inset 0 0 0 1px rgba(0,212,232,0); }
+          0%   { background: rgba(24,180,212,0.28); box-shadow: inset 0 0 0 1px rgba(24,180,212,0.6); }
+          100% { background: transparent;          box-shadow: inset 0 0 0 1px rgba(24,180,212,0); }
         }
       `}</style>
     </div>
