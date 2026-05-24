@@ -1,169 +1,537 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronDown } from 'lucide-react'
 import { RADAR_EVENTS } from '../lib/radar/events'
-import { filterEvents, groupByMonth, fmtMonth, computeLivingScore, getAlertInfo } from '../lib/radar/scoring'
+import {
+  filterEvents,
+  groupByMonth,
+  fmtMonth,
+  computeLivingScore,
+  getAlertInfo,
+} from '../lib/radar/scoring'
 import { assessCompetitors } from '../lib/radar/competitors'
-import { fetchDetectedEvents, confirmDetectedEvent, dismissDetectedEvent, fetchDetectionSettings, updateDetectionSettings, runDetectNow, detectedSyntheticId } from '../api/detection'
+import {
+  fetchDetectedEvents,
+  confirmDetectedEvent,
+  dismissDetectedEvent,
+  fetchDetectionSettings,
+  runDetectNow,
+  detectedSyntheticId,
+} from '../api/detection'
 
+// ─── Tokens (locked Mix4+Rust+Lime palette) ───────────────────────────────────
+const COLOR = {
+  emerald:   '#0dbe82', emeraldRgb: '13,190,130',
+  lime:      '#70a848', limeRgb:    '112,168,72',
+  cyan:      '#18b4d4', cyanRgb:    '24,180,212',
+  rust:      '#e8703a', rustRgb:    '232,112,58',
+  body:      '#b8c4d4',
+  muted:     '#8892a4',
+  card:      '#0f1422',
+  border:    'rgba(255,255,255,0.07)',
+  borderSub: 'rgba(255,255,255,0.05)',
+  white:     '#ffffff',
+}
+const MONO = "'Geist Mono', monospace"
 const TYPE_TO_CAT = { sports:'sports', web3:'web3', cultural:'cultural', business:'business', regulatory:'business', other:'business' }
 
-// EVENTS palette — strict: NO rust anywhere. MOVE/ACTIVATE → emerald;
-// active filters → cyan; inactive → muted; urgency cues → cyan; web3 → lime.
-const CAT_COLORS = {
-  sports:   { bg: 'rgba(24,180,212,0.10)', color: '#18b4d4' },
-  web3:     { bg: 'rgba(112,168,72,0.14)', color: '#70a848' },
-  business: { bg: 'rgba(123,94,167,0.15)', color: 'var(--purple)' },
-  cultural: { bg: 'rgba(13,190,130,0.10)', color: '#0dbe82' },
-}
+// ─── Filter constants (existing logic — unchanged) ─────────────────────────────
+const BUDGETS = [
+  { key:'low',  label:'LOW <€20k' },
+  { key:'mid',  label:'MID €20–100k' },
+  { key:'high', label:'HIGH >€100k' },
+]
+const CAPABILITIES = [
+  { key:'content', label:'Content' },
+  { key:'paid',    label:'Paid' },
+  { key:'partner', label:'Partner' },
+]
+const CATS = ['all', 'sports', 'web3', 'business', 'cultural']
 
-const STATUS_COLORS = {
-  'missed':       { bg: 'rgba(255,255,255,0.04)', color: '#8892a4' },
-  'last-chance':  { bg: 'rgba(255,77,109,0.12)',  color: '#ff4d6d' },
-  'act-now':      { bg: 'rgba(24,180,212,0.12)',  color: '#18b4d4' },
-  'urgent':       { bg: 'rgba(24,180,212,0.12)',  color: '#18b4d4' },
-  'brief-window': { bg: 'rgba(24,180,212,0.10)',  color: '#18b4d4' },
-  'on-radar':     { bg: 'rgba(13,190,130,0.10)',  color: '#0dbe82' },
-}
-
-const VERDICT_BADGE = {
-  move:     { label: 'MOVE',     color: '#0dbe82', bg: 'rgba(13,190,130,0.12)' },
-  consider: { label: 'CONSIDER', color: '#18b4d4', bg: 'rgba(24,180,212,0.10)' },
-  skip:     { label: 'SKIP',     color: '#8892a4', bg: 'rgba(255,255,255,0.05)' },
-}
-
-const BUDGETS = [{ key:'low', label:'LOW <€20k' }, { key:'mid', label:'MID €20–100k' }, { key:'high', label:'HIGH >€100k' }]
-const CAPABILITIES = [{ key:'content', label:'Content' }, { key:'paid', label:'Paid' }, { key:'partner', label:'Partner' }]
-
-const mono = { fontFamily: 'var(--font-mono)' }
-const chipBase = { ...mono, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '5px 11px', borderRadius: 3, cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s, color 0.15s', lineHeight: 1, border: 'none' }
-const chipActive = { ...chipBase, border: '1px solid #18b4d4', background: 'rgba(24,180,212,0.12)', color: '#18b4d4' }
-const chipInactive = { ...chipBase, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#8892a4' }
-
-function fmtDate(d) {
-  const [,m,day] = d.split('-')
-  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1] + ' ' + day
-}
-
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function daysUntil(d) {
   return Math.round((new Date(d) - new Date()) / 86400000)
 }
 
-function EventCard({ event, verdict, constraints, dismissed, detected, onDismiss, onActivate }) {
-  const [hover, setHover] = useState(false)
-  const living = computeLivingScore(event, constraints, assessCompetitors(event, constraints))
-  const alert = getAlertInfo(event.date)
-  const cat = CAT_COLORS[event.cat] || CAT_COLORS.business
-  const status = STATUS_COLORS[alert.status]
-  const daysOut = daysUntil(event.date)
-  const daysLabel = daysOut < 0 ? 'PAST' : daysOut === 0 ? 'TODAY' : `T-${daysOut}D`
-  const field = living.fieldOpenness >= 1 ? { label:'OPEN', color:'#0dbe82' } : living.fieldOpenness <= -1 ? { label:'CONTESTED', color:'#18b4d4' } : { label:'CROWDED', color:'#8892a4' }
-  const vb = verdict ? VERDICT_BADGE[verdict] : null
+function fmtDateParts(d) {
+  const [year, m, day] = d.split('-')
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
+  return { day, month: months[+m - 1] || '', year }
+}
+
+// Threat windows (rust) override the verdict-driven action; otherwise verdict
+// drives the accent. Returns { label, color, rgb } for the action tag, the
+// left-border accent, and the countdown badge background.
+function deriveAction(verdict, alertStatus) {
+  if (alertStatus === 'missed' || alertStatus === 'last-chance') {
+    return { label: alertStatus === 'missed' ? 'GAP' : 'URGENT', color: COLOR.rust, rgb: COLOR.rustRgb }
+  }
+  if (verdict === 'move')     return { label: 'MOVE',     color: COLOR.emerald, rgb: COLOR.emeraldRgb }
+  if (verdict === 'consider') return { label: 'CONSIDER', color: COLOR.lime,    rgb: COLOR.limeRgb }
+  return { label: 'WATCH', color: COLOR.cyan, rgb: COLOR.cyanRgb }
+}
+
+// Intel pill is conditional — surfaces only when the alert window is
+// actionable now (cyan) or already closing (rust).
+function deriveIntelPill(alertStatus) {
+  if (alertStatus === 'urgent' || alertStatus === 'act-now') {
+    return { text: 'Urgent — brief window', color: COLOR.cyan, rgb: COLOR.cyanRgb }
+  }
+  if (alertStatus === 'last-chance') {
+    return { text: 'Threat — last chance to act', color: COLOR.rust, rgb: COLOR.rustRgb }
+  }
+  if (alertStatus === 'missed') {
+    return { text: 'Threat — window missed', color: COLOR.rust, rgb: COLOR.rustRgb }
+  }
+  return null
+}
+
+// ─── Filter chip primitives ───────────────────────────────────────────────────
+const chipBase = {
+  fontFamily: MONO,
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  padding: '5px 11px',
+  borderRadius: 3,
+  cursor: 'pointer',
+  lineHeight: 1,
+  transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+}
+const chipInactive = {
+  ...chipBase,
+  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'transparent',
+  color: COLOR.muted,
+}
+// Category filter active state — emerald (data category selection).
+const chipActiveCategory = {
+  ...chipBase,
+  border: `1px solid ${COLOR.emerald}`,
+  background: `rgba(${COLOR.emeraldRgb},0.07)`,
+  color: COLOR.emerald,
+}
+// Constraint filter active state — cyan (intel/data axis).
+const chipActiveConstraint = {
+  ...chipBase,
+  border: `1px solid ${COLOR.cyan}`,
+  background: `rgba(${COLOR.cyanRgb},0.07)`,
+  color: COLOR.cyan,
+}
+
+// ─── Card — full-width horizontal ─────────────────────────────────────────────
+function EventCard({ event, verdict, alert, action, intel, score, index, onActivate, onDismiss }) {
+  const dp = fmtDateParts(event.date)
+  const dOut = daysUntil(event.date)
+  const countdown = dOut < 0 ? 'PAST' : dOut === 0 ? 'TODAY' : `T-${dOut}D`
 
   return (
-    <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04, duration: 0.2, ease: 'easeOut' }}
       style={{
-        display: 'flex', flexDirection: 'column', gap: 10, padding: 12,
-        background: hover ? 'rgba(255,255,255,0.03)' : 'var(--bg-card)',
-        border: `1px solid ${detected ? '#0dbe82' : 'rgba(255,255,255,0.07)'}`,
-        borderLeft: detected ? '3px solid #0dbe82' : '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 3, opacity: dismissed ? 0.35 : 1,
-        transition: 'background 0.15s',
-        minWidth: 0,
+        display: 'grid',
+        gridTemplateColumns: '72px 1fr auto',
+        background: COLOR.card,
+        border: `1px solid ${COLOR.border}`,
+        borderLeft: `3px solid ${action.color}`,
+        borderRadius: 3,
+        marginTop: 6,
         overflow: 'hidden',
       }}
     >
-      {/* Date + score header — score lives on the right edge */}
-      <div style={{ display:'flex', alignItems:'flex-start', gap:10, minWidth:0 }}>
-        <div style={{ flexShrink:0 }}>
-          <div style={{ ...mono, fontSize:11, color:'#8892a4' }}>{fmtDate(event.date)}</div>
-          <div style={{ ...mono, fontSize:12, fontWeight:700, color:'#0dbe82', marginTop:3 }}>{daysLabel}</div>
-        </div>
-        <div style={{ flex:'1 1 0', minWidth:0 }} />
-        <div style={{ textAlign:'right', flexShrink:0 }}>
-          <div style={{ ...mono, fontSize:18, fontWeight:700, color:'#ffffff' }}>{living.adjustedTotal}<span style={{ fontSize:10, color:'#8892a4' }}>/10</span></div>
-          <div style={{ ...mono, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase' }}>relevance</div>
-        </div>
-      </div>
-
-      {/* Title — single-line ellipsis stops character-by-character wrapping
-          inside narrow 3-col cells. */}
+      {/* ── Column 1 — date + countdown ── */}
       <div
         style={{
-          fontSize: 14,
-          fontWeight: 600,
-          color: '#ffffff',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px 8px',
+          borderRight: `1px solid ${COLOR.borderSub}`,
+          gap: 2,
         }}
-        title={event.name}
       >
-        {event.name}
-      </div>
-
-      {/* Badges row */}
-      <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', minWidth:0 }}>
-        <span style={{ ...mono, fontSize:9, padding:'2px 6px', borderRadius:3, textTransform:'uppercase', letterSpacing:'0.08em', background:cat.bg, color:cat.color }}>{event.cat}</span>
-        {vb && <span style={{ ...mono, fontSize:10, fontWeight:700, letterSpacing:'0.1em', padding:'4px 9px', borderRadius:3, background:vb.bg, color:vb.color, border:`1px solid ${vb.color}` }}>{vb.label}</span>}
-        <span style={{ ...mono, fontSize:9, letterSpacing:'0.08em', padding:'4px 8px', borderRadius:3, background:'rgba(255,255,255,0.05)', color:field.color }}>{field.label}</span>
-        {detected && <span style={{ ...mono, fontSize:9, padding:'2px 6px', borderRadius:3, textTransform:'uppercase', background:'rgba(13,190,130,0.12)', color:'#0dbe82' }}>{detected.confirmed?'CONFIRMED':'DETECTED'} · {detected.confidence}%</span>}
-        {dismissed && <span style={{ ...mono, fontSize:9, textTransform:'uppercase', color:'#ff4d6d' }}>DISMISSED</span>}
-      </div>
-
-      {/* Sub line — ellipsizes */}
-      <div style={{ fontSize:12, color:'#8892a4', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0 }} title={event.sub}>{event.sub}</div>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', borderTop:'1px solid rgba(255,255,255,0.07)', paddingTop:10 }}>
-        <span style={{ ...mono, fontSize:10, letterSpacing:'0.06em', padding:'3px 8px', borderRadius:3, background:status.bg, color:status.color }}>{alert.label}</span>
-        <div style={{ display:'flex', gap:6 }}>
-          <button onClick={onActivate} style={{ ...mono, fontSize:10, letterSpacing:'0.08em', textTransform:'uppercase', padding:'6px 12px', borderRadius:3, border:'1px solid #0dbe82', background:'#0dbe82', color:'#062017', fontWeight:700, cursor:'pointer' }}>Activate</button>
-          <button onClick={onDismiss} style={{ ...mono, fontSize:10, textTransform:'uppercase', padding:'6px 12px', borderRadius:3, border:'1px solid rgba(255,255,255,0.12)', background:'transparent', color:'#8892a4', cursor:'pointer' }}>Dismiss</button>
+        <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: COLOR.body, letterSpacing: '0.04em' }}>
+          {dp.month} {dp.day}
+        </div>
+        <div style={{ fontFamily: MONO, fontSize: 9, color: COLOR.muted }}>{dp.year}</div>
+        <div
+          style={{
+            marginTop: 4,
+            fontFamily: MONO,
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.05em',
+            padding: '2px 5px',
+            borderRadius: 3,
+            background: `rgba(${action.rgb},0.14)`,
+            color: action.color,
+            border: `1px solid rgba(${action.rgb},0.3)`,
+          }}
+        >
+          {countdown}
         </div>
       </div>
-    </div>
-  )
-}
 
-function VerdictBar({ verdict, total, moveCount }) {
-  const META = {
-    move:     { word:'MOVE',     color:'#0dbe82', dim:'rgba(13,190,130,0.10)' },
-    consider: { word:'CONSIDER', color:'#18b4d4', dim:'rgba(24,180,212,0.08)' },
-    skip:     { word:'SKIP',     color:'#8892a4', dim:'rgba(255,255,255,0.04)' },
-  }
-  const m = verdict ? META[verdict] : null
-  return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, padding:'14px 18px', marginBottom:16, background:m?m.dim:'rgba(255,255,255,0.03)', border:`1px solid ${m?m.color:'rgba(255,255,255,0.07)'}`, borderRadius:3 }}>
-      <div style={{ display:'flex', alignItems:'baseline', gap:12 }}>
-        <span style={{ ...mono, fontSize:20, fontWeight:700, letterSpacing:'0.14em', color:m?m.color:'#8892a4' }}>{m?m.word:'MONITORING'}</span>
-        <span style={{ ...mono, fontSize:10, color:'#8892a4', textTransform:'uppercase' }}>{verdict?'highest-priority signal':'no verdict yet'}</span>
+      {/* ── Column 2 — title + tags + description + intel pill ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '14px 16px', minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: COLOR.white, letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+          {event.name}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <Tag label={event.cat} color={COLOR.muted} rgb="136,146,164" />
+          <Tag label={action.label} color={action.color} rgb={action.rgb} />
+          <Tag label={alert.label} color={COLOR.muted} rgb="136,146,164" />
+        </div>
+        {event.sub && (
+          <div style={{ fontSize: 12, color: COLOR.muted, lineHeight: 1.5 }}>
+            {event.sub}
+          </div>
+        )}
+        {intel && (
+          <div
+            style={{
+              alignSelf: 'flex-start',
+              fontFamily: MONO,
+              fontSize: 9,
+              fontWeight: 600,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              padding: '3px 8px',
+              borderRadius: 3,
+              background: `rgba(${intel.rgb},0.08)`,
+              color: intel.color,
+              border: `1px solid rgba(${intel.rgb},0.35)`,
+            }}
+          >
+            {intel.text}
+          </div>
+        )}
       </div>
-      <span style={{ ...mono, fontSize:11, color:'#8892a4' }}>{total} events · <span style={{ color:'#0dbe82' }}>{moveCount} MOVE</span></span>
+
+      {/* ── Column 3 — score + actions ── */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '14px 16px',
+          borderLeft: `1px solid ${COLOR.borderSub}`,
+          minWidth: 140,
+        }}
+      >
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: MONO, lineHeight: 1 }}>
+            <span style={{ fontSize: 22, fontWeight: 700, color: COLOR.white }}>{score}</span>
+            <span style={{ fontSize: 11, color: COLOR.muted }}>/10</span>
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: 9, color: COLOR.muted, letterSpacing: '0.1em', marginTop: 4 }}>
+            RELEVANCE
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+          <button
+            onClick={onActivate}
+            style={{
+              fontFamily: MONO,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              padding: '6px 14px',
+              borderRadius: 3,
+              border: 'none',
+              background: COLOR.emerald,
+              color: '#062017',
+              cursor: 'pointer',
+            }}
+          >
+            Activate
+          </button>
+          <button
+            onClick={onDismiss}
+            style={{
+              fontFamily: MONO,
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              padding: '6px 14px',
+              borderRadius: 3,
+              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'transparent',
+              color: COLOR.muted,
+              cursor: 'pointer',
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+function Tag({ label, color, rgb }) {
+  return (
+    <span
+      style={{
+        fontFamily: MONO,
+        fontSize: 9,
+        fontWeight: 600,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        padding: '2px 7px',
+        borderRadius: 3,
+        background: `rgba(${rgb},0.06)`,
+        color,
+        border: `1px solid rgba(${rgb},0.3)`,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {label}
+    </span>
+  )
+}
+
+// ─── Month block ──────────────────────────────────────────────────────────────
+function MonthBlock({ month, events, defaultOpen, computeVerdict, onActivate, onDismiss }) {
+  const [open, setOpen] = useState(defaultOpen)
+  const [expanded, setExpanded] = useState(false)
+  const [hover, setHover] = useState(false)
+
+  const enriched = useMemo(
+    () =>
+      events.map((e) => {
+        const verdict = computeVerdict(e)
+        const alert = getAlertInfo(e.date)
+        return {
+          event: e,
+          verdict,
+          alert,
+          action: deriveAction(verdict, alert.status),
+          intel: deriveIntelPill(alert.status),
+          score: e.score ?? Math.round(
+            computeLivingScore(e, { budget: 'mid', capabilities: ['content', 'paid', 'partner'] }, assessCompetitors(e, { budget: 'mid', capabilities: ['content', 'paid', 'partner'] })).adjustedTotal,
+          ),
+        }
+      }),
+    [events, computeVerdict],
+  )
+
+  const moveCount = enriched.filter((x) => x.verdict === 'move').length
+  const visible = expanded ? enriched : enriched.slice(0, 3)
+  const remaining = enriched.length - visible.length
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      {/* Month header */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((o) => !o) } }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'auto 1fr auto',
+          alignItems: 'center',
+          gap: 16,
+          padding: '12px 0',
+          borderBottom: `1px solid ${COLOR.borderSub}`,
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}
+      >
+        <span
+          style={{
+            fontFamily: MONO,
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            color: hover ? COLOR.body : COLOR.muted,
+            transition: 'color 0.15s',
+          }}
+        >
+          {month}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+          <SummaryPill
+            label={`${enriched.length} event${enriched.length === 1 ? '' : 's'}`}
+            color={COLOR.muted}
+            rgb="136,146,164"
+          />
+          {moveCount > 0 && (
+            <SummaryPill
+              label={`${moveCount} high priority`}
+              color={COLOR.rust}
+              rgb={COLOR.rustRgb}
+            />
+          )}
+        </div>
+        <motion.div
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          style={{ display: 'inline-flex', color: COLOR.muted }}
+        >
+          <ChevronDown size={14} strokeWidth={1.75} />
+        </motion.div>
+      </div>
+
+      {/* Month body */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{ paddingTop: 6 }}>
+              {visible.map((row, i) => (
+                <EventCard
+                  key={row.event.id}
+                  event={row.event}
+                  verdict={row.verdict}
+                  alert={row.alert}
+                  action={row.action}
+                  intel={row.intel}
+                  score={row.score}
+                  index={i}
+                  onActivate={() => onActivate(row.event)}
+                  onDismiss={() => onDismiss(row.event)}
+                />
+              ))}
+              {remaining > 0 && !expanded && (
+                <button
+                  onClick={() => setExpanded(true)}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    marginTop: 6,
+                    padding: 8,
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 3,
+                    color: COLOR.muted,
+                    fontFamily: MONO,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'color 0.15s, border-color 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = COLOR.body
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.16)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = COLOR.muted
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+                  }}
+                >
+                  + {remaining} more event{remaining === 1 ? '' : 's'}
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
+function SummaryPill({ label, color, rgb }) {
+  return (
+    <span
+      style={{
+        fontFamily: MONO,
+        fontSize: 9,
+        fontWeight: 600,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        padding: '3px 8px',
+        borderRadius: 3,
+        background: `rgba(${rgb},0.08)`,
+        color,
+        border: `1px solid rgba(${rgb},0.25)`,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {label}
+    </span>
+  )
+}
+
+// ─── Top constraint bar ───────────────────────────────────────────────────────
 function ConstraintBar({ constraints, onChange }) {
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:20, flexWrap:'wrap', padding:'12px 0', marginBottom:12, borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-      <span style={{ ...mono, fontSize:10, color:'#8892a4', textTransform:'uppercase', letterSpacing:'0.14em' }}>Constraints</span>
-      <div style={{ display:'flex', gap:6 }}>
-        {BUDGETS.map(b => <button key={b.key} onClick={() => onChange({...constraints, budget:b.key})} style={constraints.budget===b.key?chipActive:chipInactive}>{b.label}</button>)}
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20,
+        flexWrap: 'wrap',
+        padding: '12px 0',
+        marginBottom: 12,
+        borderBottom: `1px solid ${COLOR.border}`,
+      }}
+    >
+      <span style={{ fontFamily: MONO, fontSize: 10, color: COLOR.muted, textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+        Constraints
+      </span>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {BUDGETS.map((b) => (
+          <button
+            key={b.key}
+            onClick={() => onChange({ ...constraints, budget: b.key })}
+            style={constraints.budget === b.key ? chipActiveConstraint : chipInactive}
+          >
+            {b.label}
+          </button>
+        ))}
       </div>
-      <div style={{ display:'flex', gap:6 }}>
-        {CAPABILITIES.map(c => {
+      <div style={{ display: 'flex', gap: 6 }}>
+        {CAPABILITIES.map((c) => {
           const active = constraints.capabilities.includes(c.key)
-          return <button key={c.key} onClick={() => { const caps = active ? constraints.capabilities.filter(x=>x!==c.key) : [...constraints.capabilities,c.key]; onChange({...constraints,capabilities:caps}) }} style={active?chipActive:chipInactive}>{c.label}</button>
+          return (
+            <button
+              key={c.key}
+              onClick={() => {
+                const caps = active
+                  ? constraints.capabilities.filter((x) => x !== c.key)
+                  : [...constraints.capabilities, c.key]
+                onChange({ ...constraints, capabilities: caps })
+              }}
+              style={active ? chipActiveConstraint : chipInactive}
+            >
+              {c.label}
+            </button>
+          )
         })}
       </div>
     </div>
   )
 }
 
+// ─── Main component ──────────────────────────────────────────────────────────
 export default function EventsSection({ orgId }) {
-  const [constraints, setConstraints] = useState({ budget:'mid', capabilities:['content','paid','partner'] })
+  const [constraints, setConstraints] = useState({ budget: 'mid', capabilities: ['content', 'paid', 'partner'] })
   const [dismissed, setDismissed] = useState(new Set())
   const [detected, setDetected] = useState([])
+  // settings retained for future use; not surfaced in this layout.
+  // eslint-disable-next-line no-unused-vars
   const [settings, setSettings] = useState(null)
   const [catFilter, setCatFilter] = useState('all')
   const [highOnly, setHighOnly] = useState(false)
@@ -172,13 +540,13 @@ export default function EventsSection({ orgId }) {
 
   useEffect(() => {
     if (!orgId) return
-    fetchDetectedEvents(orgId).then(setDetected).catch(()=>{})
-    fetchDetectionSettings(orgId).then(setSettings).catch(()=>{})
+    fetchDetectedEvents(orgId).then(setDetected).catch(() => {})
+    fetchDetectionSettings(orgId).then(setSettings).catch(() => {})
   }, [orgId])
 
   const detectedAsRadar = detected
-    .filter(d => !d.dismissed)
-    .map(d => ({
+    .filter((d) => !d.dismissed)
+    .map((d) => ({
       id: detectedSyntheticId(d.id),
       _detectedId: d.id,
       name: d.title,
@@ -195,33 +563,38 @@ export default function EventsSection({ orgId }) {
     }))
 
   const allEvents = [...detectedAsRadar, ...RADAR_EVENTS]
-  const filtered = filterEvents(allEvents, catFilter, highOnly).filter(e => !dismissed.has(e.id))
-  const grouped = groupByMonth(filtered)
+  const filtered = filterEvents(allEvents, catFilter, highOnly).filter((e) => !dismissed.has(e.id))
 
-  const computeVerdict = (event) => {
-    const living = computeLivingScore(event, constraints, assessCompetitors(event, constraints))
-    if (living.adjustedTotal >= 8) return 'move'
-    if (living.adjustedTotal >= 6) return 'consider'
-    return 'skip'
-  }
+  // groupByMonth preserves insertion order; sort the entries chronologically
+  // by the earliest date in each group so months render oldest-first and the
+  // "current/earliest month" rule is unambiguous.
+  const grouped = useMemo(() => {
+    const map = groupByMonth(filtered)
+    const entries = [...map.entries()].sort((a, b) => {
+      const dateA = a[1].reduce((min, e) => (e.date < min ? e.date : min), a[1][0]?.date ?? '9999')
+      const dateB = b[1].reduce((min, e) => (e.date < min ? e.date : min), b[1][0]?.date ?? '9999')
+      return dateA.localeCompare(dateB)
+    })
+    return entries
+  }, [filtered])
 
-  const topVerdict = filtered.length === 0 ? null : (() => {
-    const scores = filtered.map(e => computeLivingScore(e, constraints, assessCompetitors(e, constraints)).adjustedTotal)
-    const max = Math.max(...scores)
-    if (max >= 8) return 'move'
-    if (max >= 6) return 'consider'
-    return 'skip'
-  })()
-
-  const moveCount = filtered.filter(e => computeVerdict(e) === 'move').length
+  const computeVerdict = useCallback(
+    (event) => {
+      const living = computeLivingScore(event, constraints, assessCompetitors(event, constraints))
+      if (living.adjustedTotal >= 8) return 'move'
+      if (living.adjustedTotal >= 6) return 'consider'
+      return 'skip'
+    },
+    [constraints],
+  )
 
   const handleDismiss = useCallback((event) => {
-    setDismissed(prev => new Set([...prev, event.id]))
-    if (event._detectedId) dismissDetectedEvent(event._detectedId).catch(()=>{})
+    setDismissed((prev) => new Set([...prev, event.id]))
+    if (event._detectedId) dismissDetectedEvent(event._detectedId).catch(() => {})
   }, [])
 
   const handleActivate = useCallback((event) => {
-    if (event._detectedId) confirmDetectedEvent(event._detectedId).catch(()=>{})
+    if (event._detectedId) confirmDetectedEvent(event._detectedId).catch(() => {})
   }, [])
 
   const handleDetectNow = useCallback(async () => {
@@ -233,57 +606,78 @@ export default function EventsSection({ orgId }) {
       setDetectCount(n)
       const fresh = await fetchDetectedEvents(orgId)
       setDetected(fresh)
-    } catch {}
+    } catch { /* network — surface via UI count remaining null */ }
     setDetecting(false)
   }, [orgId, detecting])
 
-  const CATS = ['all','sports','web3','business','cultural']
-
   return (
-    <div style={{ padding:'28px 32px', maxWidth:900, margin:'0 auto' }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+    <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize:20, fontWeight:700, color:'#ffffff', letterSpacing:'-0.01em' }}>EVENTS</div>
-          <div style={{ ...mono, fontSize:11, color:'#8892a4', marginTop:4 }}>{filtered.length} events · 180-day window</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: COLOR.white, letterSpacing: '-0.01em' }}>EVENTS</div>
+          <div style={{ fontFamily: MONO, fontSize: 11, color: COLOR.muted, marginTop: 4 }}>
+            {filtered.length} events · 180-day window
+          </div>
         </div>
         <button
           onClick={handleDetectNow}
           disabled={detecting}
-          style={{ ...mono, fontSize:11, textTransform:'uppercase', letterSpacing:'0.08em', padding:'8px 16px', borderRadius:3, border:'1px solid #18b4d4', background:'transparent', color:'#18b4d4', cursor:detecting?'default':'pointer', opacity:detecting?0.5:1 }}
+          style={{
+            fontFamily: MONO,
+            fontSize: 11,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            padding: '8px 16px',
+            borderRadius: 3,
+            border: `1px solid ${COLOR.cyan}`,
+            background: 'transparent',
+            color: COLOR.cyan,
+            cursor: detecting ? 'default' : 'pointer',
+            opacity: detecting ? 0.5 : 1,
+          }}
         >
           {detecting ? 'Detecting…' : detectCount !== null ? `+${detectCount} detected` : 'Detect Now'}
         </button>
       </div>
 
-      <VerdictBar verdict={topVerdict} total={filtered.length} moveCount={moveCount} />
+      {/* Filters */}
       <ConstraintBar constraints={constraints} onChange={setConstraints} />
 
-      <div style={{ display:'flex', gap:6, marginBottom:20, flexWrap:'wrap' }}>
-        {CATS.map(c => <button key={c} onClick={() => setCatFilter(c)} style={catFilter===c?chipActive:chipInactive}>{c}</button>)}
-        <button onClick={() => setHighOnly(h=>!h)} style={highOnly?chipActive:chipInactive}>High priority only</button>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+        {CATS.map((c) => (
+          <button
+            key={c}
+            onClick={() => setCatFilter(c)}
+            style={catFilter === c ? chipActiveCategory : chipInactive}
+          >
+            {c}
+          </button>
+        ))}
+        <button
+          onClick={() => setHighOnly((h) => !h)}
+          style={highOnly ? chipActiveCategory : chipInactive}
+        >
+          High priority only
+        </button>
       </div>
 
+      {/* Feed */}
       {filtered.length === 0 ? (
-        <div style={{ ...mono, fontSize:12, color:'#8892a4', textAlign:'center', padding:'60px 0' }}>No events match current filters.</div>
+        <div style={{ fontFamily: MONO, fontSize: 12, color: COLOR.muted, textAlign: 'center', padding: '60px 0' }}>
+          No events match current filters.
+        </div>
       ) : (
-        [...grouped.entries()].map(([month, events]) => (
-          <div key={month} style={{ marginBottom:28 }}>
-            <div style={{ ...mono, fontSize:11, color:'#18b4d4', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:10 }}>{month}</div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12, overflowX:'hidden' }}>
-              {events.map(event => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  verdict={computeVerdict(event)}
-                  constraints={constraints}
-                  dismissed={dismissed.has(event.id)}
-                  detected={event._detectedId ? { confidence:event._confidence, sourceName:event._sourceName, confirmed:event._confirmed } : null}
-                  onDismiss={() => handleDismiss(event)}
-                  onActivate={() => handleActivate(event)}
-                />
-              ))}
-            </div>
-          </div>
+        grouped.map(([month, events], i) => (
+          <MonthBlock
+            key={month}
+            month={month.toUpperCase()}
+            events={events}
+            defaultOpen={i === 0}
+            computeVerdict={computeVerdict}
+            onActivate={handleActivate}
+            onDismiss={handleDismiss}
+          />
         ))
       )}
     </div>
