@@ -1,5 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+
+/* Self-hosted Geist (npm: geist@1.7.1) — variable woff2 served from src/assets/fonts.
+   Replaces Google Fonts CDN. No external font-fetch on page load. */
+@font-face {
+  font-family: 'Geist';
+  src: url('./assets/fonts/Geist-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('./assets/fonts/GeistMono-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* Tailwind v4 CSS-first config (no tailwind.config.js exists in v4).
    Geist everywhere: font-sans → Geist, font-mono → Geist Mono. */
