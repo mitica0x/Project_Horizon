@@ -1,0 +1,18 @@
+# C0INSIGLIERI
+> ALL SIGNAL. 0 GUESS. — Real-time market intelligence for crypto exchanges in Europe.
+
+## Product
+- [Dashboard](https://project-horizon-beta.vercel.app/): Live competitive intelligence
+- [Events](https://project-horizon-beta.vercel.app/events): Crypto industry events CEE/EU
+- [Ask C0INSIGLIERI](https://project-horizon-beta.vercel.app/ask): AI competitive queries
+- [History](https://project-horizon-beta.vercel.app/history): Scan history and deltas
+- [N0VA](https://project-horizon-beta.vercel.app/nova): Priority alerts and threat signals
+
+## Pricing
+$499/month — all features, no tiers, no upsell.
+
+## About
+COINsiglieri — Web3 ecosystem operator. Bybit Pioneer Romania.
+Founded by Madalin Muraretiu, 15 years in derivatives markets, crypto builder since 2016.
+Track record: Beach Please 2024 (120k attendees, first legal crypto POS in Romania).
+Positioning: Not consultants. Operators with skin in the game.
