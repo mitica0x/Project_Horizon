@@ -104,14 +104,14 @@ const chipInactive = {
   background: 'transparent',
   color: COLOR.muted,
 }
-// Category filter active state — emerald (data category selection).
+// Category filter active state — cyan (filter / intel-data axis).
 const chipActiveCategory = {
   ...chipBase,
-  border: `1px solid ${COLOR.emerald}`,
-  background: `rgba(${COLOR.emeraldRgb},0.07)`,
-  color: COLOR.emerald,
+  border: `1px solid ${COLOR.cyan}`,
+  background: `rgba(${COLOR.cyanRgb},0.07)`,
+  color: COLOR.cyan,
 }
-// Constraint filter active state — cyan (intel/data axis).
+// Constraint filter active state — cyan (filter / intel-data axis).
 const chipActiveConstraint = {
   ...chipBase,
   border: `1px solid ${COLOR.cyan}`,
@@ -371,8 +371,8 @@ function MonthBlock({ month, events, defaultOpen, computeVerdict, onActivate, on
           {moveCount > 0 && (
             <SummaryPill
               label={`${moveCount} high priority`}
-              color={COLOR.rust}
-              rgb={COLOR.rustRgb}
+              color={COLOR.emerald}
+              rgb={COLOR.emeraldRgb}
             />
           )}
         </div>

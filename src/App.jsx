@@ -907,7 +907,7 @@ export default function App() {
             transition={{ duration: 0.6, ease: 'easeOut' }}
             style={{ fontSize: 72 }}
           >
-            All signal.
+            Market intelligence.
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -918,7 +918,8 @@ export default function App() {
             <span
               style={{
                 color: '#0dbe82',
-                textShadow: '0 0 24px rgba(13,190,130,0.5)',
+                filter: 'drop-shadow(0 0 24px rgba(13,190,130,0.55))',
+                textShadow: '0 0 28px rgba(13,190,130,0.6)',
               }}
             >
               0{' '}

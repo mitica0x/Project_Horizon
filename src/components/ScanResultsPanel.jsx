@@ -1160,7 +1160,7 @@ function StatCard({
         background: HZ.surface,
         border: `1px solid ${HZ.border}`,
         borderRadius: 3,
-        padding: '16px 18px',
+        padding: 14,
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
@@ -1169,7 +1169,7 @@ function StatCard({
     >
       <div
         style={{
-          fontFamily: FONT_BODY,
+          fontFamily: FONT_MONO,
           fontSize: 10,
           color: HZ.muted,
           textTransform: 'uppercase',
@@ -3158,14 +3158,14 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
             label="EU Presence Score"
             value={scanData.score}
             suffix="%"
-            valueColor={HZ.teal}
+            valueColor={HZ.emerald}
             isVisible={visible}
             deltaText={
               scanData.scoreDelta != null
                 ? `${scanData.scoreDelta >= 0 ? '↑' : '↓'}${Math.abs(scanData.scoreDelta)}`
                 : null
             }
-            deltaColor={scanData.scoreDelta >= 0 ? HZ.teal : HZ.redText}
+            deltaColor={scanData.scoreDelta >= 0 ? HZ.emerald : HZ.amber}
             footer={
               <div
                 role="button"
@@ -3211,27 +3211,27 @@ const ScanResultsPanel = forwardRef(function ScanResultsPanel(
           <StatCard
             label="Tier 1 Gaps"
             value={scanData.tier1Gaps}
-            valueColor={scanData.tier1Gaps > 0 ? HZ.redText : HZ.text}
+            valueColor={scanData.tier1Gaps > 0 ? HZ.amber : HZ.text}
             isVisible={visible}
             deltaText={
               scanData.tier1GapsDelta != null
                 ? `${scanData.tier1GapsDelta >= 0 ? '↑' : '↓'}${Math.abs(scanData.tier1GapsDelta)}`
                 : null
             }
-            // for gaps, lower is better — positive delta = worse → red
-            deltaColor={scanData.tier1GapsDelta > 0 ? HZ.redText : HZ.teal}
+            // for gaps, lower is better — positive delta = worse → rust
+            deltaColor={scanData.tier1GapsDelta > 0 ? HZ.amber : HZ.emerald}
           />
           <StatCard
             label="Wins This Scan"
             value={scanData.wins ?? 0}
-            valueColor={HZ.teal}
+            valueColor={HZ.emerald}
             isVisible={visible}
           />
           <StatCard
             label="Coverage"
             value={scanData.coverage ?? 0}
             suffix="%"
-            valueColor={HZ.text}
+            valueColor={HZ.teal}
             isVisible={visible}
             withBar
             barPct={scanData.coverage ?? 0}
