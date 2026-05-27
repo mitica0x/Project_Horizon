@@ -5,7 +5,6 @@ import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
 import { Circle, ChevronDown } from 'lucide-react'
 import { Toaster, toast } from 'sonner'
-import HeroCanvas from './components/HeroCanvas'
 import ScanResultsPanel from './components/ScanResultsPanel'
 import GapCard from './components/GapCard'
 import WinCard from './components/WinCard'
@@ -19,7 +18,8 @@ import CompetitorPanel from './components/CompetitorPanel'
 import AccountMenu from './components/AccountMenu'
 import { computeThreatScore } from './utils/threatScore'
 import HorizonSidebar from './components/HorizonSidebar'
-import StatusBoard from './components/StatusBoard'
+import SignalScreen from './components/SignalScreen'
+import CompareScreen from './components/CompareScreen'
 import HorizonView from './components/HorizonView'
 import Nova from './components/Nova'
 import { getDayStatus, statusVerdict, assessCompetitors } from './utils/horizonData'
@@ -318,8 +318,9 @@ export default function App() {
   const [competitorPanel, setCompetitorPanel] = useState(null)
   const [scopeOpen, setScopeOpen] = useState(false)
 
-  // Horiz0n suite navigation. 'dashboard' = the untouched P1 tree.
-  const [view, setView] = useState('dashboard')
+  // Horiz0n suite navigation. 'signal' = new default landing (replaces the
+  // radar dashboard); 'dashboard' kept reachable via the gap deep-dive flow.
+  const [view, setView] = useState('signal')
   const [statusOpen, setStatusOpen] = useState(true)
   const [historyTab, setHistoryTab] = useState('decisions')
   const [novaOpen, setNovaOpen] = useState(false)
@@ -399,24 +400,9 @@ export default function App() {
   }, [statusOpen])
 
   const handleNav = (id, params) => {
-    if (id === 'dashboard') {
-      setView('dashboard')
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
-    }
-    if (id === 'status') {
-      setView('dashboard')
-      setStatusOpen(true)
-      requestAnimationFrame(() =>
-        setTimeout(() => {
-          document.getElementById('hz-status')?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-          })
-        }, 60),
-      )
-      return
-    }
+    // 'status' is the legacy alias for the new SIGNAL view — keep it routing
+    // there so older deep-links / panels still work.
+    if (id === 'status') id = 'signal'
     if (id === 'events') {
       setStatusOpen(false)
     }
@@ -852,7 +838,26 @@ export default function App() {
         compactStatus={statusOpen ? null : dayStatus}
       />
 
-      {view === 'dashboard' ? (
+      {view === 'signal' ? (
+        <div className="hz-shell">
+          <main ref={mainRef} style={{ background: 'var(--bg-primary)', paddingTop: 44 }}>
+            <SignalScreen scanData={scanData} />
+            <ScanResultsPanel
+              ref={scanResultsPanelRef}
+              visible={scanResultsVisible}
+              scanData={scanData}
+              marketMoves={marketMoves}
+              onClose={() => setScanResultsVisible(false)}
+              onDraftOutreach={(q) => askBriefRef.current?.openWithQuestion(q)}
+              onAskIntel={openIntel}
+            />
+          </main>
+        </div>
+      ) : view === 'compare' ? (
+        <div className="hz-shell">
+          <CompareScreen onNav={handleNav} />
+        </div>
+      ) : view === '__dashboard_dead_branch__' ? (
       <div className="hz-shell">
       {/* HERO — full-viewport radar background with overlay copy top-left
           and a bouncing scroll indicator at bottom-center.
