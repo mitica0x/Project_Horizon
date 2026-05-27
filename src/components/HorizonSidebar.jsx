@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Activity, CalendarDays, BarChart2, MessageCircle, History, Radar, Zap } from 'lucide-react'
+import { Activity, CalendarDays, MessageCircle, History, Radar, Zap } from 'lucide-react'
 import { FONT_HEAD, FONT_MONO } from './horizonUI'
 import { statusVerdict, getDayStatus } from '../utils/horizonData'
 
@@ -11,17 +11,13 @@ const STATUS_MICRO = {
 }
 
 const NAV = [
-  { id: 'signal',  label: 'SIGNAL',           Icon: Activity },
+  { id: 'status',  label: 'STATUS',           Icon: Activity },
   { id: 'events',  label: 'EVENTS',           Icon: CalendarDays },
-  { id: 'compare', label: 'COMPARE',          Icon: BarChart2 },
   { id: 'brief',   label: 'Ask C0insiglieri', Icon: MessageCircle },
   { id: 'history', label: 'HISTORY',          Icon: History },
 ]
 
 const COLLAPSE_KEY = 'horizon_sidebar_collapsed'
-
-// Spec easing — "snap" cubic-bezier(0.16, 1, 0.3, 1) for sidebar interactions.
-const EASE_SNAP = 'cubic-bezier(0.16, 1, 0.3, 1)'
 
 function NavRow({ Icon, label, active, onClick, collapsed, subLine }) {
   const [hover, setHover] = useState(false)
@@ -41,9 +37,7 @@ function NavRow({ Icon, label, active, onClick, collapsed, subLine }) {
         textAlign: 'left',
         justifyContent: collapsed ? 'center' : 'flex-start',
         background: active
-          ? 'rgba(255,255,255,0.04)'
-          : hover
-          ? 'rgba(255,255,255,0.03)'
+          ? 'linear-gradient(90deg, rgba(13,190,130,0.08), transparent)'
           : 'transparent',
         border: 'none',
         borderLeft: `2px solid ${active ? 'var(--emerald)' : 'transparent'}`,
@@ -51,21 +45,20 @@ function NavRow({ Icon, label, active, onClick, collapsed, subLine }) {
         cursor: 'pointer',
         color,
         fontFamily: FONT_MONO,
-        fontSize: 11,
+        fontSize: 9,
         fontWeight: 600,
-        letterSpacing: '0.16em',
+        letterSpacing: '0.12em',
         textTransform: 'uppercase',
-        transform: hover && !active ? 'translateX(2px)' : 'translateX(0)',
-        transition: `color 150ms ${EASE_SNAP}, background 150ms ${EASE_SNAP}, border-color 150ms ${EASE_SNAP}, transform 150ms ${EASE_SNAP}`,
+        transition: 'color 0.15s, background 0.15s, border-color 0.15s',
       }}
     >
       <Icon
-        size={14}
+        size={13}
         strokeWidth={1.75}
         style={{
           flexShrink: 0,
           color: active ? 'var(--emerald)' : color,
-          transition: `color 150ms ${EASE_SNAP}`,
+          transition: 'color 0.15s',
         }}
       />
       {!collapsed && (
@@ -77,7 +70,7 @@ function NavRow({ Icon, label, active, onClick, collapsed, subLine }) {
             <span
               style={{
                 fontFamily: FONT_MONO,
-                fontSize: 9,
+                fontSize: 8,
                 letterSpacing: '0.04em',
                 textTransform: 'none',
                 color: 'var(--text-muted)',
@@ -133,7 +126,7 @@ export default function HorizonSidebar({
   useEffect(() => {
     document.documentElement.style.setProperty(
       '--hz-sidebar',
-      collapsed ? '52px' : '152px',
+      collapsed ? '52px' : '160px',
     )
     try {
       localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0')
@@ -146,8 +139,6 @@ export default function HorizonSidebar({
   const verdict = compactStatus ? statusVerdict(compactStatus) : null
   const statusMicro =
     STATUS_MICRO[(verdict || statusVerdict(getDayStatus().overall)).label] || null
-  // Sub-line under SIGNAL row — only meaningful while we have a live verdict.
-  const signalSub = statusMicro
 
   return (
     <nav
@@ -159,7 +150,7 @@ export default function HorizonSidebar({
         bottom: 0,
         zIndex: 150,
         background: 'var(--bg-panel)',
-        borderRight: '0.5px solid rgba(255,255,255,0.07)',
+        borderRight: '1px solid rgba(255,255,255,0.05)',
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
@@ -167,8 +158,8 @@ export default function HorizonSidebar({
     >
       {/* Wordmark — C / 0 (emerald) / IN / SIGLIERI (cyan) */}
       <button
-        onClick={() => onNav('signal')}
-        title="C0insiglieri — signal"
+        onClick={() => onNav('dashboard')}
+        title="C0insiglieri — dashboard"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -176,7 +167,7 @@ export default function HorizonSidebar({
           gap: 0,
           background: 'none',
           border: 'none',
-          borderBottom: '0.5px solid rgba(255,255,255,0.07)',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
           padding: '14px 10px',
           cursor: 'pointer',
           fontFamily: FONT_HEAD,
@@ -225,8 +216,8 @@ export default function HorizonSidebar({
       {/* Compact day verdict — shown when the STATUS board is dismissed */}
       {verdict && (
         <button
-          onClick={() => onNav('signal')}
-          title={`Open signal — ${verdict.label}`}
+          onClick={() => onNav('status')}
+          title={`Open status — ${verdict.label}`}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -234,7 +225,7 @@ export default function HorizonSidebar({
             gap: 8,
             background: 'rgba(255,255,255,0.02)',
             border: 'none',
-            borderBottom: '0.5px solid var(--border)',
+            borderBottom: '1px solid var(--border)',
             padding: '8px 10px',
             cursor: 'pointer',
             fontFamily: FONT_MONO,
@@ -258,34 +249,31 @@ export default function HorizonSidebar({
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', paddingTop: 6 }}>
-        {/* SIGNAL / EVENTS / COMPARE */}
-        {NAV.slice(0, 3).map(it => (
+        {NAV.slice(0, 2).map(it => (
           <NavRow
             key={it.id}
             Icon={it.Icon}
             label={it.label}
             active={view === it.id}
             collapsed={collapsed}
-            subLine={it.id === 'signal' ? signalSub : undefined}
+            subLine={it.id === 'status' ? statusMicro : undefined}
             onClick={() => onNav(it.id)}
           />
         ))}
 
         <Divider />
 
-        {/* ASK C0INSIGLIERI — opens AskTheBrief overlay (no view change) */}
         <NavRow
-          Icon={NAV[3].Icon}
-          label={NAV[3].label}
+          Icon={NAV[2].Icon}
+          label={NAV[2].label}
           active={false}
           collapsed={collapsed}
           onClick={onIntel}
         />
 
-        {/* HISTORY */}
         <NavRow
-          Icon={NAV[4].Icon}
-          label={NAV[4].label}
+          Icon={NAV[3].Icon}
+          label={NAV[3].label}
           active={view === 'history'}
           collapsed={collapsed}
           onClick={() => onNav('history')}
@@ -314,11 +302,11 @@ export default function HorizonSidebar({
             gap: 7,
             marginTop: 6,
             marginBottom: 8,
-            marginLeft: 8,
-            width: 'calc(100% - 16px)',
-            padding: '8px 10px',
-            background: 'rgba(13,190,130,0.06)',
-            border: '0.5px solid rgba(13,190,130,0.45)',
+            marginLeft: 12,
+            width: 'calc(100% - 24px)',
+            padding: '7px 10px',
+            background: 'transparent',
+            border: '1px solid rgba(13,190,130,0.45)',
             borderRadius: 3,
             color: 'var(--emerald)',
             fontFamily: FONT_MONO,
@@ -349,7 +337,7 @@ export default function HorizonSidebar({
           gap: 8,
           background: novaHover ? 'rgba(232,112,58,0.12)' : 'rgba(232,112,58,0.05)',
           border: 'none',
-          borderTop: '0.5px solid rgba(232,112,58,0.3)',
+          borderTop: '1px solid rgba(232,112,58,0.3)',
           padding: '14px 10px',
           cursor: 'pointer',
           color: 'var(--rust)',
